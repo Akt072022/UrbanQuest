@@ -1,0 +1,73 @@
+# Build the Vite app on every push to `main` and publish it to
+# GitHub Pages. Configure once:
+#   - In the repo: Settings → Pages → Source = "GitHub Actions"
+#   - In the repo: Settings → Secrets and variables → Actions → add
+#     the two repository SECRETS:
+#       VITE_SUPABASE_URL
+#       VITE_SUPABASE_ANON_KEY
+#       VITE_MISTRAL_API_KEY        (optional, for Voxtral TTS)
+#       VITE_MISTRAL_TTS_VOICE_ID   (optional)
+#
+# In Supabase → Authentication → URL Configuration → Redirect URLs,
+# add:  https://<user>.github.io/<repo>/   so magic links work.
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages:    write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build
+        env:
+          # Vite base path for GitHub Pages — repo name with trailing slash
+          VITE_BASE_PATH: /${{ github.event.repository.name }}/
+          VITE_SUPABASE_URL:        ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY:   ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_MISTRAL_API_KEY:     ${{ secrets.VITE_MISTRAL_API_KEY }}
+          VITE_MISTRAL_TTS_VOICE_ID: ${{ secrets.VITE_MISTRAL_TTS_VOICE_ID }}
+        run: npm run build
+
+      # Single-page app fallback so deep links survive a refresh.
+      # GitHub Pages serves 404.html for unknown paths; reuse index.
+      - name: SPA 404 fallback
+        run: cp dist/index.html dist/404.html
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

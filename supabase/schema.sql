@@ -1,0 +1,161 @@
+-- UrbanQuest schema — run this once in the Supabase SQL editor
+-- (https://app.supabase.com/project/_/sql) right after the project is
+-- created. Re-runnable: every block is idempotent.
+--
+-- The model is intentionally minimal:
+--   • evaluations  — every tool the user has self-rated (regular /
+--                    occasional / theory). Optional team_id tags the
+--                    rating for an asynchronous workshop.
+--   • skipped_tools — the user pressed "skip" on these tools so the
+--                    deck doesn't surface them again on resume.
+--   • teams        — workshop sessions (a city, a project) created by
+--                    a facilitator and joined by participants.
+--   • team_members — link table user ↔ team with a role.
+--
+-- Auth is delegated entirely to auth.users (supabase.auth.signInWithOtp).
+-- All tables enforce row-level security so the anon key is safe to ship
+-- to the client.
+
+-- ── Tables ──────────────────────────────────────────────────────
+
+create table if not exists public.teams (
+  id          uuid primary key default gen_random_uuid(),
+  name        text not null,
+  city        text,
+  proj        text,
+  invite_code text unique,
+  created_at  timestamptz not null default now(),
+  created_by  uuid references auth.users(id) on delete set null
+);
+
+create table if not exists public.team_members (
+  team_id   uuid references public.teams(id) on delete cascade,
+  user_id   uuid references auth.users(id)  on delete cascade,
+  role      text not null default 'participant'
+              check (role in ('participant','facilitator')),
+  joined_at timestamptz not null default now(),
+  primary key (team_id, user_id)
+);
+
+create table if not exists public.evaluations (
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  tool_name  text not null,
+  level      text not null
+               check (level in ('regular','occasional','theory')),
+  team_id    uuid references public.teams(id) on delete set null,
+  updated_at timestamptz not null default now(),
+  primary key (user_id, tool_name)
+);
+
+create table if not exists public.skipped_tools (
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  tool_name  text not null,
+  team_id    uuid references public.teams(id) on delete set null,
+  updated_at timestamptz not null default now(),
+  primary key (user_id, tool_name)
+);
+
+create table if not exists public.profiles (
+  user_id    uuid primary key references auth.users(id) on delete cascade,
+  display_name text,
+  city       text,
+  proj       text,
+  updated_at timestamptz not null default now()
+);
+
+-- ── Indexes ─────────────────────────────────────────────────────
+create index if not exists evaluations_team_idx
+  on public.evaluations (team_id) where team_id is not null;
+create index if not exists skipped_team_idx
+  on public.skipped_tools (team_id) where team_id is not null;
+
+-- ── Row-Level Security ─────────────────────────────────────────
+alter table public.teams         enable row level security;
+alter table public.team_members  enable row level security;
+alter table public.evaluations   enable row level security;
+alter table public.skipped_tools enable row level security;
+alter table public.profiles      enable row level security;
+
+-- evaluations: each user manages their own row; teammates can read
+-- evaluations tagged with a shared team_id (workshop view).
+drop policy if exists evaluations_self_rw on public.evaluations;
+create policy evaluations_self_rw on public.evaluations
+  for all
+  using      (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+drop policy if exists evaluations_team_read on public.evaluations;
+create policy evaluations_team_read on public.evaluations
+  for select using (
+    team_id is not null and exists (
+      select 1 from public.team_members tm
+       where tm.team_id = evaluations.team_id and tm.user_id = auth.uid()
+    )
+  );
+
+-- skipped_tools: same rules.
+drop policy if exists skipped_self_rw on public.skipped_tools;
+create policy skipped_self_rw on public.skipped_tools
+  for all
+  using      (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+drop policy if exists skipped_team_read on public.skipped_tools;
+create policy skipped_team_read on public.skipped_tools
+  for select using (
+    team_id is not null and exists (
+      select 1 from public.team_members tm
+       where tm.team_id = skipped_tools.team_id and tm.user_id = auth.uid()
+    )
+  );
+
+-- teams: members can read; any authenticated user can create.
+drop policy if exists teams_member_read on public.teams;
+create policy teams_member_read on public.teams
+  for select using (
+    exists (
+      select 1 from public.team_members tm
+       where tm.team_id = teams.id and tm.user_id = auth.uid()
+    )
+  );
+
+drop policy if exists teams_create on public.teams;
+create policy teams_create on public.teams
+  for insert with check (auth.uid() is not null);
+
+drop policy if exists teams_facilitator_update on public.teams;
+create policy teams_facilitator_update on public.teams
+  for update using (
+    exists (
+      select 1 from public.team_members tm
+       where tm.team_id = teams.id and tm.user_id = auth.uid()
+         and tm.role = 'facilitator'
+    )
+  );
+
+-- team_members: a user reads their own memberships; can add themselves
+-- (= join), facilitators can manage their team's roster.
+drop policy if exists team_members_self_read on public.team_members;
+create policy team_members_self_read on public.team_members
+  for select using (auth.uid() = user_id);
+
+drop policy if exists team_members_self_join on public.team_members;
+create policy team_members_self_join on public.team_members
+  for insert with check (auth.uid() = user_id);
+
+drop policy if exists team_members_facilitator_manage on public.team_members;
+create policy team_members_facilitator_manage on public.team_members
+  for all using (
+    exists (
+      select 1 from public.team_members tm
+       where tm.team_id = team_members.team_id and tm.user_id = auth.uid()
+         and tm.role = 'facilitator'
+    )
+  );
+
+-- profiles: each user owns their profile.
+drop policy if exists profiles_self_rw on public.profiles;
+create policy profiles_self_rw on public.profiles
+  for all
+  using      (auth.uid() = user_id)
+  with check (auth.uid() = user_id);

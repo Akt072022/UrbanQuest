@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+  body {
+    background: #F2EDE4;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: -apple-system, Helvetica Neue, sans-serif;
+    color: #1C2530;
+  }
+  #root {
+    width: 100%;
+    max-width: 430px;
+    min-height: 100vh;
+  }
+}
+
+@layer utilities {
+  .backface-hidden { -webkit-backface-visibility: hidden; backface-visibility: hidden; }
+  .preserve-3d     { transform-style: preserve-3d; }
+  .perspective-900 { perspective: 900px; }
+  .rotate-y-180    { transform: rotateY(180deg); }
+  .text-mega {
+    font-family: Barlow Condensed, Impact, sans-serif;
+    font-weight: 900;
+    line-height: .88;
+    letter-spacing: -.01em;
+  }
+  .navy-shadow {
+    box-shadow: 0 4px 20px rgba(27,61,111,.22), 0 1px 4px rgba(27,61,111,.12);
+  }
+  .card-shadow {
+    box-shadow: 0 1px 4px rgba(28,37,48,.08), 0 4px 16px rgba(28,37,48,.06);
+  }
+}
+
+@keyframes pop {
+  0%   { transform: scale(0.5); }
+  60%  { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+@keyframes xpup {
+  0%   { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-60px) scale(1.5); }
+}
+@keyframes toastin {
+  from { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+@keyframes fadein {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slidein {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes pulse-navy {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(27,61,111,.3); }
+  50%       { box-shadow: 0 0 0 10px rgba(27,61,111,0); }
+}
+
+.anim-pop        { animation: pop 0.5s ease; }
+.anim-fadein     { animation: fadein 0.28s ease; }
+.anim-slidein    { animation: slidein 0.28s ease; }
+.anim-xpup       { animation: xpup 1.1s ease-out forwards; }
+.anim-toastin    { animation: toastin 0.3s ease; }
+.anim-pulse-navy { animation: pulse-navy 2s ease-in-out infinite; }
