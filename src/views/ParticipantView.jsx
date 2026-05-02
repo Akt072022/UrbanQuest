@@ -1,426 +1,612 @@
 import { useState, useEffect, useRef } from 'react'
-import { openChannel, sendMsg, subscribe } from '../lib/session'
-import { TOOLS, FAMILY_STYLE, GATE_LABEL, DIM_BY_ID } from '../data/tools'
+import { openChannel, sendMsg, subscribe, closeChannel } from '../lib/session'
+import {
+  TOOLS, GATE_LABEL, DIMENSIONS, DIM_BY_ID,
+  toolsForGate, toolsForGateDim, SKILL_LEVELS,
+  scoreForGateDim,
+} from '../data/tools'
+import {
+  CardStack, SwipeWrap, EvaluationModal, ProgressDots, ActionButtons,
+  playTTS, stopTTS,
+} from './ExploreView'
+import { ScrappyButton, ScrappyChip } from '../components/ScrappyButton'
 
 const PARTICIPANT_ID = Math.random().toString(36).slice(2, 8)
+const INK    = '#1C2530'
+const YELLOW = '#F5C84A'
+const TEAL   = '#6FCBC9'
+const PAGE   = '#F2EDE4'
+const CARD   = '#FFFDF8'
 const GATE_COL = ['','#C17B2A','#1B5FA0','#2A6B45','#7A3A8E']
-const FREQ_LABELS = ['','Never','Rarely','Sometimes','Often','Always']
 
-function speak(text) {
-  if (!window.speechSynthesis) return
-  window.speechSynthesis.cancel()
-  const u = new SpeechSynthesisUtterance(text)
-  u.lang = 'en-US'; u.rate = 0.95
-  const en = window.speechSynthesis.getVoices().find(v => v.lang.startsWith('en'))
-  if (en) u.voice = en
-  window.speechSynthesis.speak(u)
+const FONT_HEAD = 'Barlow Condensed, Impact, sans-serif'
+
+// Map skill level → legacy triage_card payload so the existing
+// TriageHeatmap on the facilitator side still works without changes.
+const LEVEL_TO_PAYLOAD = {
+  regular:    { status: 'practiced', level: 5 },
+  occasional: { status: 'practiced', level: 3 },
+  theory:     { status: 'known',     level: 0 },
 }
 
-function gateRgba(g, a) {
-  const m = { 1: '193,123,42', 2: '27,95,160', 3: '42,107,69', 4: '122,58,142' }
-  return `rgba(${m[g]},${a})`
+// ── Hexagonal mini-radar — same visual language as the map ────
+function HexBadge({ gate, dimsData, size = 100 }) {
+  const angles = [30, 90, 150, 210, 270, 330].map(a => a * Math.PI / 180)
+  const RAD = size * 0.42
+  const cx = size / 2, cy = size / 2
+  const polyAt = (radii) => radii.map((r, i) => {
+    const a = angles[i]
+    return `${(cx + r * Math.sin(a)).toFixed(1)},${(cy - r * Math.cos(a)).toFixed(1)}`
+  }).join(' ')
+  const outerPts = polyAt(angles.map(() => RAD))
+  const ratios = dimsData.map(d => d.total > 0 ? d.score / d.total : 0)
+  const progressPts = polyAt(ratios.map(r => RAD * r))
+  const col = GATE_COL[gate]
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}
+      style={{ display: 'block', overflow: 'visible' }}>
+      <polygon points={outerPts}
+        fill={CARD} stroke={INK} strokeWidth={3}
+        strokeLinejoin="round" />
+      {angles.map((a, i) => (
+        <line key={i} x1={cx} y1={cy}
+          x2={(cx + RAD * Math.sin(a)).toFixed(1)}
+          y2={(cy - RAD * Math.cos(a)).toFixed(1)}
+          stroke={INK} strokeWidth={1} opacity={0.18} />
+      ))}
+      <polygon points={progressPts}
+        fill={col} fillOpacity={0.55}
+        stroke={col} strokeWidth={2}
+        strokeLinejoin="round" />
+      <circle cx={cx} cy={cy} r={2.5} fill={INK} />
+    </svg>
+  )
 }
 
-// ── Triage Deck ───────────────────────────────────────────────
-function TriageDeck({ tools, gate, onComplete, channel }) {
-  const [index, setIndex] = useState(0)
-  const [answers, setAnswers] = useState([]) // [{ n, status, level }]
-  const [levelPick, setLevelPick] = useState(false)
-  const [level, setLevel] = useState(3)
-  const [leaving, setLeaving] = useState(null) // 'left'|'right' for animation
+// ── Header bar — RECITY wordmark + room + connection state ────
+function Header({ roomId, connected }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 10,
+      padding: '14px 16px',
+      background: PAGE,
+      borderBottom: `2px solid ${INK}`,
+    }}>
+      <div style={{
+        width: 30, height: 30, flexShrink: 0,
+        background: INK, color: '#FFFFFF',
+        border: `2px solid ${INK}`, borderRadius: 8,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 13,
+      }}>R</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 16,
+          color: INK, letterSpacing: '.04em', lineHeight: 1,
+        }}>RECITY</div>
+        <div style={{ fontSize: 9, color: '#5A5550', fontWeight: 700, marginTop: 2 }}>
+          Session {roomId} · #{PARTICIPANT_ID}
+        </div>
+      </div>
+      <div style={{
+        padding: '3px 10px', borderRadius: 999,
+        background: connected ? '#E6F4EC' : '#FCE8E2',
+        border: `2px solid ${connected ? '#2A6B45' : '#C0452A'}`,
+        fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 9,
+        color: connected ? '#2A6B45' : '#C0452A',
+        letterSpacing: '.06em',
+      }}>● {connected ? 'LIVE' : 'CONNECTING…'}</div>
+    </div>
+  )
+}
 
-  const current = tools[index]
-  const progress = index / tools.length
+// ── Waiting state ─────────────────────────────────────────────
+function WaitingState() {
+  return (
+    <div style={{
+      flex: 1, display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center', textAlign: 'center',
+      padding: '40px 20px',
+    }}>
+      <div style={{
+        width: 80, height: 80, borderRadius: '50%',
+        background: CARD, border: `3px solid ${INK}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        marginBottom: 18,
+        animation: 'pulse-ink 2s ease-in-out infinite',
+      }}>
+        <svg viewBox="0 0 24 24" width="40" height="40" fill="none">
+          <circle cx="12" cy="12" r="9" stroke={INK} strokeWidth="2" />
+          <path d="M12 7v5l3 2" stroke={INK} strokeWidth="2"
+            strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </div>
+      <div style={{
+        fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 22,
+        color: INK, letterSpacing: '.04em', marginBottom: 6,
+      }}>WAITING FOR FACILITATOR</div>
+      <div style={{
+        color: '#5A5550', fontSize: 13, lineHeight: 1.45, maxWidth: 320,
+      }}>
+        The session opens as soon as the facilitator launches it. You can leave this page open — your spot is reserved.
+      </div>
+      <style>{`
+        @keyframes pulse-ink {
+          0%, 100% { transform: scale(1); }
+          50%      { transform: scale(1.05); }
+        }
+      `}</style>
+    </div>
+  )
+}
 
-  const sendCard = (status, lvl = 0) => {
-    const payload = { participantId: PARTICIPANT_ID, tool: current.n, status, level: lvl }
-    sendMsg(channel, { type: 'triage_card', payload })
-    const newAnswers = [...answers, { n: current.n, status, level: lvl }]
-    setAnswers(newAnswers)
-    setLevelPick(false)
-    setLevel(3)
-    if (index + 1 >= tools.length) {
-      sendMsg(channel, { type: 'triage_done', payload: { participantId: PARTICIPANT_ID } })
-      onComplete(newAnswers)
-    } else {
-      setIndex(i => i + 1)
-    }
-  }
+// ── Dimension picker (when sessionDim === 'all') ──────────────
+//   Shows the gate's mini-radar + a list of dim cards. Each dim
+//   shows the participant's local progress on that dim, and tapping
+//   it opens the deck restricted to that dim.
+function DimPicker({ gate, sessionDim, evals, skipped, onPickDim, onFinish }) {
+  // For each dim: count tools touched (evaluated OR skipped)
+  const dimRows = DIMENSIONS.map(d => {
+    const tools = toolsForGateDim(gate, d.id)
+    const total = tools.length
+    const touched = tools.filter(t => evals[t.n] || skipped.includes(t.n)).length
+    const score = scoreForGateDim(gate, d.id, evals)
+    return { ...d, total, touched, score }
+  })
 
-  const col = GATE_COL[gate] || '#1B3D6F'
-  const fam = FAMILY_STYLE?.[current.f] || { icon: '◻', bg: '#e5e7eb', text: '#374151' }
+  // Filter to allowed dims (if facilitator picked a single dim, only show it)
+  const allowed = sessionDim === 'all'
+    ? dimRows
+    : dimRows.filter(d => d.id === sessionDim)
+
+  // Build dimsData for the radar visual
+  const dimsData = DIMENSIONS.map((d, i) => ({
+    id: d.id,
+    total: dimRows[i].total,
+    score: dimRows[i].score,
+  }))
+
+  const totalTouched = dimRows.reduce((s, d) => s + d.touched, 0)
+  const totalTools   = dimRows.reduce((s, d) => s + d.total, 0)
+  const allDone = totalTouched >= totalTools
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-      {/* Progress */}
-      <div style={{ marginBottom: '16px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between',
-          fontSize: '10px', fontWeight: 800, color: '#8B8074', marginBottom: '5px' }}>
-          <span>COLLECTIVE TRIAGE</span>
-          <span>{index + 1} / {tools.length}</span>
+    <div style={{ padding: '20px 16px 32px' }}>
+      {/* Hero — gate name + radar */}
+      <div style={{ textAlign: 'center', marginBottom: 24 }}>
+        <div style={{
+          fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
+          color: GATE_COL[gate], letterSpacing: '.08em', textTransform: 'uppercase',
+        }}>Workshop step</div>
+        <div style={{
+          fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 28,
+          color: INK, lineHeight: 1.1, letterSpacing: '.02em',
+          margin: '4px 0 14px',
+        }}>{GATE_LABEL[gate]}</div>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+          <HexBadge gate={gate} dimsData={dimsData} size={140} />
         </div>
-        <div style={{ height: '4px', borderRadius: '2px', background: '#E0DAD2', overflow: 'hidden' }}>
-          <div style={{ height: '100%', borderRadius: '2px',
-            width: (progress * 100) + '%', background: col, transition: 'width .3s' }} />
+        <div style={{
+          fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 14,
+          color: INK,
+        }}>
+          {totalTouched}<span style={{ color: '#9C958A' }}>/{totalTools}</span>
+          <span style={{ marginLeft: 6, fontSize: 11, color: '#5A5550' }}>
+            tools evaluated
+          </span>
         </div>
       </div>
 
-      {/* Card */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', borderRadius: '16px',
-        background: '#FFFFFF', border: '1px solid #E0DAD2',
-        borderTop: '4px solid ' + col, padding: '18px',
-        boxShadow: '0 2px 8px rgba(28,37,48,.07)' }}>
-
-        {/* Dimension chips (multi) + fallback family tag */}
-        <div style={{
-          display: 'flex', flexWrap: 'wrap', gap: 4,
-          marginBottom: 10, alignSelf: 'flex-start',
-        }}>
-          {(current.d || []).map(did => {
-            const d = DIM_BY_ID[did]
-            if (!d) return null
-            return (
-              <span key={did} style={{
-                display: 'inline-flex', alignItems: 'center', gap: 3,
-                padding: '3px 8px', borderRadius: 6,
-                background: d.color + '15', color: d.color,
-                fontSize: 10, fontWeight: 800,
-                letterSpacing: '.03em',
-              }}>{d.icon} {d.label}</span>
-            )
-          })}
-          {(!current.d || current.d.length === 0) && (
-            <span style={{
-              padding: '3px 8px', borderRadius: 6,
-              background: '#F5F1EB', border: '1px solid #E0DAD2',
-              fontSize: 10, fontWeight: 700, color: '#5A5550',
-            }}>{fam.icon} {current.f}</span>
-          )}
-        </div>
-
-        {/* Name */}
-        <div style={{ fontFamily: 'Georgia, serif', fontSize: '20px', fontWeight: 700,
-          color: '#1C2530', lineHeight: 1.2, marginBottom: '10px' }}>
-          {current.n}
-        </div>
-
-        {/* Definition */}
-        <p style={{ fontSize: '13px', color: '#5A5550', lineHeight: 1.55,
-          flex: 1, marginBottom: '16px' }}>
-          {current.def}
-        </p>
-
-        {/* TTS */}
-        <button onClick={() => speak(current.n + '. ' + current.def)}
-          style={{ alignSelf: 'flex-start', background: 'none', border: 'none',
-            cursor: 'pointer', fontSize: '11px', color: '#8B8074',
-            fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px',
-            marginBottom: '16px', padding: 0 }}>
-          🔊 Listen
-        </button>
-
-        {/* Level picker (inline) */}
-        {levelPick && (
-          <div style={{ marginBottom: '14px', padding: '12px', borderRadius: '12px',
-            background: '#EFF7F0', border: '1px solid #C3E6C9' }}>
-            <div style={{ fontSize: '11px', fontWeight: 800, color: '#2A6B45',
-              marginBottom: '8px' }}>Your practice level</div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '4px',
-              marginBottom: '6px' }}>
-              {[1,2,3,4,5].map(l => (
-                <button key={l} onClick={() => setLevel(l)}
-                  style={{ flex: 1, padding: '8px 0', borderRadius: '8px', cursor: 'pointer',
-                    border: '2px solid ' + (level === l ? '#2A6B45' : '#C3E6C9'),
-                    background: level === l ? '#2A6B45' : '#fff',
-                    color: level === l ? '#fff' : '#2A6B45',
-                    fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: 900 }}>
-                  {l}
-                </button>
-              ))}
-            </div>
-            <div style={{ fontSize: '10px', color: '#2A6B45', textAlign: 'center',
-              fontStyle: 'italic', marginBottom: '10px' }}>{FREQ_LABELS[level]}</div>
-            <button onClick={() => sendCard('practiced', level)}
-              style={{ width: '100%', padding: '11px', borderRadius: '10px', cursor: 'pointer',
-                background: '#2A6B45', color: '#fff', border: 'none',
-                fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: 900 }}>
-              CONFIRM LEVEL {level}/5
+      {/* Dimension list */}
+      <div style={{
+        fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
+        color: INK, letterSpacing: '.08em', textTransform: 'uppercase',
+        marginBottom: 8,
+      }}>Pick a dimension to evaluate</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
+        {allowed.map(d => {
+          const pct = d.total > 0 ? Math.round((d.touched / d.total) * 100) : 0
+          const done = d.touched >= d.total
+          return (
+            <button key={d.id}
+              onClick={() => onPickDim(d.id)}
+              disabled={d.total === 0}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '12px 14px', textAlign: 'left',
+                background: done ? `${d.color}15` : CARD,
+                border: `2.5px solid ${done ? d.color : INK}`,
+                borderRadius: 14,
+                cursor: d.total === 0 ? 'default' : 'pointer',
+                boxShadow: '2px 2px 0 ' + INK,
+                width: '100%',
+                opacity: d.total === 0 ? 0.5 : 1,
+              }}>
+              <div style={{
+                flexShrink: 0,
+                width: 30, height: 30, borderRadius: '50%',
+                background: d.color, color: '#FFFFFF',
+                border: `2px solid ${INK}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 12,
+              }}>{d.short}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{
+                  fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 15,
+                  color: INK, letterSpacing: '.04em', textTransform: 'uppercase',
+                  lineHeight: 1.1,
+                }}>{d.label}</div>
+                <div style={{
+                  marginTop: 4, height: 5, borderRadius: 3,
+                  background: PAGE, overflow: 'hidden',
+                }}>
+                  <div style={{
+                    width: pct + '%', height: '100%', background: d.color,
+                    transition: 'width .4s',
+                  }} />
+                </div>
+              </div>
+              <div style={{
+                fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 13,
+                color: done ? d.color : INK,
+                flexShrink: 0,
+              }}>{d.touched}<span style={{ color: '#9C958A' }}>/{d.total}</span></div>
             </button>
-          </div>
-        )}
+          )
+        })}
+      </div>
 
-        {/* Action buttons */}
-        {!levelPick && (
-          <div style={{ display: 'flex', gap: '6px' }}>
-            <button onClick={() => sendCard('unknown')}
-              style={{ flex: 1, padding: '13px 6px', borderRadius: '10px', cursor: 'pointer',
-                background: '#F5F1EB', border: '1px solid #E0DAD2',
-                color: '#8B8074', fontFamily: 'Barlow Condensed, sans-serif',
-                fontSize: '13px', fontWeight: 900 }}>
-              Unknown
-            </button>
-            <button onClick={() => sendCard('known')}
-              style={{ flex: 1, padding: '13px 6px', borderRadius: '10px', cursor: 'pointer',
-                background: '#FFF4E0', border: '1px solid #C17B2A44',
-                color: '#C17B2A', fontFamily: 'Barlow Condensed, sans-serif',
-                fontSize: '13px', fontWeight: 900 }}>
-              I know it
-            </button>
-            <button onClick={() => setLevelPick(true)}
-              style={{ flex: 1, padding: '13px 6px', borderRadius: '10px', cursor: 'pointer',
-                background: '#EFF7F0', border: '1px solid #2A6B4544',
-                color: '#2A6B45', fontFamily: 'Barlow Condensed, sans-serif',
-                fontSize: '13px', fontWeight: 900 }}>
-              I practice it
-            </button>
-          </div>
-        )}
+      {/* Submit / wrap-up */}
+      <ScrappyButton onClick={onFinish} color={allDone ? '#2A6B45' : YELLOW} full>
+        {allDone ? 'SUBMIT MY ANSWERS →' : (totalTouched > 0 ? 'SUBMIT WHAT I HAVE →' : 'PASS — I HAVE NOTHING')}
+      </ScrappyButton>
+      <div style={{
+        marginTop: 8, fontSize: 10, color: '#9C958A', textAlign: 'center', lineHeight: 1.45,
+      }}>
+        You can come back to evaluate more dimensions any time.
       </div>
     </div>
   )
 }
 
-// ── Triage Summary ────────────────────────────────────────────
-function TriageSummary({ answers }) {
-  const practiced = answers.filter(a => a.status === 'practiced')
-  const known     = answers.filter(a => a.status === 'known')
-  const unknown   = answers.filter(a => a.status === 'unknown')
+// ── Tool deck — wraps the same CardStack/SwipeWrap/EvaluationModal
+//   used in the solo journey board so the workshop UX is identical.
+function ToolDeck({ tools, gate, evals, skipped, onPick, onSkip, onDone }) {
+  // Resume at the first tool the user hasn't yet evaluated nor skipped.
+  const startIdx = tools.findIndex(t => !evals[t.n] && !skipped.includes(t.n))
+  const [idx, setIdx]               = useState(Math.max(0, startIdx))
+  const [face, setFace]             = useState('synth')
+  const [pendingEval, setPendingEval] = useState(false)
+  const [lastAction, setLastAction] = useState(null)
+
+  // Reset card flip state when card changes
+  useEffect(() => { setFace('synth'); setPendingEval(false) }, [idx])
+
+  // Done with this dim's deck → bubble back up
+  if (idx >= tools.length || tools.length === 0) {
+    return (
+      <div style={{
+        padding: '40px 20px', textAlign: 'center',
+        flex: 1, display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+      }}>
+        <div style={{
+          width: 64, height: 64, borderRadius: '50%',
+          background: '#E6F4EC', border: `3px solid #2A6B45`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          marginBottom: 14,
+        }}>
+          <svg viewBox="0 0 24 24" width="32" height="32" fill="none">
+            <path d="M5 13l4 4L19 7" stroke="#2A6B45" strokeWidth="3"
+              strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+        <div style={{
+          fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 18,
+          color: INK, marginBottom: 18, letterSpacing: '.04em',
+        }}>DIMENSION COMPLETE</div>
+        <ScrappyButton onClick={onDone} color={YELLOW}>
+          ← BACK TO DIMENSIONS
+        </ScrappyButton>
+      </div>
+    )
+  }
+
+  const tool = tools[idx]
+
+  const handleAction = (action) => {
+    setLastAction(action)
+    if (action === 'practice') {
+      setPendingEval(true)
+      return
+    }
+    if (action === 'skip') onSkip(tool)
+    try { window.speechSynthesis?.cancel() } catch { /* noop */ }
+    setIdx(i => i + 1)
+  }
+
+  const commit = (level) => {
+    onPick(tool, level)
+    try { window.speechSynthesis?.cancel() } catch { /* noop */ }
+    setPendingEval(false)
+    setIdx(i => i + 1)
+  }
 
   return (
-    <div className="anim-fadein" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-      <div className="text-mega" style={{ fontSize: '32px', color: '#2A6B45', marginBottom: '4px' }}>
-        TRIAGE COMPLETE
+    <div style={{ padding: '14px 16px 24px' }}>
+      {/* Header — back to picker + counter + progress dots */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        marginBottom: 12,
+      }}>
+        <ScrappyButton onClick={onDone} color={CARD} size="sm">
+          ← DONE
+        </ScrappyButton>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{
+            fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 16,
+            color: GATE_COL[gate], letterSpacing: '.04em',
+            textTransform: 'uppercase', lineHeight: 1,
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>{GATE_LABEL[gate]}</div>
+          {tool.d?.[0] && DIM_BY_ID[tool.d[0]] && (
+            <div style={{
+              fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
+              color: DIM_BY_ID[tool.d[0]].color, marginTop: 3,
+              letterSpacing: '.04em', textTransform: 'uppercase',
+            }}>{tools[0].d?.[0] && DIM_BY_ID[tool.d[0]].label}</div>
+          )}
+        </div>
+        <div style={{
+          fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 14,
+          color: INK, flexShrink: 0,
+        }}>{idx + 1}<span style={{ color: '#9C958A' }}>/{tools.length}</span></div>
       </div>
-      <p style={{ fontSize: '13px', color: '#8B8074', marginBottom: '20px' }}>
-        Your responses have been sent to the facilitator.
-      </p>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '8px', marginBottom: '16px' }}>
-        {[[practiced.length,'Practiced','#2A6B45','#EFF7F0'],
-          [known.length,'Known','#C17B2A','#FFF4E0'],
-          [unknown.length,'Unknown','#8B8074','#F5F1EB']].map(([n,l,col,bg]) => (
-          <div key={l} style={{ padding: '10px 6px', borderRadius: '10px', textAlign: 'center',
-            background: bg, border: '1px solid ' + col + '33' }}>
-            <div className="text-mega" style={{ fontSize: '22px', color: col }}>{n}</div>
-            <div style={{ fontSize: '9px', color: col, fontWeight: 700, textTransform: 'uppercase' }}>{l}</div>
+      <ProgressDots tools={tools} idx={idx} />
+
+      {/* Card */}
+      <div style={{ display: 'flex', justifyContent: 'center', marginTop: 14, marginBottom: 12 }}>
+        <SwipeWrap
+          enabled={face === 'synth'}
+          onAction={handleAction}>
+          <div key={idx}
+            style={{
+              animation: lastAction === 'skip'
+                ? 'card-from-right .35s cubic-bezier(.4,1.4,.5,1)'
+                : lastAction === 'practice'
+                ? 'card-from-left .35s cubic-bezier(.4,1.4,.5,1)'
+                : 'none',
+            }}>
+            <CardStack
+              tool={tool} gate={gate} face={face}
+              onDive={() => setFace('deep')}
+              onBack={() => setFace('synth')}
+            />
+          </div>
+        </SwipeWrap>
+      </div>
+
+      <ActionButtons show={face !== 'cover'} onAction={handleAction} />
+
+      {pendingEval && (
+        <EvaluationModal
+          tool={tool}
+          onPick={commit}
+          onCancel={() => setPendingEval(false)}
+        />
+      )}
+      <style>{`
+        @keyframes card-from-left {
+          from { transform: translateX(-110%) rotate(-4deg); opacity: 0; }
+          to   { transform: translateX(0)     rotate(0);     opacity: 1; }
+        }
+        @keyframes card-from-right {
+          from { transform: translateX(110%)  rotate(4deg);  opacity: 0; }
+          to   { transform: translateX(0)     rotate(0);     opacity: 1; }
+        }
+      `}</style>
+    </div>
+  )
+}
+
+// ── Final summary ─────────────────────────────────────────────
+function SummaryState({ gate, evals, skipped }) {
+  const tools = toolsForGate(gate)
+  const counts = { regular: 0, occasional: 0, theory: 0, skipped: 0, untouched: 0 }
+  for (const t of tools) {
+    if (evals[t.n]) counts[evals[t.n]]++
+    else if (skipped.includes(t.n)) counts.skipped++
+    else counts.untouched++
+  }
+  return (
+    <div style={{ padding: '40px 20px' }}>
+      <div style={{ textAlign: 'center', marginBottom: 24 }}>
+        <div style={{
+          fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
+          color: '#2A6B45', letterSpacing: '.08em', textTransform: 'uppercase',
+        }}>Submitted</div>
+        <div style={{
+          fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 28,
+          color: INK, lineHeight: 1.1, marginTop: 6,
+        }}>Thanks for contributing!</div>
+        <div style={{
+          color: '#5A5550', fontSize: 13, lineHeight: 1.45,
+          maxWidth: 320, margin: '12px auto 0',
+        }}>
+          Your responses are now visible to the facilitator. They will
+          guide the next steps of the discussion.
+        </div>
+      </div>
+      <div style={{
+        background: CARD, border: `2.5px solid ${INK}`,
+        borderRadius: 14, padding: 14, boxShadow: '2px 2px 0 ' + INK,
+      }}>
+        <div style={{
+          fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
+          color: INK, letterSpacing: '.06em', textTransform: 'uppercase',
+          marginBottom: 10,
+        }}>What you reported</div>
+        {[
+          { key: 'regular',    label: SKILL_LEVELS.regular.label,    col: '#2A6B45' },
+          { key: 'occasional', label: SKILL_LEVELS.occasional.label, col: '#C17B2A' },
+          { key: 'theory',     label: SKILL_LEVELS.theory.label,     col: '#5A5550' },
+          { key: 'skipped',    label: 'Skipped',                     col: '#9C958A' },
+          { key: 'untouched',  label: 'Not evaluated',               col: '#C8C0B8' },
+        ].map(r => (
+          <div key={r.key} style={{
+            display: 'flex', justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '6px 0',
+            borderBottom: '1px solid #F0EBE4',
+          }}>
+            <span style={{ fontSize: 12, color: INK, fontWeight: 700 }}>{r.label}</span>
+            <span style={{
+              fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 14,
+              color: r.col,
+            }}>{counts[r.key]}</span>
           </div>
         ))}
       </div>
-      {practiced.length > 0 && (
-        <div style={{ padding: '12px', borderRadius: '12px', background: '#FFFFFF',
-          border: '1px solid #E0DAD2' }}>
-          <div style={{ fontSize: '10px', fontWeight: 800, color: '#8B8074',
-            textTransform: 'uppercase', marginBottom: '8px' }}>What you practice</div>
-          {practiced.map(a => (
-            <div key={a.n} style={{ display: 'flex', justifyContent: 'space-between',
-              alignItems: 'center', padding: '6px 0',
-              borderBottom: '1px solid #F5F1EB' }}>
-              <span style={{ fontSize: '12px', color: '#1C2530', fontWeight: 600 }}>{a.n}</span>
-              <span style={{ fontSize: '11px', color: '#2A6B45', fontWeight: 800 }}>
-                Level {a.level}/5
-              </span>
+    </div>
+  )
+}
+
+// ── Live Question (kept identical to before) ──────────────────
+function QuestionMode({ question, channel, answered, setAnswered, revealed }) {
+  const [sliderVal, setSliderVal] = useState(3)
+  const [wordVal, setWordVal] = useState('')
+
+  const submitResponse = (value) => {
+    if (!channel || answered) return
+    sendMsg(channel, {
+      type: 'response',
+      payload: { participantId: PARTICIPANT_ID, value, questionId: question?.questionId },
+    })
+    setAnswered(true)
+  }
+
+  if (answered) {
+    return (
+      <div style={{
+        flex: 1, display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', textAlign: 'center',
+        padding: '40px 20px',
+      }}>
+        <div style={{
+          width: 64, height: 64, borderRadius: '50%',
+          background: '#E6F4EC', border: `3px solid #2A6B45`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          marginBottom: 14,
+        }}>
+          <svg viewBox="0 0 24 24" width="32" height="32" fill="none">
+            <path d="M5 13l4 4L19 7" stroke="#2A6B45" strokeWidth="3"
+              strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+        <div style={{
+          fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 22,
+          color: INK, marginBottom: 6, letterSpacing: '.04em',
+        }}>RESPONSE SENT</div>
+        <div style={{ color: '#5A5550', fontSize: 12 }}>
+          {revealed ? 'The facilitator is revealing the results…' : 'Waiting for others…'}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ padding: '20px 16px' }}>
+      <div style={{
+        fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
+        letterSpacing: '.08em', color: '#5A5550',
+        textTransform: 'uppercase', marginBottom: 6,
+      }}>Facilitator question</div>
+      <p style={{
+        fontSize: 17, fontWeight: 700, color: INK,
+        lineHeight: 1.4, margin: '0 0 18px',
+      }}>{question.text}</p>
+
+      {question.type === 'slider' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{
+            textAlign: 'center', padding: 14, borderRadius: 14,
+            background: CARD, border: `2.5px solid ${INK}`,
+            boxShadow: '2px 2px 0 ' + INK,
+          }}>
+            <div style={{
+              fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 56,
+              color: INK, lineHeight: 1,
+            }}>{sliderVal}</div>
+            <div style={{ fontSize: 12, color: '#5A5550', marginTop: 4 }}>
+              {['','Not ready','Slightly ready','In development','Ready','Very ready'][sliderVal]}
             </div>
+          </div>
+          <input type="range" min={0} max={5} value={sliderVal}
+            onChange={e => setSliderVal(Number(e.target.value))}
+            style={{ width: '100%', accentColor: INK, cursor: 'pointer' }} />
+          <ScrappyButton onClick={() => submitResponse(sliderVal)} color={YELLOW} size="lg" full>
+            SEND
+          </ScrappyButton>
+        </div>
+      )}
+
+      {question.type === 'word' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <textarea value={wordVal} onChange={e => setWordVal(e.target.value)}
+            placeholder="Your answer…" rows={4}
+            style={{
+              width: '100%', padding: 12, borderRadius: 12,
+              background: CARD, border: `2.5px solid ${INK}`,
+              color: INK, fontSize: 14, outline: 'none', resize: 'none',
+              boxSizing: 'border-box',
+              fontFamily: '-apple-system, Helvetica Neue, sans-serif',
+            }} />
+          <ScrappyButton
+            onClick={() => submitResponse(wordVal)}
+            color={wordVal.trim() ? YELLOW : '#E0DAD2'}
+            size="lg" full>
+            SEND
+          </ScrappyButton>
+        </div>
+      )}
+
+      {question.type === 'vote' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {[
+            ['Yes, priority',     '#2A6B45'],
+            ['Maybe',             '#C17B2A'],
+            ['Not for this phase','#9C958A'],
+          ].map(([opt, col]) => (
+            <button key={opt} onClick={() => submitResponse(opt)}
+              style={{
+                padding: 14, background: CARD,
+                border: `2.5px solid ${INK}`, borderRadius: 12,
+                fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 14,
+                color: col, textAlign: 'left', letterSpacing: '.04em',
+                cursor: 'pointer', boxShadow: '2px 2px 0 ' + INK,
+              }}>{opt}</button>
           ))}
         </div>
       )}
-      <p style={{ fontSize: '11px', color: '#B0A898', marginTop: '16px', lineHeight: 1.5,
-        fontStyle: 'italic' }}>
-        The facilitator will now analyse the results and lead an in-depth discussion on selected tools.
-      </p>
     </div>
   )
 }
 
-// ── Method Card (mode question) ───────────────────────────────
-function MethodCard({ toolName, gate }) {
-  const [open, setOpen] = useState(false)
-  const [tab, setTab] = useState('def')
-  const tool = TOOLS.find(t => t.n === toolName)
-  if (!tool) return null
-
-  const fam = FAMILY_STYLE[tool.f] || { icon: '?' }
-  const col = GATE_COL[gate] || '#1B3D6F'
-  const gateUsage = tool.gu?.[gate]
-
-  return (
-    <div style={{ borderRadius: '12px', overflow: 'hidden', marginBottom: '14px',
-      border: '1px solid #E0DAD2', background: '#FFFFFF' }}>
-      <button onClick={() => setOpen(o => !o)}
-        style={{ width: '100%', padding: '12px 14px', display: 'flex', alignItems: 'center',
-          gap: '10px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
-        <div style={{ width: '26px', height: '26px', borderRadius: '50%', flexShrink: 0,
-          background: col, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 900, fontSize: '13px', color: '#fff' }}>
-          {gate}
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: 'Georgia, serif', fontSize: '14px', fontWeight: 700,
-            color: '#1C2530', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {tool.n}
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginTop: 2 }}>
-            {(tool.d || []).slice(0, 3).map(did => {
-              const d = DIM_BY_ID[did]
-              if (!d) return null
-              return (
-                <span key={did} style={{
-                  fontSize: 9, fontWeight: 800,
-                  padding: '1px 5px', borderRadius: 5,
-                  background: d.color + '15', color: d.color,
-                }}>{d.icon} {d.short}</span>
-              )
-            })}
-          </div>
-        </div>
-        <div style={{ fontSize: '10px', fontWeight: 800, color: '#1B3D6F', flexShrink: 0,
-          padding: '3px 8px', borderRadius: '6px', background: '#E8EDF5' }}>
-          {open ? '▲' : 'CARD ▼'}
-        </div>
-      </button>
-
-      {gateUsage && (
-        <div style={{ margin: '0 12px 10px', padding: '8px 10px', borderRadius: '8px',
-          background: gateRgba(gate, .07), borderLeft: '3px solid ' + col }}>
-          <div style={{ fontSize: '9px', fontWeight: 800, textTransform: 'uppercase',
-            letterSpacing: '.05em', color: col, marginBottom: '2px' }}>Usage · {GATE_LABEL[gate]}</div>
-          <p style={{ fontSize: '12px', color: '#1C2530', lineHeight: 1.45, margin: 0 }}>{gateUsage}</p>
-        </div>
-      )}
-
-      {open && (
-        <div style={{ borderTop: '1px solid #E8E3DA' }}>
-          <div style={{ display: 'flex' }}>
-            {[['def','DEFINITION'],['usages','USE CASES']].map(([id, label]) => (
-              <button key={id} onClick={() => setTab(id)}
-                style={{ flex: 1, padding: '8px', background: 'none', border: 'none',
-                  cursor: 'pointer', fontSize: '10px', fontWeight: 800,
-                  color: tab === id ? '#1B3D6F' : '#8B8074',
-                  borderBottom: tab === id ? '2px solid #1B3D6F' : '2px solid transparent' }}>
-                {label}
-              </button>
-            ))}
-          </div>
-          {tab === 'def' && (
-            <div style={{ padding: '12px' }}>
-              <p style={{ fontSize: '13px', color: '#4A4540', lineHeight: 1.55, marginBottom: '10px' }}>
-                {tool.def}
-              </p>
-              {tool.t && (
-                <div style={{ padding: '8px 10px', borderRadius: '8px',
-                  background: '#EFF7F0', border: '1px solid #C3E6C9' }}>
-                  <div style={{ fontSize: '9px', fontWeight: 800, color: '#2A6B45',
-                    textTransform: 'uppercase', marginBottom: '3px' }}>Practitioner tip</div>
-                  <p style={{ fontSize: '12px', color: '#2A6B45', lineHeight: 1.45, margin: 0 }}>{tool.t}</p>
-                </div>
-              )}
-              <button onClick={() => speak(tool.n + '. ' + tool.def)}
-                style={{ marginTop: '10px', width: '100%', padding: '8px', borderRadius: '8px',
-                  cursor: 'pointer', background: '#F5F1EB', border: '1px solid #E0DAD2',
-                  color: '#6B6460', fontSize: '11px', fontWeight: 800 }}>
-                🔊 READ ALOUD
-              </button>
-            </div>
-          )}
-          {tab === 'usages' && (
-            <div style={{ padding: '12px' }}>
-              {tool.g.filter(g => tool.gu?.[g]).map(g => (
-                <div key={g} style={{ display: 'flex', gap: '8px', marginBottom: '8px',
-                  padding: '8px', borderRadius: '8px',
-                  background: g === gate ? gateRgba(g, .07) : '#F5F1EB',
-                  border: '1px solid ' + (g === gate ? GATE_COL[g] + '44' : '#E0DAD2') }}>
-                  <div style={{ width: '20px', height: '20px', borderRadius: '50%', flexShrink: 0,
-                    background: GATE_COL[g], display: 'flex', alignItems: 'center',
-                    justifyContent: 'center', fontSize: '9px', fontWeight: 900, color: '#fff' }}>{g}</div>
-                  <p style={{ fontSize: '11px', color: g === gate ? '#1C2530' : '#8B8074',
-                    lineHeight: 1.4, margin: 0 }}>{tool.gu[g]}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── Question widgets ──────────────────────────────────────────
-function SliderWidget({ value, onChange, onSubmit }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-      <div style={{ textAlign: 'center', padding: '14px', borderRadius: '12px',
-        background: '#FFFFFF', border: '1px solid #E0DAD2' }}>
-        <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 900,
-          fontSize: '64px', color: '#1B3D6F', lineHeight: 1 }}>{value}</div>
-        <div style={{ fontSize: '12px', color: '#8B8074', marginTop: '2px' }}>
-          {['','Not ready','Slightly ready','In development','Ready','Very ready'][value]}
-        </div>
-      </div>
-      <input type="range" min={0} max={5} value={value}
-        onChange={e => onChange(Number(e.target.value))}
-        style={{ width: '100%', accentColor: '#1B3D6F', cursor: 'pointer' }} />
-      <button onClick={() => onSubmit(value)}
-        style={{ padding: '16px', borderRadius: '12px', cursor: 'pointer',
-          background: '#1B3D6F', color: '#fff', border: 'none',
-          fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: 900 }}>
-        SEND
-      </button>
-    </div>
-  )
-}
-
-function WordWidget({ value, onChange, onSubmit }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      <textarea value={value} onChange={e => onChange(e.target.value)}
-        placeholder="Your answer…" rows={4}
-        style={{ width: '100%', padding: '12px', borderRadius: '10px',
-          background: '#FFFFFF', border: '1px solid #E0DAD2',
-          color: '#1C2530', fontSize: '14px', outline: 'none', resize: 'none',
-          boxSizing: 'border-box' }} />
-      <button onClick={() => onSubmit(value)} disabled={!value.trim()}
-        style={{ padding: '16px', borderRadius: '12px',
-          cursor: value.trim() ? 'pointer' : 'default',
-          background: value.trim() ? '#1B3D6F' : '#E0DAD2',
-          color: value.trim() ? '#fff' : '#8B8074', border: 'none',
-          fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: 900 }}>
-        SEND
-      </button>
-    </div>
-  )
-}
-
-function VoteWidget({ onSubmit }) {
-  const opts = ['Yes, priority', 'Maybe', 'Not for this phase']
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-      {opts.map((opt, i) => {
-        const cols = [['#1B3D6F','#E8EDF5'],['#B8742A','#FFF4E0'],['#8B8074','#F5F1EB']]
-        const [col, bg] = cols[i]
-        return (
-          <button key={opt} onClick={() => onSubmit(opt)}
-            style={{ padding: '15px', borderRadius: '12px', cursor: 'pointer',
-              border: 'none', background: bg, color: col,
-              fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px',
-              fontWeight: 900, textAlign: 'left', borderLeft: '3px solid ' + col }}>
-            {opt}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
-// ── Main ParticipantView ──────────────────────────────────────
+// ── Main view ─────────────────────────────────────────────────
 export function ParticipantView({ roomId }) {
-  const [connected, setConnected] = useState(false)
-  const [mode, setMode] = useState('waiting') // 'waiting' | 'triage' | 'triage_done' | 'question' | 'answered'
-  const [triageTools, setTriageTools] = useState([])
-  const [triageGate, setTriageGate] = useState(1)
-  const [triageAnswers, setTriageAnswers] = useState([])
-  const [question, setQuestion] = useState(null)
-  const [answered, setAnswered] = useState(false)
-  const [sliderVal, setSliderVal] = useState(3)
-  const [wordVal, setWordVal] = useState('')
-  const [revealed, setRevealed] = useState(false)
+  const [connected, setConnected]   = useState(false)
+  const [mode, setMode]             = useState('waiting')
+  const [sessionGate, setSessionGate] = useState(1)
+  const [sessionDim, setSessionDim] = useState('all')
+  const [activeDim, setActiveDim]   = useState(null)
+  // Local participant evaluations: { toolName: 'regular'|'occasional'|'theory' }
+  const [evals, setEvals]           = useState({})
+  const [skipped, setSkipped]       = useState([])
+  // Live question state (existing flow)
+  const [question, setQuestion]     = useState(null)
+  const [answered, setAnswered]     = useState(false)
+  const [revealed, setRevealed]     = useState(false)
+
   const channelRef = useRef(null)
 
   useEffect(() => {
@@ -432,137 +618,124 @@ export function ParticipantView({ roomId }) {
         setConnected(true)
       }
       if (msg.type === 'triage_start') {
-        setTriageTools(msg.payload.tools)
-        setTriageGate(msg.payload.gate)
-        setMode('triage')
+        const { gate, dim } = msg.payload
+        setSessionGate(gate || 1)
+        setSessionDim(dim || 'all')
+        // If single dim → straight to deck; if all → picker first.
+        if (dim && dim !== 'all') {
+          setActiveDim(dim)
+          setMode('deck')
+        } else {
+          setActiveDim(null)
+          setMode('pick')
+        }
         setConnected(true)
       }
       if (msg.type === 'question') {
         setQuestion(msg.payload)
         setMode('question')
         setAnswered(false)
-        setSliderVal(3)
-        setWordVal('')
         setRevealed(false)
         setConnected(true)
       }
       if (msg.type === 'reveal') setRevealed(true)
     })
+    // Tell the facilitator we're here, in case they're already running.
     sendMsg(ch, { type: 'pong', payload: { participantId: PARTICIPANT_ID } })
     setConnected(true)
-    return () => ch.close()
+    return () => { stopTTS(); closeChannel(ch) }
   }, [roomId])
 
-  const submitResponse = (value) => {
-    if (!channelRef.current || answered) return
+  // ── Handlers passed to the deck ───────────────────────────
+  const handlePick = (tool, level) => {
+    setEvals(prev => ({ ...prev, [tool.n]: level }))
+    const mapped = LEVEL_TO_PAYLOAD[level] || { status: 'practiced', level: 3 }
     sendMsg(channelRef.current, {
-      type: 'response',
-      payload: { participantId: PARTICIPANT_ID, value, questionId: question?.questionId },
+      type: 'triage_card',
+      payload: {
+        participantId: PARTICIPANT_ID,
+        tool: tool.n,
+        status: mapped.status,
+        level:  mapped.level,
+        skillLevel: level,
+      },
     })
-    setAnswered(true)
   }
 
+  const handleSkip = (tool) => {
+    setSkipped(prev => prev.includes(tool.n) ? prev : [...prev, tool.n])
+    sendMsg(channelRef.current, {
+      type: 'triage_card',
+      payload: {
+        participantId: PARTICIPANT_ID,
+        tool: tool.n,
+        status: 'unknown',
+        level:  0,
+        skillLevel: null,
+      },
+    })
+  }
+
+  const handleDeckDone = () => {
+    setActiveDim(null)
+    setMode('pick')
+  }
+
+  const handleSubmitFinal = () => {
+    sendMsg(channelRef.current, {
+      type: 'triage_done',
+      payload: { participantId: PARTICIPANT_ID },
+    })
+    setMode('done')
+  }
+
+  // ── Tools for the active dim ──────────────────────────────
+  const deckTools = activeDim
+    ? toolsForGateDim(sessionGate, activeDim)
+    : []
+
   return (
-    <div style={{ background: '#F2EDE4', minHeight: '100vh', display: 'flex',
-      flexDirection: 'column', padding: '18px 16px 32px',
-      fontFamily: '-apple-system, sans-serif', color: '#1C2530' }}>
+    <div style={{
+      background: PAGE, minHeight: '100vh',
+      display: 'flex', flexDirection: 'column',
+      color: INK, fontFamily: '-apple-system, Helvetica Neue, sans-serif',
+    }}>
+      <Header roomId={roomId} connected={connected} />
 
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '18px' }}>
-        <div style={{ background: '#1B3D6F', borderRadius: '8px', width: 26, height: 26,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <svg width={13} height={13} viewBox="0 0 16 16" fill="none">
-            <rect x={1} y={7} width={3} height={8} fill="#FFFFFF" rx={1}/>
-            <rect x={6} y={3} width={4} height={12} fill="#FFFFFF" rx={1}/>
-            <rect x={12} y={5} width={3} height={10} fill="#FFFFFF" rx={1}/>
-          </svg>
-        </div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 900,
-            fontSize: '14px', color: '#1C2530' }}>RECITY</div>
-          <div style={{ fontSize: '9px', color: '#8B8074', fontWeight: 700 }}>
-            Session {roomId} · #{PARTICIPANT_ID}
-          </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <div style={{ width: 6, height: 6, borderRadius: '50%',
-            background: connected ? '#2A6B45' : '#C0452A' }} />
-          <span style={{ fontSize: '9px', fontWeight: 800,
-            color: connected ? '#2A6B45' : '#C0452A' }}>
-            {connected ? 'CONNECTED' : 'CONNECTING…'}
-          </span>
-        </div>
-      </div>
+      {mode === 'waiting' && <WaitingState />}
 
-      {/* Waiting */}
-      {mode === 'waiting' && (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
-          <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 900,
-            fontSize: '40px', color: '#1B3D6F', opacity: .3, marginBottom: '12px' }}>⬡</div>
-          <p style={{ color: '#8B8074', fontSize: '14px', lineHeight: 1.5 }}>
-            Waiting for facilitator…
-          </p>
-        </div>
+      {mode === 'pick' && (
+        <DimPicker
+          gate={sessionGate}
+          sessionDim={sessionDim}
+          evals={evals}
+          skipped={skipped}
+          onPickDim={(dimId) => { setActiveDim(dimId); setMode('deck') }}
+          onFinish={handleSubmitFinal} />
       )}
 
-      {/* Triage deck */}
-      {mode === 'triage' && (
-        <TriageDeck
-          tools={triageTools}
-          gate={triageGate}
-          channel={channelRef.current}
-          onComplete={(answers) => {
-            setTriageAnswers(answers)
-            setMode('triage_done')
-          }}
-        />
+      {mode === 'deck' && (
+        <ToolDeck
+          tools={deckTools}
+          gate={sessionGate}
+          evals={evals}
+          skipped={skipped}
+          onPick={handlePick}
+          onSkip={handleSkip}
+          onDone={handleDeckDone} />
       )}
 
-      {/* Triage done */}
-      {mode === 'triage_done' && (
-        <TriageSummary answers={triageAnswers} />
+      {mode === 'done' && (
+        <SummaryState gate={sessionGate} evals={evals} skipped={skipped} />
       )}
 
-      {/* Question mode */}
       {mode === 'question' && question && (
-        <div className="anim-fadein" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-          <MethodCard toolName={question.tool} gate={question.gate} />
-
-          {!answered && (
-            <div>
-              <div style={{ fontSize: '9px', fontWeight: 800, textTransform: 'uppercase',
-                letterSpacing: '.06em', color: '#8B8074', marginBottom: '6px' }}>
-                Facilitator question
-              </div>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '16px' }}>
-                <p style={{ flex: 1, fontSize: '16px', fontWeight: 700, color: '#1C2530',
-                  lineHeight: 1.4, margin: 0 }}>{question.text}</p>
-                <button onClick={() => speak(question.text)}
-                  style={{ flexShrink: 0, width: '32px', height: '32px', borderRadius: '8px',
-                    background: '#F5F1EB', border: '1px solid #E0DAD2',
-                    cursor: 'pointer', fontSize: '14px' }}>🔊</button>
-              </div>
-              {question.type === 'slider' && <SliderWidget value={sliderVal} onChange={setSliderVal} onSubmit={submitResponse} />}
-              {question.type === 'word'   && <WordWidget value={wordVal} onChange={setWordVal} onSubmit={submitResponse} />}
-              {question.type === 'vote'   && <VoteWidget onSubmit={submitResponse} />}
-            </div>
-          )}
-
-          {answered && (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
-              <div style={{ fontSize: '32px', color: '#2A6B45', marginBottom: '6px' }}>✓</div>
-              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 900,
-                fontSize: '22px', color: '#1B3D6F', marginBottom: '6px' }}>
-                RESPONSE SENT
-              </div>
-              <p style={{ color: '#8B8074', fontSize: '12px' }}>
-                {revealed ? 'The facilitator is revealing the results…' : 'Waiting for others…'}
-              </p>
-            </div>
-          )}
-        </div>
+        <QuestionMode
+          question={question}
+          channel={channelRef.current}
+          answered={answered}
+          setAnswered={setAnswered}
+          revealed={revealed} />
       )}
     </div>
   )

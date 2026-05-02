@@ -260,11 +260,14 @@ export function FacilitatorView() {
     setTriageResponses([])
     setTriageDone([])
     setTriageStarted(true)
+    // Send only the scope (gate + dim filter). Participants share the
+    // same bundled TOOLS so they can rebuild the deck themselves —
+    // smaller payload + lets them browse multi-dim sessions freely.
     sendMsg(channelRef.current, {
       type: 'triage_start',
       payload: {
         gate: filterGate,
-        tools: toolList.map(t => ({ n: t.n, def: t.def, f: t.f, g: t.g, d: t.d })),
+        dim:  filterDim,    // 'all' | specific dim id
       },
     })
   }

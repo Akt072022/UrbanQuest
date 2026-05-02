@@ -504,7 +504,7 @@ function OverallView({ practiced, scores, gates, suggestions, xp }) {
                       padding: '1px 6px', borderRadius: 6,
                       fontSize: 9, fontWeight: 700,
                       background: d.color + '15', color: d.color,
-                    }}>{d.short}</span>
+                    }}>{d.label}</span>
                   )
                 })}
               </div>

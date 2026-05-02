@@ -288,28 +288,41 @@ function PathNode({ stop, onClick, opn = 1 }) {
         )}
       </button>
 
-      {/* Star badge when complete */}
+      {/* Star badge when complete — inline SVG so it renders on every
+          font/browser (the Unicode "★" sometimes fell back to "?"). */}
       {complete && (
         <div style={{
           position: 'absolute', top: -8, right: -8,
           width: 28, height: 28, borderRadius: '50%',
-          background: '#FFD86B', color: INK,
-          fontSize: 16, fontWeight: 900,
+          background: '#FFD86B',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           border: `3px solid ${INK}`,
           pointerEvents: 'none',
-        }}>★</div>
+        }}>
+          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+            <path d="M12 2.5l3 6.2 6.8.6-5.1 4.5 1.6 6.7L12 17l-6.3 3.5 1.6-6.7L2.2 9.3l6.8-.6Z"
+              fill={INK} stroke={INK} strokeWidth="1.4" strokeLinejoin="round" />
+          </svg>
+        </div>
       )}
-      {/* Lock badge */}
+      {/* Lock badge — inline SVG for the same reason. */}
       {locked && (
         <div style={{
           position: 'absolute', top: -6, right: -6,
           width: 26, height: 26, borderRadius: '50%',
-          background: INK, color: '#FFFFFF', fontSize: 12,
+          background: INK,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           border: `2px solid #FFFFFF`,
           pointerEvents: 'none',
-        }}>🔒</div>
+        }}>
+          <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true">
+            <rect x="5" y="11" width="14" height="9" rx="2"
+              fill="none" stroke="#FFFFFF" strokeWidth="2" />
+            <path d="M8 11V8a4 4 0 0 1 8 0v3"
+              fill="none" stroke="#FFFFFF" strokeWidth="2"
+              strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
       )}
 
       {/* Full label + counter on its own line, centered under the icon.
@@ -597,8 +610,9 @@ export function MapView() {
         </ScrappyButton>
       </div>
 
-      {/* ── Centered CONTINUE — resumes the active gate's deck at the
-              first tool the user hasn't yet evaluated nor skipped. ── */}
+      {/* ── Centered CONTINUE / START — resumes the active gate at
+              the first un-evaluated tool. Says "START" when the team
+              hasn't begun anything yet, "CONTINUE" once they have. ── */}
       {activeStop && activeStop.kind === 'node'
         && !activeStop.complete && !activeStop.locked && !activeStop.empty && (
         <div style={{
@@ -611,7 +625,7 @@ export function MapView() {
           }}>
             <ScrappyButton onClick={() => goExplore(activeGate)}
               color={YELLOW} size="md" full>
-              ▼ CONTINUE
+              ▼ {tp === 0 ? 'START' : 'CONTINUE'}
             </ScrappyButton>
           </div>
         </div>

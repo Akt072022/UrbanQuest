@@ -45,7 +45,7 @@ function browserSpeak(text, { onStart, onEnd } = {}) {
   }
 }
 
-function stopTTS() {
+export function stopTTS() {
   if (window.speechSynthesis) window.speechSynthesis.cancel()
 }
 
@@ -121,7 +121,7 @@ async function voxtralSpeak(text, { onStart, onEnd } = {}) {
   }
 }
 
-function playTTS(tool, { onStart, onEnd } = {}) {
+export function playTTS(tool, { onStart, onEnd } = {}) {
   const text = [tool.n + '.', tool.def, 'Practitioner tip:', tool.t].join(' ')
   // 1) Try Voxtral first if the API key is set
   const tryVoxtral = voxtralSpeak(text, { onStart, onEnd })
@@ -229,7 +229,7 @@ function GateComplete({ gate }) {
 // the user qualifies the depth of their knowledge. The chosen level
 // is stored on practiced[name] and drives the radar polygon depth
 // + the dashboard diagnostic.
-function EvaluationModal({ tool, onPick, onCancel }) {
+export function EvaluationModal({ tool, onPick, onCancel }) {
   // Click options: regular > occasional > theory. Keyed colours mirror
   // the radar fill so users learn the visual language.
   const OPTIONS = [
@@ -356,7 +356,7 @@ function EvaluationModal({ tool, onPick, onCancel }) {
 //   • Click the image → toggle 1× ↔ 2.4× (zoomed view scrolls in
 //     its container, both touch & wheel)
 //   • Pointer + touch friendly; keyboard "Escape" also closes.
-function ImageLightbox({ src, alt, onClose }) {
+export function ImageLightbox({ src, alt, onClose }) {
   const [zoomed, setZoomed] = useState(false)
   const scrollRef = useRef(null)
 
@@ -443,7 +443,7 @@ function ImageLightbox({ src, alt, onClose }) {
 }
 
 // ── Cover (face A) ────────────────────────────────────────────
-function CardCover({ tool, gate }) {
+export function CardCover({ tool, gate }) {
   const col = GATE_COL[gate]
   const toolNum = tool ? TOOLS.indexOf(tool) + 1 : null
   const thumbSrc = toolNum ? canvasThumbUrl(toolNum) : null
@@ -502,7 +502,7 @@ function CardCover({ tool, gate }) {
 }
 
 // ── Synthesis face (face B) ───────────────────────────────────
-function CardSynthesis({ tool, gate, onDive }) {
+export function CardSynthesis({ tool, gate, onDive }) {
   const toolNum  = TOOLS.indexOf(tool) + 1
   const col      = GATE_COL[gate]
   const thumbSrc = canvasThumbUrl(toolNum)
@@ -729,7 +729,7 @@ function CardSynthesis({ tool, gate, onDive }) {
 }
 
 // ── Dive-deeper face (face C) ─────────────────────────────────
-function CardDeep({ tool, gate, onBack }) {
+export function CardDeep({ tool, gate, onBack }) {
   const col      = GATE_COL[gate]
   const toolNum  = TOOLS.indexOf(tool) + 1
   const fileUrl  = canvasUrl(toolNum)
@@ -942,7 +942,7 @@ function Section({ label, emoji, children }) {
 const CARD_W = 340
 const CARD_H = 540
 
-function CardStack({ tool, gate, face, onDive, onBack }) {
+export function CardStack({ tool, gate, face, onDive, onBack }) {
   const flipped = face !== 'cover'
   return (
     <div className="perspective-900" style={{ width: CARD_W, height: CARD_H }}>
@@ -972,7 +972,7 @@ const SWIPE_THRESH = 90
 const SWIPE_GREEN  = '#A8D870'
 const SWIPE_CORAL  = '#E57E72'
 
-function SwipeWrap({ enabled, onAction, children }) {
+export function SwipeWrap({ enabled, onAction, children }) {
   const [drag, setDrag] = useState({ x: 0, y: 0, exiting: false })
   const startRef = useRef(null)
   // Direction lock: 'pending' before first move > LOCK_PX, then either
@@ -1097,7 +1097,7 @@ function SwipeTag({ children, color, pos }) {
 // ── Action buttons (Skip / I know it) — fallback for users who don't
 // want to swipe. "I know it" routes through the same evaluation modal
 // as a swipe-right.
-function ActionButtons({ show, onAction }) {
+export function ActionButtons({ show, onAction }) {
   return (
     <div style={{
       display: 'flex', flexDirection: 'row', gap: 8,
@@ -1119,7 +1119,7 @@ function ActionButtons({ show, onAction }) {
 }
 
 // ── Progress dots ─────────────────────────────────────────────
-function ProgressDots({ tools, idx }) {
+export function ProgressDots({ tools, idx }) {
   return (
     <div style={{ display: 'flex', gap: 3, width: '100%' }}>
       {tools.map((_, i) => (
