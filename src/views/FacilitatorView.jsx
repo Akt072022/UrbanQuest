@@ -479,20 +479,20 @@ export function FacilitatorView() {
           </div>
         </SectionCard>
 
-        {/* Step 3 — Session code + scannable QR. The QR fills the
-            full available width so the facilitator can hold up the
-            screen and have phones across the room scan it. */}
+        {/* Step 3 — Session code + scannable QR. Generous on phones,
+            capped on desktop so it doesn't spread across the whole
+            screen and stays sharp. Always centred. */}
         <SectionCard>
           <Eyebrow color={INK}>Step 3 · Scan to join</Eyebrow>
           <div style={{
-            display: 'flex', flexDirection: 'column', alignItems: 'stretch',
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
             gap: 14,
           }}>
             <div style={{
               padding: 10, background: '#FFFFFF',
               border: `3px solid ${INK}`, borderRadius: 12,
               boxShadow: '3px 3px 0 ' + INK,
-              width: '100%',
+              width: '100%', maxWidth: 420,
             }}>
               <QRCode value={url} />
             </div>
@@ -626,15 +626,18 @@ export function FacilitatorView() {
         </SectionCard>
       )}
 
-      {/* QR + URL — full-width in the active session too, so the
-          facilitator can keep the screen up for late joiners. */}
+      {/* QR + URL — centred and capped on desktop so the facilitator
+          can keep it on-screen for late joiners without it dominating. */}
       <SectionCard style={{ marginBottom: 14 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', gap: 10,
+        }}>
           <div style={{
             padding: 8, background: '#FFFFFF',
             border: `3px solid ${INK}`, borderRadius: 12,
             boxShadow: '2px 2px 0 ' + INK,
-            width: '100%',
+            width: '100%', maxWidth: 360,
           }}>
             <QRCode value={url} />
           </div>
