@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { openChannel, sendMsg, subscribe, closeChannel, onStatus } from '../lib/session'
 import {
   TOOLS, GATE_LABEL, DIMENSIONS, DIM_BY_ID,
@@ -649,6 +650,276 @@ function QuestionMode({ question, channel, answered, setAnswered, revealed }) {
   )
 }
 
+// ── Project method-fit deck ───────────────────────────────────
+//   Same CardStack as triage, but the action row is a 4-way
+//   priority picker. After picking, a small modal asks "How well
+//   can you run it?" so the facilitator's matrix has both axes.
+//   If the user has already triaged the same tool earlier this
+//   session, the capability follow-up is skipped automatically.
+const FIT_OPTIONS = [
+  { id: 'essential', label: 'Essential',  hint: 'Must use',     col: '#2A6B45' },
+  { id: 'helpful',   label: 'Helpful',    hint: 'Good to use',  col: '#1B5FA0' },
+  { id: 'optional',  label: 'Optional',   hint: 'Nice to have', col: '#C17B2A' },
+  { id: 'skip',      label: 'Not for it', hint: 'Skip',         col: '#9C958A' },
+]
+
+function FitDeck({ tools, gate, project, fits, evals, onPick, onDone }) {
+  const startIdx = tools.findIndex(t => !fits[t.n])
+  const [idx, setIdx]               = useState(Math.max(0, startIdx))
+  const [face, setFace]             = useState('synth')
+  const [pendingFit, setPendingFit] = useState(null)   // 'essential' | …
+  const [lastAction, setLastAction] = useState(null)
+
+  useEffect(() => { setFace('synth'); setPendingFit(null) }, [idx])
+
+  if (!tools.length) {
+    return (
+      <div style={{
+        padding: '40px 20px', textAlign: 'center',
+        flex: 1, display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+      }}>
+        <div style={{ color: '#5A5550', fontSize: 13 }}>
+          No methods in this deck.
+        </div>
+      </div>
+    )
+  }
+
+  if (idx >= tools.length) {
+    // Final summary before submit
+    const counts = FIT_OPTIONS.reduce((acc, o) => {
+      acc[o.id] = tools.filter(t => fits[t.n] === o.id).length
+      return acc
+    }, {})
+    return (
+      <div style={{ padding: '24px 16px 32px' }}>
+        <div style={{
+          fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
+          color: '#5A5550', letterSpacing: '.08em',
+          textTransform: 'uppercase', marginBottom: 4,
+        }}>Project method-fit</div>
+        <div style={{
+          fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 22,
+          color: INK, lineHeight: 1.1, marginBottom: 14,
+        }}>{project?.name || 'Project'}</div>
+        <div style={{
+          background: CARD, border: `2.5px solid ${INK}`,
+          borderRadius: 14, padding: 14, boxShadow: '2px 2px 0 ' + INK,
+          marginBottom: 16,
+        }}>
+          {FIT_OPTIONS.map(o => (
+            <div key={o.id} style={{
+              display: 'flex', justifyContent: 'space-between',
+              alignItems: 'center', padding: '6px 0',
+              borderBottom: '1px solid #F0EBE4',
+            }}>
+              <span style={{ fontSize: 12, color: INK, fontWeight: 700 }}>
+                {o.label} <span style={{ color: '#9C958A' }}>· {o.hint}</span>
+              </span>
+              <span style={{
+                fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 16, color: o.col,
+              }}>{counts[o.id]}</span>
+            </div>
+          ))}
+        </div>
+        <ScrappyButton onClick={onDone} color={YELLOW} full>
+          SUBMIT MY FIT →
+        </ScrappyButton>
+      </div>
+    )
+  }
+
+  const tool = tools[idx]
+  const priorCap = evals[tool.n] || null
+
+  const advance = () => {
+    setLastAction('practice')
+    setTimeout(() => setIdx(i => i + 1), 300)
+  }
+
+  const pickFit = (fitId) => {
+    // Skip = no priority for this project. We don't need a capability
+    // rating for a pure pass.
+    if (fitId === 'skip') {
+      onPick(tool, 'skip', null)
+      advance()
+      return
+    }
+    // If the user has already triaged this tool, capability is known.
+    // Otherwise pop a small modal to ask.
+    if (priorCap) {
+      onPick(tool, fitId, priorCap)
+      advance()
+      return
+    }
+    setPendingFit(fitId)
+  }
+
+  const commitWithCapability = (capability) => {
+    onPick(tool, pendingFit, capability)
+    setPendingFit(null)
+    advance()
+  }
+
+  return (
+    <div style={{ padding: '14px 16px 24px' }}>
+      {/* Header — project name + counter */}
+      <div style={{
+        background: CARD, border: `2.5px solid ${INK}`,
+        borderRadius: 14, padding: '10px 12px',
+        boxShadow: '2px 2px 0 ' + INK, marginBottom: 12,
+      }}>
+        <div style={{
+          fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 10,
+          color: GATE_COL[gate] || '#5A5550', letterSpacing: '.08em',
+          textTransform: 'uppercase',
+        }}>
+          Method-fit · {GATE_LABEL[gate]}
+        </div>
+        <div style={{
+          fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 16,
+          color: INK, lineHeight: 1.1, marginTop: 2,
+        }}>{project?.name || 'Project'}</div>
+        {project?.desc && (
+          <div style={{
+            fontSize: 11, color: '#3F3A36', lineHeight: 1.4, marginTop: 6,
+          }}>{project.desc}</div>
+        )}
+      </div>
+
+      <ProgressDots tools={tools} idx={idx} />
+
+      {/* Card */}
+      <div style={{
+        display: 'flex', justifyContent: 'center', marginTop: 14, marginBottom: 12,
+      }}>
+        <div key={idx} style={{
+          animation: lastAction === 'practice'
+            ? 'card-from-left .35s cubic-bezier(.4,1.4,.5,1)' : 'none',
+        }}>
+          <CardStack
+            tool={tool} gate={gate} face={face}
+            onDive={() => setFace('deep')}
+            onBack={() => setFace('synth')}
+            alreadyLevel={priorCap || null}
+          />
+        </div>
+      </div>
+
+      {/* 4-way priority picker */}
+      <div style={{
+        fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 10,
+        color: '#5A5550', letterSpacing: '.08em',
+        textTransform: 'uppercase', marginBottom: 6,
+      }}>How important for {project?.name || 'this project'}?</div>
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8,
+        marginBottom: 4,
+      }}>
+        {FIT_OPTIONS.map(o => (
+          <button key={o.id} onClick={() => pickFit(o.id)}
+            style={{
+              padding: '10px 10px',
+              background: CARD, color: o.col,
+              border: `2.5px solid ${INK}`, borderRadius: 12,
+              cursor: 'pointer',
+              boxShadow: '2px 2px 0 ' + INK,
+              fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 13,
+              letterSpacing: '.04em', textTransform: 'uppercase',
+              textAlign: 'left',
+            }}>
+            <div>{o.label}</div>
+            <div style={{
+              fontSize: 9, color: '#5A5550', fontWeight: 700,
+              marginTop: 2, letterSpacing: '.02em', textTransform: 'none',
+            }}>{o.hint}</div>
+          </button>
+        ))}
+      </div>
+
+      {/* Capability modal — opens when fit is picked but capability
+          isn't already known from a prior triage. Buttons mirror the
+          regular evaluation modal so the visual language stays the
+          same for the participant. */}
+      {pendingFit && (
+        <FitCapabilityModal
+          tool={tool}
+          fit={pendingFit}
+          onPick={commitWithCapability}
+          onCancel={() => setPendingFit(null)} />
+      )}
+    </div>
+  )
+}
+
+function FitCapabilityModal({ tool, fit, onPick, onCancel }) {
+  const OPTIONS = [
+    { level: 'regular',    label: 'I run it routinely',  col: '#2A6B45' },
+    { level: 'occasional', label: 'I have run it sometimes', col: '#C17B2A' },
+    { level: 'theory',     label: 'I know it in theory only', col: '#5A5550' },
+    { level: null,         label: "I don't know it",     col: '#9C958A' },
+  ]
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onCancel() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onCancel])
+
+  return createPortal((
+    <div onClick={(e) => { if (e.target === e.currentTarget) onCancel() }}
+      role="dialog" aria-modal="true"
+      style={{
+        position: 'fixed', inset: 0, zIndex: 9999,
+        background: 'rgba(28,37,48,0.78)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 18, touchAction: 'manipulation',
+      }}>
+      <div style={{
+        width: '100%', maxWidth: 380,
+        background: '#FFFDF8', border: `3px solid ${INK}`,
+        borderRadius: 18, padding: '20px 18px 16px',
+        boxShadow: '4px 4px 0 ' + INK,
+      }}>
+        <div style={{
+          fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
+          color: '#9C958A', letterSpacing: '.08em',
+          textTransform: 'uppercase', marginBottom: 4,
+        }}>How well can you run it?</div>
+        <div style={{
+          fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 18,
+          color: INK, lineHeight: 1.2, marginBottom: 14,
+        }}>{tool.n}</div>
+        {OPTIONS.map((opt, i) => (
+          <button key={i} type="button"
+            onClick={() => onPick(opt.level)}
+            style={{
+              display: 'block', width: '100%', textAlign: 'left',
+              padding: '12px 14px', marginBottom: 10,
+              background: '#FFFFFF',
+              border: `2.5px solid ${INK}`, borderRadius: 14,
+              cursor: 'pointer', boxShadow: '2px 2px 0 ' + INK,
+            }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              pointerEvents: 'none',
+            }}>
+              <span style={{
+                width: 12, height: 12, borderRadius: '50%',
+                background: opt.col, border: `2px solid ${INK}`,
+              }} />
+              <span style={{
+                fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 14,
+                color: INK, letterSpacing: '.04em', textTransform: 'uppercase',
+              }}>{opt.label}</span>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  ), document.body)
+}
+
 // ── Main view ─────────────────────────────────────────────────
 export function ParticipantView({ roomId }) {
   const [chanStatus, setChanStatus] = useState('connecting') // 'connecting' | 'live' | 'error'
@@ -663,6 +934,9 @@ export function ParticipantView({ roomId }) {
   const [question, setQuestion]     = useState(null)
   const [answered, setAnswered]     = useState(false)
   const [revealed, setRevealed]     = useState(false)
+  // Project method-fit
+  const [project, setProject]       = useState(null)         // { name, desc }
+  const [fits, setFits]             = useState({})           // { toolName: 'essential'|'helpful'|'optional'|'skip' }
 
   const channelRef = useRef(null)
 
@@ -711,6 +985,23 @@ export function ParticipantView({ roomId }) {
         setMode('question')
         setAnswered(false)
         setRevealed(false)
+      }
+      if (msg.type === 'methodfit_start') {
+        const { gate, dim, project: proj } = msg.payload
+        const newGate = gate || 1
+        const newDim  = dim  || 'all'
+        const cur = stateRef.current
+        // IDEMPOTENT: same project + (gate, dim) → ignore (heartbeat resync).
+        const sameConfig = cur.sessionGate === newGate
+                        && cur.sessionDim  === newDim
+                        && cur.projectName === proj?.name
+        const inMethodfit = cur.mode === 'methodfit' || cur.mode === 'methodfit_done'
+        if (sameConfig && inMethodfit) return
+        cur.projectName = proj?.name
+        setSessionGate(newGate)
+        setSessionDim(newDim)
+        setProject(proj || null)
+        setMode('methodfit')
       }
       if (msg.type === 'reveal') setRevealed(true)
     })
@@ -787,10 +1078,41 @@ export function ParticipantView({ roomId }) {
     setMode('done')
   }
 
+  // Method-fit: each card emits { tool, fit, capability } when a
+  // participant has picked both a project priority and a self-rated
+  // capability. Capability falls back to a prior triage rating in this
+  // session if the participant has already triaged the same tool.
+  const handleFit = (tool, fit, capability) => {
+    setFits(prev => ({ ...prev, [tool.n]: fit }))
+    const finalCap = capability || evals[tool.n] || null
+    sendMsg(channelRef.current, {
+      type: 'methodfit_card',
+      payload: {
+        participantId: PARTICIPANT_ID,
+        tool: tool.n,
+        fit,
+        capability: finalCap,
+      },
+    })
+  }
+  const handleFitDone = () => {
+    sendMsg(channelRef.current, {
+      type: 'methodfit_done',
+      payload: { participantId: PARTICIPANT_ID },
+    })
+    setMode('methodfit_done')
+  }
+
   // ── Tools for the active dim ──────────────────────────────
   const deckTools = activeDim
     ? toolsForGateDim(sessionGate, activeDim)
     : []
+
+  // For method-fit, the whole gate (or the picked dim) is the deck —
+  // we don't ask participants to drill into a dim picker like triage.
+  const fitDeckTools = sessionDim === 'all'
+    ? toolsForGate(sessionGate)
+    : toolsForGateDim(sessionGate, sessionDim)
 
   return (
     <div style={{
@@ -845,6 +1167,45 @@ export function ParticipantView({ roomId }) {
               answered={answered}
               setAnswered={setAnswered}
               revealed={revealed} />
+          )}
+
+          {mode === 'methodfit' && (
+            <FitDeck
+              tools={fitDeckTools}
+              gate={sessionGate}
+              project={project}
+              fits={fits}
+              evals={evals}
+              onPick={handleFit}
+              onDone={handleFitDone} />
+          )}
+
+          {mode === 'methodfit_done' && (
+            <div style={{
+              flex: 1, display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center', textAlign: 'center',
+              padding: '40px 20px',
+            }}>
+              <div style={{
+                width: 64, height: 64, borderRadius: '50%',
+                background: '#E6F4EC', border: `3px solid #2A6B45`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                marginBottom: 14,
+              }}>
+                <svg viewBox="0 0 24 24" width="32" height="32" fill="none">
+                  <path d="M5 13l4 4L19 7" stroke="#2A6B45" strokeWidth="3"
+                    strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+              <div style={{
+                fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 22,
+                color: INK, letterSpacing: '.04em', marginBottom: 6,
+              }}>METHOD-FIT SUBMITTED</div>
+              <div style={{ fontSize: 12, color: '#5A5550', maxWidth: 320, lineHeight: 1.5 }}>
+                The facilitator now sees how the team weighs each method
+                against {project?.name || 'this project'}.
+              </div>
+            </div>
           )}
         </div>
       </div>

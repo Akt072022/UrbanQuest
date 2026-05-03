@@ -235,6 +235,16 @@ export function FacilitatorView() {
   // between modes — `initialMode` only seeds `tab` on launch.
   const [wizardStep, setWizardStep] = useState(1)
   const [initialMode, setInitialMode] = useState('triage')
+  // Project method-fit needs a project context — collected on Step 4
+  // when that mode is picked, broadcast as part of the methodfit_start
+  // payload so participants see what they're rating against.
+  const [projectName, setProjectName] = useState('')
+  const [projectDesc, setProjectDesc] = useState('')
+
+  // Method-fit responses & completion tracking (live session)
+  const [methodfitResponses, setMethodfitResponses] = useState([])
+  const [methodfitStarted,   setMethodfitStarted]   = useState(false)
+  const [methodfitDone,      setMethodfitDone]      = useState([])
 
   // Session state
   const [participants, setParticipants]     = useState([])
@@ -259,6 +269,8 @@ export function FacilitatorView() {
     gate: 1, dim: 'all',
     questionActive: false,
     question: null,
+    methodfitActive: false,
+    project: null,
   })
   const seenIdsRef = useRef(new Set())   // dedup pong → resync
   const url = participantUrl(roomId)
@@ -281,6 +293,11 @@ export function FacilitatorView() {
     }
     if (s.questionActive && s.question) {
       sendMsg(ch, { type: 'question', payload: s.question })
+    }
+    if (s.methodfitActive && s.project) {
+      sendMsg(ch, { type: 'methodfit_start', payload: {
+        gate: s.gate, dim: s.dim, project: s.project,
+      } })
     }
   }
 
@@ -310,6 +327,13 @@ export function FacilitatorView() {
       if (msg.type === 'response') {
         setResponses(prev => [...prev, msg.payload])
       }
+      if (msg.type === 'methodfit_card') {
+        setMethodfitResponses(prev => [...prev, msg.payload])
+      }
+      if (msg.type === 'methodfit_done') {
+        setMethodfitDone(prev => prev.includes(msg.payload.participantId)
+          ? prev : [...prev, msg.payload.participantId])
+      }
     })
     onStatus(ch, (status, err) => {
       if (status === 'SUBSCRIBED') {
@@ -338,6 +362,8 @@ export function FacilitatorView() {
   }, [started])
 
   const startSession = () => {
+    // Block launch if methodfit was picked but no project name typed.
+    if (initialMode === 'methodfit' && !projectName.trim()) return
     // Seed the active tab with what the facilitator picked at step 3,
     // but keep the toggle on the session page so they can switch later.
     setTab(initialMode)
@@ -363,11 +389,30 @@ export function FacilitatorView() {
     setTriageStarted(true)
     // Update the resync state so heartbeat/late-join re-pushes work.
     stateRef.current.triageActive = true
+    stateRef.current.methodfitActive = false
     stateRef.current.gate = filterGate
     stateRef.current.dim  = filterDim
     sendMsg(channelRef.current, {
       type: 'triage_start',
       payload: { gate: filterGate, dim: filterDim },
+    })
+  }
+
+  const launchMethodfit = () => {
+    if (!channelRef.current) return
+    if (!projectName.trim()) return
+    setMethodfitResponses([])
+    setMethodfitDone([])
+    setMethodfitStarted(true)
+    const project = { name: projectName.trim(), desc: projectDesc.trim() }
+    stateRef.current.methodfitActive = true
+    stateRef.current.triageActive    = false
+    stateRef.current.gate    = filterGate
+    stateRef.current.dim     = filterDim
+    stateRef.current.project = project
+    sendMsg(channelRef.current, {
+      type: 'methodfit_start',
+      payload: { gate: filterGate, dim: filterDim, project },
     })
   }
 
@@ -597,12 +642,16 @@ export function FacilitatorView() {
               {[
                 { id: 'triage',
                   title: 'Collective triage',
-                  desc:  'Each participant rates every method in the deck on their own phone. Live heatmap shows where the team converges or diverges.',
+                  desc:  'Each participant rates every method on their own phone. Live heatmap shows where the team converges or diverges.',
                   icon:  '🗂' },
                 { id: 'question',
                   title: 'Live question',
-                  desc:  'Pick one method at a time and broadcast a question. Free text / slider / 3-way vote — instant aggregated results.',
+                  desc:  'Pick one method at a time and broadcast a question. Free text / slider / 3-way vote — aggregated live.',
                   icon:  '❓' },
+                { id: 'methodfit',
+                  title: 'Project method-fit',
+                  desc:  'Pin a real project. Participants rate each method as Essential / Helpful / Optional — crossed with capability to surface train-vs-run gaps.',
+                  icon:  '🎯' },
               ].map(m => {
                 const active = initialMode === m.id
                 return (
@@ -650,12 +699,60 @@ export function FacilitatorView() {
                 value={filterDim === 'all' ? 'All dimensions' : DIM_BY_ID[filterDim].label}
                 col={filterDim === 'all' ? INK : DIM_BY_ID[filterDim].color} />
               <SummaryRow label="Initial mode"
-                value={initialMode === 'triage' ? 'Collective triage' : 'Live question'}
-                col={INK} />
+                value={
+                  initialMode === 'triage'    ? 'Collective triage'
+                  : initialMode === 'question' ? 'Live question'
+                  : 'Project method-fit'
+                } col={INK} />
               <SummaryRow label="Deck"
                 value={`${toolList.length} tools · ≈ ${totalMin} min`}
                 col={INK} />
             </div>
+
+            {/* Project context — only for the Project method-fit mode.
+                Participants see the project name + description in the
+                header of the deck while rating, so it's worth a few
+                lines of explanation rather than a single placeholder. */}
+            {initialMode === 'methodfit' && (
+              <div style={{
+                background: PAGE,
+                border: `2px solid ${INK}`, borderRadius: 12,
+                padding: '12px 12px 10px',
+                marginBottom: 14,
+              }}>
+                <div style={{
+                  fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
+                  color: INK, letterSpacing: '.06em',
+                  textTransform: 'uppercase', marginBottom: 8,
+                }}>Project context</div>
+                <input
+                  value={projectName}
+                  onChange={e => setProjectName(e.target.value)}
+                  placeholder="Project name (e.g. Lyon Part-Dieu redesign)"
+                  style={{
+                    width: '100%', padding: '8px 10px', marginBottom: 8,
+                    border: `2px solid ${INK}`, borderRadius: 10,
+                    fontSize: 13, fontWeight: 700, color: INK,
+                    background: '#FFFFFF', outline: 'none',
+                    boxSizing: 'border-box',
+                    fontFamily: '-apple-system, Helvetica Neue, sans-serif',
+                  }} />
+                <textarea
+                  value={projectDesc}
+                  onChange={e => setProjectDesc(e.target.value)}
+                  placeholder="One or two lines of context — site, ambition, key constraint."
+                  rows={3}
+                  style={{
+                    width: '100%', padding: '8px 10px',
+                    border: `2px solid ${INK}`, borderRadius: 10,
+                    fontSize: 12, color: INK,
+                    background: '#FFFFFF', outline: 'none', resize: 'none',
+                    boxSizing: 'border-box',
+                    fontFamily: '-apple-system, Helvetica Neue, sans-serif',
+                  }} />
+              </div>
+            )}
+
             <div style={{
               fontSize: 11, color: '#5A5550', lineHeight: 1.5,
               padding: '8px 10px', background: PAGE,
@@ -665,7 +762,13 @@ export function FacilitatorView() {
               Once launched, the QR code and the join link will appear on the
               session page — share them with participants then.
             </div>
-            <ScrappyButton onClick={startSession} color={YELLOW} size="lg" full>
+            <ScrappyButton
+              onClick={startSession}
+              color={
+                initialMode === 'methodfit' && !projectName.trim()
+                  ? '#E0DAD2' : YELLOW
+              }
+              size="lg" full>
               LAUNCH SESSION →
             </ScrappyButton>
           </SectionCard>
@@ -783,10 +886,11 @@ export function FacilitatorView() {
       </SectionCard>
 
       {/* Tabs (scrappy pills) */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
         {[
-          ['triage',   'COLLECTIVE TRIAGE'],
-          ['question', 'LIVE QUESTION'],
+          ['triage',    'TRIAGE'],
+          ['question',  'LIVE Q'],
+          ['methodfit', 'METHOD-FIT'],
         ].map(([id, label]) => {
           const active = tab === id
           return (
@@ -1155,6 +1259,248 @@ export function FacilitatorView() {
           </SectionCard>
         </div>
       )}
+
+      {/* ── TAB METHOD-FIT ──────────────────────────────────────
+          Like Triage, but participants rate methods against a
+          named project. Results show a 2×2 of priority × team
+          capability so the team can see what to run vs train. */}
+      {tab === 'methodfit' && (
+        <div>
+          {!methodfitStarted ? (
+            <>
+              <SectionCard>
+                <Eyebrow color={GATE_COL[filterGate]}>Project context</Eyebrow>
+                <div style={{ marginBottom: 10 }}>
+                  <input value={projectName}
+                    onChange={e => setProjectName(e.target.value)}
+                    placeholder="Project name"
+                    style={{
+                      width: '100%', padding: '9px 10px', marginBottom: 8,
+                      border: `2px solid ${INK}`, borderRadius: 10,
+                      fontSize: 13, fontWeight: 700, color: INK,
+                      background: '#FFFFFF', outline: 'none',
+                      boxSizing: 'border-box',
+                      fontFamily: '-apple-system, Helvetica Neue, sans-serif',
+                    }} />
+                  <textarea value={projectDesc}
+                    onChange={e => setProjectDesc(e.target.value)}
+                    placeholder="One or two lines of context."
+                    rows={2}
+                    style={{
+                      width: '100%', padding: '9px 10px',
+                      border: `2px solid ${INK}`, borderRadius: 10,
+                      fontSize: 12, color: INK,
+                      background: '#FFFFFF', outline: 'none', resize: 'none',
+                      boxSizing: 'border-box',
+                      fontFamily: '-apple-system, Helvetica Neue, sans-serif',
+                    }} />
+                </div>
+              </SectionCard>
+
+              <SectionCard>
+                <Eyebrow color={GATE_COL[filterGate]}>Selected deck</Eyebrow>
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+                  marginBottom: 10, gap: 8,
+                }}>
+                  <span style={{
+                    fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 14, color: INK,
+                    textTransform: 'uppercase', letterSpacing: '.04em',
+                  }}>
+                    {GATE_LABEL[filterGate]}
+                    {filterDim !== 'all' && (
+                      <span style={{ color: DIM_BY_ID[filterDim].color, marginLeft: 8 }}>
+                        · {DIM_BY_ID[filterDim].label}
+                      </span>
+                    )}
+                  </span>
+                  <span style={{
+                    fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 22,
+                    color: GATE_COL[filterGate], flexShrink: 0,
+                  }}>{toolList.length}</span>
+                </div>
+              </SectionCard>
+
+              <p style={{
+                fontFamily: '-apple-system, Helvetica Neue, sans-serif',
+                fontSize: 12, color: '#5A5550', lineHeight: 1.55,
+                marginBottom: 14, padding: '0 2px',
+              }}>
+                Each participant will rate the {toolList.length} methods as
+                <strong> Essential / Helpful / Optional / Skip </strong>
+                for this project, and self-report their ability to run each.
+              </p>
+
+              <ScrappyButton
+                onClick={launchMethodfit}
+                color={
+                  participants.length === 0 || !projectName.trim()
+                    ? '#E0DAD2' : YELLOW
+                }
+                size="lg" full>
+                {!projectName.trim()        ? 'NAME THE PROJECT FIRST'
+                  : participants.length === 0 ? 'WAITING FOR PARTICIPANTS…'
+                  : 'LAUNCH METHOD-FIT →'}
+              </ScrappyButton>
+            </>
+          ) : (
+            <>
+              <div style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                marginBottom: 10,
+              }}>
+                <Eyebrow color="#2A6B45">
+                  ● Method-fit · {projectName || 'Project'}
+                </Eyebrow>
+                <button onClick={launchMethodfit}
+                  style={{
+                    padding: '5px 12px',
+                    background: CARD, border: `2px solid ${INK}`,
+                    borderRadius: 999,
+                    fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 10,
+                    letterSpacing: '.06em', color: INK,
+                    cursor: 'pointer',
+                  }}>RESTART</button>
+              </div>
+              <SectionCard>
+                <MethodfitMatrix
+                  responses={methodfitResponses}
+                  toolList={toolList}
+                  participantCount={participants.length}
+                  doneCount={methodfitDone.length}
+                />
+              </SectionCard>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Method-fit results matrix — 2×2 of project priority × team
+//   capability, with a per-tool list under each quadrant. The "high
+//   priority + low capability" quadrant is the gold signal: methods
+//   the team needs to deliver but cannot currently run. ──────────
+function MethodfitMatrix({ responses, toolList, participantCount, doneCount }) {
+  // FIT score: essential 3, helpful 2, optional 1, skip 0
+  // CAP score: regular 3, occasional 2, theory 1, none/unknown 0
+  const FIT_W = { essential: 3, helpful: 2, optional: 1, skip: 0 }
+  const CAP_W = { regular: 3, occasional: 2, theory: 1 }
+
+  const stats = toolList.map(t => {
+    const rs = responses.filter(r => r.tool === t.n)
+    if (rs.length === 0) return { name: t.n, n: 0 }
+    const fitAvg = rs.reduce((a, r) => a + (FIT_W[r.fit] ?? 0), 0) / rs.length
+    const caps = rs.map(r => CAP_W[r.capability]).filter(v => v !== undefined)
+    const capAvg = caps.length > 0
+      ? caps.reduce((a, v) => a + v, 0) / caps.length
+      : null
+    return { name: t.n, n: rs.length, fitAvg, capAvg }
+  }).filter(s => s.n > 0)
+
+  // Bucket: priority high/low (>=1.5), capability high/low (>=1.5)
+  const buckets = {
+    run:    [],   // high prio + high cap
+    train:  [],   // high prio + low cap (gold!)
+    bench:  [],   // low prio  + high cap
+    skip:   [],   // low prio  + low cap
+    nocap:  [],   // capability unknown
+  }
+  for (const s of stats) {
+    if (s.capAvg == null) { buckets.nocap.push(s); continue }
+    const hiP = s.fitAvg >= 1.5
+    const hiC = s.capAvg >= 1.5
+    if      ( hiP &&  hiC) buckets.run.push(s)
+    else if ( hiP && !hiC) buckets.train.push(s)
+    else if (!hiP &&  hiC) buckets.bench.push(s)
+    else                    buckets.skip.push(s)
+  }
+
+  return (
+    <div>
+      <Eyebrow color="#2A6B45">
+        ● {responses.length} responses · {doneCount}/{participantCount} done
+      </Eyebrow>
+
+      {/* 2×2 grid */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: '1fr 1fr',
+        gap: 10, marginTop: 8,
+      }}>
+        <Quadrant title="TRAIN / HIRE" hint="Priority for the project · gap on the team"
+          tone="gold" tools={buckets.train} highlight />
+        <Quadrant title="RUN IT" hint="Priority · the team can deliver"
+          tone="ok" tools={buckets.run} />
+        <Quadrant title="SKIP" hint="Low priority for this project"
+          tone="muted" tools={buckets.skip} />
+        <Quadrant title="BENCH" hint="Team can run it · low priority here"
+          tone="bench" tools={buckets.bench} />
+      </div>
+
+      {buckets.nocap.length > 0 && (
+        <div style={{
+          marginTop: 10, padding: '8px 10px',
+          background: '#FFF4D8',
+          border: `1.5px dashed #C17B2A`, borderRadius: 10,
+          fontSize: 11, color: '#7B4A12', lineHeight: 1.4,
+        }}>
+          <b>{buckets.nocap.length}</b> method{buckets.nocap.length > 1 ? 's' : ''}{' '}
+          {buckets.nocap.length > 1 ? 'have' : 'has'} no capability data yet —
+          run a Triage round in this session to populate the Y axis.
+        </div>
+      )}
+    </div>
+  )
+}
+
+function Quadrant({ title, hint, tone, tools, highlight = false }) {
+  const tones = {
+    gold:   { bg: '#FFF4D8', border: '#C17B2A', label: '#7B4A12' },
+    ok:     { bg: '#E6F4EC', border: '#2A6B45', label: '#1F4E32' },
+    bench:  { bg: '#E6EEF8', border: '#1B5FA0', label: '#0F3A66' },
+    muted:  { bg: '#F2EDE4', border: '#9C958A', label: '#5A5550' },
+  }
+  const t = tones[tone] || tones.muted
+  return (
+    <div style={{
+      background: t.bg,
+      border: `${highlight ? 3 : 2}px solid ${t.border}`,
+      borderRadius: 12,
+      padding: '10px 10px 8px',
+      boxShadow: highlight ? '3px 3px 0 ' + t.border : 'none',
+      minHeight: 110,
+    }}>
+      <div style={{
+        fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
+        color: t.label, letterSpacing: '.06em',
+      }}>{title}</div>
+      <div style={{
+        fontSize: 10, color: t.label, opacity: 0.85,
+        marginTop: 2, marginBottom: 6, lineHeight: 1.3,
+      }}>{hint}</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+        {tools.length === 0 && (
+          <span style={{
+            fontSize: 10, color: t.label, opacity: 0.5, fontStyle: 'italic',
+          }}>—</span>
+        )}
+        {tools.slice(0, 6).map(s => (
+          <span key={s.name} style={{
+            padding: '2px 6px',
+            background: '#FFFFFF',
+            border: `1.5px solid ${t.border}`, borderRadius: 6,
+            fontSize: 10, color: t.label, fontWeight: 700,
+            maxWidth: '100%',
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>{s.name}</span>
+        ))}
+        {tools.length > 6 && (
+          <span style={{
+            fontSize: 10, color: t.label, opacity: 0.7,
+          }}>+{tools.length - 6}</span>
+        )}
+      </div>
     </div>
   )
 }

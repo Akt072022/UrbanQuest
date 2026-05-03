@@ -371,6 +371,174 @@ function GateDetail({ gate, practiced, goExplore, goExploreDim }) {
 }
 
 // ──────────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────
+// Capability map — 2×2 of knowledge × practice
+// ──────────────────────────────────────────────────────────────
+//
+// Mapping skill levels to the matrix:
+//   regular     → MASTERED (knows + practices)
+//   occasional  → IN-USE   (knows + sometimes practices)
+//   theory      → STUDIED  (knows + doesn't practice — latent)
+//   unrated     → not plotted
+//
+// The "Studied" quadrant is the most useful diagnostic: it surfaces
+// methods the user could lean on with a bit of practice. Cells are
+// dim-coloured so the user can spot which lenses skew theoretical.
+function CapabilityMap({ practiced }) {
+  const buckets = { mastered: [], inuse: [], studied: [] }
+  for (const t of TOOLS) {
+    const lvl = practiced[t.n]
+    if (!lvl) continue
+    if      (lvl === 'regular')    buckets.mastered.push(t)
+    else if (lvl === 'occasional') buckets.inuse.push(t)
+    else if (lvl === 'theory')     buckets.studied.push(t)
+  }
+  const totalRated = buckets.mastered.length + buckets.inuse.length + buckets.studied.length
+
+  if (totalRated === 0) return null
+
+  return (
+    <div style={{
+      borderRadius: 14, background: '#FFFFFF',
+      border: '1px solid #E0DAD2', padding: 16, marginBottom: 16,
+    }}>
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+        marginBottom: 12,
+      }}>
+        <div style={{
+          fontSize: 11, fontWeight: 800, color: '#6B6460',
+          textTransform: 'uppercase', letterSpacing: '.06em',
+        }}>Capability map</div>
+        <div style={{ fontSize: 10, color: '#9C958A', fontWeight: 700 }}>
+          knowledge × practice
+        </div>
+      </div>
+
+      {/* Grid with axis hints */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '14px 1fr 1fr',
+        gridTemplateRows:    '1fr 1fr 14px',
+        gap: 6,
+      }}>
+        {/* Y-axis label */}
+        <div style={{
+          gridRow: '1 / span 2',
+          writingMode: 'vertical-rl',
+          transform: 'rotate(180deg)',
+          fontSize: 8, fontWeight: 800, color: '#9C958A',
+          textTransform: 'uppercase', letterSpacing: '.08em',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>practice →</div>
+
+        {/* Top-left = MASTERED (high knowledge, high practice) */}
+        <CapabilityCell title="MASTERED" subtitle="Run routinely"
+          tone="ok" tools={buckets.mastered} />
+        {/* Top-right = STUDIED — visually a bit "off" but conceptually:
+            high knowledge / low practice (top-left in classic 2×2).
+            We render mastered & studied along the top row and in-use
+            on the bottom-left so the eye reads it as: top = "I know
+            it well", bottom = "still learning". */}
+        <CapabilityCell title="STUDIED" subtitle="Know it, don't run it"
+          tone="gold" tools={buckets.studied} highlight />
+
+        {/* Bottom-left = IN USE */}
+        <CapabilityCell title="IN USE" subtitle="Sometimes" tone="bench"
+          tools={buckets.inuse} />
+        {/* Bottom-right = unrated/empty placeholder */}
+        <div style={{
+          minHeight: 80,
+          background: '#FAF7F2',
+          border: `1.5px dashed #DCD3C4`, borderRadius: 10,
+          padding: '10px 10px 8px',
+          fontSize: 10, color: '#9C958A', fontStyle: 'italic',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          textAlign: 'center', lineHeight: 1.4,
+        }}>
+          Untouched methods — keep evaluating to populate.
+        </div>
+
+        {/* Filler corner */}
+        <div />
+        {/* X-axis label */}
+        <div style={{
+          gridColumn: '2 / span 2',
+          fontSize: 8, fontWeight: 800, color: '#9C958A',
+          textTransform: 'uppercase', letterSpacing: '.08em',
+          textAlign: 'center',
+        }}>knowledge →</div>
+      </div>
+
+      <div style={{
+        marginTop: 10, fontSize: 11, color: '#5A5550', lineHeight: 1.4,
+      }}>
+        <b style={{ color: '#7B4A12' }}>Studied</b> is the latent-capacity
+        zone — methods you could reach for with a little more hands-on time.
+      </div>
+    </div>
+  )
+}
+
+function CapabilityCell({ title, subtitle, tone, tools, highlight = false }) {
+  const tones = {
+    ok:    { bg: '#E6F4EC', border: '#2A6B45', label: '#1F4E32' },
+    gold:  { bg: '#FFF4D8', border: '#C17B2A', label: '#7B4A12' },
+    bench: { bg: '#E6EEF8', border: '#1B5FA0', label: '#0F3A66' },
+    muted: { bg: '#F2EDE4', border: '#9C958A', label: '#5A5550' },
+  }
+  const t = tones[tone] || tones.muted
+  // Group tools by primary dimension for the per-dim color chip
+  const byDim = {}
+  for (const tl of tools) {
+    const did = tl.d?.[0] || 'other'
+    byDim[did] = (byDim[did] || 0) + 1
+  }
+  return (
+    <div style={{
+      minHeight: 80,
+      background: t.bg,
+      border: `${highlight ? 2.5 : 1.5}px solid ${t.border}`,
+      borderRadius: 10,
+      padding: '10px 10px 8px',
+      boxShadow: highlight ? '2px 2px 0 ' + t.border : 'none',
+    }}>
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+        marginBottom: 4,
+      }}>
+        <span style={{
+          fontFamily: 'Barlow Condensed, Impact, sans-serif',
+          fontWeight: 900, fontSize: 11,
+          color: t.label, letterSpacing: '.06em',
+        }}>{title}</span>
+        <span style={{
+          fontFamily: 'Barlow Condensed, Impact, sans-serif',
+          fontWeight: 900, fontSize: 16, color: t.label,
+        }}>{tools.length}</span>
+      </div>
+      <div style={{
+        fontSize: 9, color: t.label, opacity: 0.85,
+        marginBottom: 6, lineHeight: 1.3,
+      }}>{subtitle}</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+        {Object.entries(byDim).slice(0, 6).map(([did, n]) => {
+          const d = DIM_BY_ID[did]
+          if (!d) return null
+          return (
+            <span key={did} style={{
+              padding: '1px 5px', borderRadius: 5,
+              background: d.color + '22', color: d.color,
+              fontSize: 9, fontWeight: 800,
+              letterSpacing: '.04em',
+            }}>{d.short}·{n}</span>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // Overall view — tab "Overall"
 // ──────────────────────────────────────────────────────────────
 function OverallView({ practiced, scores, gates, suggestions, xp }) {
@@ -457,6 +625,13 @@ function OverallView({ practiced, scores, gates, suggestions, xp }) {
           </div>
         ))}
       </div>
+
+      {/* Capability map — 2×2 of knowledge × practice. Bins each
+          rated method into one of four buckets so the user can see
+          where their portfolio leans. The "Studied" cell (knows but
+          doesn't run) is the latent-capacity signal: a training brief
+          for themselves or for the team. */}
+      <CapabilityMap practiced={practiced} />
 
       {/* Suggestions */}
       <div style={{
