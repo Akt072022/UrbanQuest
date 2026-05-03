@@ -382,9 +382,9 @@ export function ImageLightbox({ src, alt, onClose }) {
       role="dialog" aria-modal="true" aria-label="Image preview"
       style={{
         position: 'fixed', inset: 0, zIndex: 1000,
-        background: 'rgba(0,0,0,0.88)',
+        background: 'rgba(0,0,0,0.92)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: 16,
+        padding: 0,
         animation: 'lb-fade .15s ease',
       }}>
       <button onClick={onClose}
@@ -396,33 +396,34 @@ export function ImageLightbox({ src, alt, onClose }) {
           border: `2.5px solid ${INK}`,
           fontFamily: 'Barlow Condensed, Impact, sans-serif',
           fontWeight: 900, fontSize: 22, lineHeight: 1,
-          cursor: 'pointer',
+          cursor: 'pointer', zIndex: 2,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           boxShadow: '2px 2px 0 ' + INK,
         }}>×</button>
       <div ref={scrollRef}
         onClick={(e) => e.stopPropagation()}
         style={{
-          maxWidth: '92vw', maxHeight: '88vh',
+          width: '100vw', height: '100vh',
           overflow: zoomed ? 'auto' : 'hidden',
-          borderRadius: 12,
-          background: '#F2EDE4',
+          background: 'transparent',
           cursor: zoomed ? 'zoom-out' : 'zoom-in',
           touchAction: zoomed ? 'pan-x pan-y' : 'manipulation',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
         <img src={src} alt={alt} draggable={false}
           onClick={() => setZoomed(z => !z)}
           style={{
             display: 'block',
-            // Unzoomed: contain inside the viewport. Zoomed: render at
-            // ~2.4× the largest viewport dimension so panning is real.
-            width:  zoomed ? 'min(220vw, 220vh)' : '100%',
-            height: zoomed ? 'auto' : 'auto',
-            maxWidth:  zoomed ? 'none' : '92vw',
-            maxHeight: zoomed ? 'none' : '88vh',
+            // Default: fill the full browser viewport, contained
+            // inside it (no cropping). Zoomed: 240% of the larger
+            // dimension so panning has real estate.
+            width:  zoomed ? 'min(240vw, 240vh)' : '100vw',
+            height: zoomed ? 'auto' : '100vh',
+            maxWidth:  zoomed ? 'none' : '100vw',
+            maxHeight: zoomed ? 'none' : '100vh',
             objectFit: 'contain',
             userSelect: 'none',
-            transition: 'width .25s ease',
+            transition: 'width .25s ease, height .25s ease',
           }} />
       </div>
       {/* Hint chip — fades after first interaction */}
@@ -436,7 +437,7 @@ export function ImageLightbox({ src, alt, onClose }) {
         fontWeight: 900, fontSize: 11,
         color: INK, letterSpacing: '.05em', textTransform: 'uppercase',
         pointerEvents: 'none',
-      }}>{zoomed ? 'Drag to pan · click to zoom out' : 'Click image to zoom'}</div>
+      }}>{zoomed ? 'Drag to pan · click to zoom out' : 'Click image to zoom in'}</div>
       <style>{`@keyframes lb-fade { from { opacity:0 } to { opacity:1 } }`}</style>
     </div>
   )
@@ -968,13 +969,18 @@ function Section({ label, emoji, children }) {
 }
 
 // ── Card stack — 3D flip cover ↔ synth ↔ deep ────────────────
-const CARD_W = 340
-const CARD_H = 540
+// Responsive sizing: 340×540 on phones, scales up to 460×720 on
+// desktop while keeping the same aspect ratio so the absolutely-
+// positioned faces inside fit naturally.
+const CARD_ASPECT = '340 / 540'
 
 export function CardStack({ tool, gate, face, onDive, onBack, alreadyLevel, alreadySkipped }) {
   const flipped = face !== 'cover'
   return (
-    <div className="perspective-900" style={{ width: CARD_W, height: CARD_H }}>
+    <div className="perspective-900" style={{
+      width: 'min(95vw, 460px)',
+      aspectRatio: CARD_ASPECT,
+    }}>
       <div className="preserve-3d" style={{
         position: 'relative', width: '100%', height: '100%',
         transition: 'transform .8s cubic-bezier(.7,0,.3,1)',

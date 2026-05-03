@@ -36,11 +36,13 @@ function AppInner() {
     return <ParticipantView roomId={roomId} />
   }
 
-  // Wide views (Dashboard, Facilitator) get more breathing room on
-  // desktop; the card-driven views (Map, Explore, Welcome) stay in a
-  // narrow column for the same handheld-feel layout.
-  const wide = view === 'dashboard' || view === 'facilitator'
-  const maxW = wide ? 960 : 480
+  // Per-view max widths:
+  //   • Dashboard / Facilitator → 960 (multi-column friendly)
+  //   • Explore (cards)        → 560 (so the bigger desktop card fits)
+  //   • Map / Welcome          → 480 (path geometry is fixed; form is narrow)
+  const maxW = (view === 'dashboard' || view === 'facilitator') ? 960
+    : view === 'explore'                                          ? 560
+    : 480
 
   return (
     <div style={{
