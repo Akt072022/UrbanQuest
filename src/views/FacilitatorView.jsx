@@ -5,6 +5,7 @@ import { QRCode } from '../components/QRCode'
 import { makeRoomId, openChannel, sendMsg, subscribe, participantUrl, onStatus } from '../lib/session'
 import { TOOLS, GATE_LABEL, DIMENSIONS, DIM_BY_ID } from '../data/tools'
 import { ScrappyButton, ScrappyChip } from '../components/ScrappyButton'
+import { suggestMethods, hasMistral } from '../lib/mistral'
 
 const INK    = '#1C2530'
 const YELLOW = '#F5C84A'
@@ -246,6 +247,14 @@ export function FacilitatorView() {
   const [methodfitStarted,   setMethodfitStarted]   = useState(false)
   const [methodfitDone,      setMethodfitDone]      = useState([])
 
+  // Mistral AI suggestions for the project — { tool, why } rows.
+  // When `useAiDeck` is on, the active deck swaps from gate/dim filter
+  // to the AI shortlist (sent to participants verbatim by name).
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiError,   setAiError]   = useState('')
+  const [aiSugg,    setAiSugg]    = useState([])
+  const [useAiDeck, setUseAiDeck] = useState(false)
+
   // Session state
   const [participants, setParticipants]     = useState([])
   const [triageResponses, setTriageResponses] = useState([])
@@ -275,12 +284,37 @@ export function FacilitatorView() {
   const seenIdsRef = useRef(new Set())   // dedup pong → resync
   const url = participantUrl(roomId)
 
-  // Filtered tool list
-  const toolList = TOOLS.filter(t => {
+  // Filtered tool list — gate × dim by default. When the AI deck is
+  // toggled on (Step 4 / methodfit), it overrides the filters with the
+  // curated shortlist so every downstream UI (deck preview, launch
+  // payload, results matrix) sees the same set.
+  const baseToolList = TOOLS.filter(t => {
     const gateOk = t.g.includes(filterGate)
     const dimOk  = filterDim === 'all' || (t.d?.includes(filterDim))
     return gateOk && dimOk
   })
+  const aiToolList = aiSugg.map(s => s.tool).filter(Boolean)
+  const toolList = useAiDeck && aiToolList.length > 0
+    ? aiToolList
+    : baseToolList
+
+  const runAiAnalysis = async () => {
+    if (!projectName.trim()) return
+    setAiLoading(true); setAiError(''); setAiSugg([])
+    try {
+      const out = await suggestMethods({ name: projectName, desc: projectDesc })
+      if (out.length === 0) {
+        setAiError('No matching methods returned. Try a longer description.')
+      } else {
+        setAiSugg(out)
+        setUseAiDeck(true)   // opt the facilitator into the AI deck by default
+      }
+    } catch (e) {
+      setAiError(e?.message || 'Could not contact Mistral.')
+    } finally {
+      setAiLoading(false)
+    }
+  }
 
   // Push the current session state to anyone who reconnects or joins
   // late. Idempotent on the participant side so re-emitting is safe.
@@ -297,6 +331,7 @@ export function FacilitatorView() {
     if (s.methodfitActive && s.project) {
       sendMsg(ch, { type: 'methodfit_start', payload: {
         gate: s.gate, dim: s.dim, project: s.project,
+        methodNames: s.methodNames || null,
       } })
     }
   }
@@ -405,14 +440,21 @@ export function FacilitatorView() {
     setMethodfitDone([])
     setMethodfitStarted(true)
     const project = { name: projectName.trim(), desc: projectDesc.trim() }
+    // Curated AI deck overrides gate/dim — broadcast the explicit list
+    // so participants see the same shortlist instead of inferring from
+    // the gate filter.
+    const methodNames = (useAiDeck && aiToolList.length > 0)
+      ? aiToolList.map(t => t.n)
+      : null
     stateRef.current.methodfitActive = true
     stateRef.current.triageActive    = false
     stateRef.current.gate    = filterGate
     stateRef.current.dim     = filterDim
     stateRef.current.project = project
+    stateRef.current.methodNames = methodNames
     sendMsg(channelRef.current, {
       type: 'methodfit_start',
-      payload: { gate: filterGate, dim: filterDim, project },
+      payload: { gate: filterGate, dim: filterDim, project, methodNames },
     })
   }
 
@@ -714,43 +756,176 @@ export function FacilitatorView() {
                 header of the deck while rating, so it's worth a few
                 lines of explanation rather than a single placeholder. */}
             {initialMode === 'methodfit' && (
-              <div style={{
-                background: PAGE,
-                border: `2px solid ${INK}`, borderRadius: 12,
-                padding: '12px 12px 10px',
-                marginBottom: 14,
-              }}>
+              <>
                 <div style={{
-                  fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
-                  color: INK, letterSpacing: '.06em',
-                  textTransform: 'uppercase', marginBottom: 8,
-                }}>Project context</div>
-                <input
-                  value={projectName}
-                  onChange={e => setProjectName(e.target.value)}
-                  placeholder="Project name (e.g. Lyon Part-Dieu redesign)"
-                  style={{
-                    width: '100%', padding: '8px 10px', marginBottom: 8,
-                    border: `2px solid ${INK}`, borderRadius: 10,
-                    fontSize: 13, fontWeight: 700, color: INK,
-                    background: '#FFFFFF', outline: 'none',
-                    boxSizing: 'border-box',
-                    fontFamily: '-apple-system, Helvetica Neue, sans-serif',
-                  }} />
-                <textarea
-                  value={projectDesc}
-                  onChange={e => setProjectDesc(e.target.value)}
-                  placeholder="One or two lines of context — site, ambition, key constraint."
-                  rows={3}
-                  style={{
-                    width: '100%', padding: '8px 10px',
-                    border: `2px solid ${INK}`, borderRadius: 10,
-                    fontSize: 12, color: INK,
-                    background: '#FFFFFF', outline: 'none', resize: 'none',
-                    boxSizing: 'border-box',
-                    fontFamily: '-apple-system, Helvetica Neue, sans-serif',
-                  }} />
-              </div>
+                  background: PAGE,
+                  border: `2px solid ${INK}`, borderRadius: 12,
+                  padding: '12px 12px 10px',
+                  marginBottom: 12,
+                }}>
+                  <div style={{
+                    fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
+                    color: INK, letterSpacing: '.06em',
+                    textTransform: 'uppercase', marginBottom: 8,
+                  }}>Project context</div>
+                  <input
+                    value={projectName}
+                    onChange={e => setProjectName(e.target.value)}
+                    placeholder="Project name (e.g. Lyon Part-Dieu redesign)"
+                    style={{
+                      width: '100%', padding: '8px 10px', marginBottom: 8,
+                      border: `2px solid ${INK}`, borderRadius: 10,
+                      fontSize: 13, fontWeight: 700, color: INK,
+                      background: '#FFFFFF', outline: 'none',
+                      boxSizing: 'border-box',
+                      fontFamily: '-apple-system, Helvetica Neue, sans-serif',
+                    }} />
+                  <textarea
+                    value={projectDesc}
+                    onChange={e => setProjectDesc(e.target.value)}
+                    placeholder="One or two lines of context — site, ambition, key constraint."
+                    rows={3}
+                    style={{
+                      width: '100%', padding: '8px 10px',
+                      border: `2px solid ${INK}`, borderRadius: 10,
+                      fontSize: 12, color: INK,
+                      background: '#FFFFFF', outline: 'none', resize: 'none',
+                      boxSizing: 'border-box',
+                      fontFamily: '-apple-system, Helvetica Neue, sans-serif',
+                    }} />
+                </div>
+
+                {/* AI shortlist — Mistral analyzes the project and
+                    suggests 10-12 methods. Hidden if Mistral isn't
+                    configured (no env key). The toggle below the
+                    suggestions opts into using them as the deck. */}
+                {hasMistral && (
+                  <div style={{
+                    background: CARD,
+                    border: `2.5px solid ${INK}`, borderRadius: 14,
+                    padding: '12px 12px 10px',
+                    marginBottom: 14,
+                    boxShadow: '2px 2px 0 ' + INK,
+                  }}>
+                    <div style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      gap: 8, marginBottom: 8,
+                    }}>
+                      <div style={{
+                        fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
+                        color: INK, letterSpacing: '.06em',
+                        textTransform: 'uppercase',
+                      }}>✨ AI shortlist</div>
+                      {aiSugg.length > 0 && (
+                        <span style={{
+                          fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
+                          color: TEAL,
+                        }}>{aiSugg.length} methods</span>
+                      )}
+                    </div>
+
+                    {aiSugg.length === 0 && (
+                      <div style={{
+                        fontSize: 11, color: '#5A5550', lineHeight: 1.45, marginBottom: 10,
+                      }}>
+                        Let Mistral read your project description and
+                        suggest the most relevant methods from the catalogue.
+                      </div>
+                    )}
+
+                    <ScrappyButton
+                      onClick={runAiAnalysis}
+                      color={
+                        aiLoading || !projectName.trim() || !projectDesc.trim()
+                          ? '#E0DAD2' : TEAL
+                      }
+                      size="md" full>
+                      {aiLoading ? 'ANALYZING…'
+                        : aiSugg.length > 0 ? '↻ RE-ANALYZE'
+                        : '✨ ANALYZE WITH MISTRAL'}
+                    </ScrappyButton>
+
+                    {aiError && (
+                      <div style={{
+                        marginTop: 8, padding: '6px 10px',
+                        background: '#FCE8E2', border: `1.5px solid #C0452A`,
+                        borderRadius: 8,
+                        fontSize: 11, color: '#7A1F0E', lineHeight: 1.4,
+                      }}>{aiError}</div>
+                    )}
+
+                    {aiSugg.length > 0 && (
+                      <>
+                        <div style={{
+                          marginTop: 12,
+                          display: 'grid', gap: 6,
+                        }}>
+                          {aiSugg.map(({ tool, why }) => (
+                            <div key={tool.n} style={{
+                              padding: '8px 10px',
+                              background: PAGE,
+                              border: `1.5px solid ${INK}33`, borderRadius: 10,
+                            }}>
+                              <div style={{
+                                display: 'flex', alignItems: 'baseline',
+                                justifyContent: 'space-between', gap: 8,
+                              }}>
+                                <span style={{
+                                  fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 13,
+                                  color: INK, letterSpacing: '.02em',
+                                  flex: 1, minWidth: 0,
+                                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                                }}>{tool.n}</span>
+                                <span style={{
+                                  flexShrink: 0, fontSize: 9, color: '#9C958A',
+                                  fontWeight: 700, letterSpacing: '.04em',
+                                  textTransform: 'uppercase',
+                                }}>{(tool.g || []).map(g => GATE_LABEL[g]).join('/')}</span>
+                              </div>
+                              {why && (
+                                <div style={{
+                                  fontSize: 11, color: '#3F3A36',
+                                  lineHeight: 1.4, marginTop: 4,
+                                }}>{why}</div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Use AI deck toggle */}
+                        <label style={{
+                          display: 'flex', alignItems: 'center', gap: 10,
+                          marginTop: 12,
+                          padding: '10px 12px',
+                          background: useAiDeck ? '#E6F4EC' : PAGE,
+                          border: `2px solid ${useAiDeck ? '#2A6B45' : INK}33`,
+                          borderRadius: 10,
+                          cursor: 'pointer',
+                        }}>
+                          <input type="checkbox"
+                            checked={useAiDeck}
+                            onChange={e => setUseAiDeck(e.target.checked)}
+                            style={{ flexShrink: 0 }} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{
+                              fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 12,
+                              color: INK, letterSpacing: '.04em',
+                              textTransform: 'uppercase', lineHeight: 1.1,
+                            }}>Use this AI deck</div>
+                            <div style={{
+                              fontSize: 11, color: '#5A5550', marginTop: 2, lineHeight: 1.35,
+                            }}>
+                              {useAiDeck
+                                ? `Participants will rate ${aiSugg.length} curated methods.`
+                                : `Otherwise the gate/dim deck (${baseToolList.length} methods) is used.`}
+                            </div>
+                          </div>
+                        </label>
+                      </>
+                    )}
+                  </div>
+                )}
+              </>
             )}
 
             <div style={{

@@ -669,6 +669,7 @@ function FitDeck({ tools, gate, project, fits, evals, onPick, onDone }) {
   const [face, setFace]             = useState('synth')
   const [pendingFit, setPendingFit] = useState(null)   // 'essential' | …
   const [lastAction, setLastAction] = useState(null)
+  const [descExpanded, setDescExpanded] = useState(false)
 
   useEffect(() => { setFace('synth'); setPendingFit(null) }, [idx])
 
@@ -781,11 +782,32 @@ function FitDeck({ tools, gate, project, fits, evals, onPick, onDone }) {
           fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 16,
           color: INK, lineHeight: 1.1, marginTop: 2,
         }}>{project?.name || 'Project'}</div>
-        {project?.desc && (
-          <div style={{
-            fontSize: 11, color: '#3F3A36', lineHeight: 1.4, marginTop: 6,
-          }}>{project.desc}</div>
-        )}
+        {project?.desc && (() => {
+          const CAP = 280
+          const long = project.desc.length > CAP
+          const shown = !long || descExpanded
+            ? project.desc
+            : project.desc.slice(0, CAP).trimEnd() + '…'
+          return (
+            <div style={{ marginTop: 6 }}>
+              <div style={{
+                fontSize: 11, color: '#3F3A36', lineHeight: 1.4,
+              }}>{shown}</div>
+              {long && (
+                <button onClick={() => setDescExpanded(e => !e)}
+                  style={{
+                    marginTop: 4, padding: 0, background: 'transparent',
+                    border: 'none', cursor: 'pointer',
+                    fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 10,
+                    color: GATE_COL[gate] || INK,
+                    letterSpacing: '.06em', textTransform: 'uppercase',
+                  }}>
+                  {descExpanded ? '· show less' : '· show more'}
+                </button>
+              )}
+            </div>
+          )
+        })()}
       </div>
 
       <ProgressDots tools={tools} idx={idx} />
@@ -937,6 +959,10 @@ export function ParticipantView({ roomId }) {
   // Project method-fit
   const [project, setProject]       = useState(null)         // { name, desc }
   const [fits, setFits]             = useState({})           // { toolName: 'essential'|'helpful'|'optional'|'skip' }
+  // When the facilitator picked an AI-curated shortlist, the
+  // methodfit_start payload carries an explicit `methodNames` array.
+  // Otherwise we fall back to gate/dim filtering as before.
+  const [sessionTools, setSessionTools] = useState(null)     // TOOL[] | null
 
   const channelRef = useRef(null)
 
@@ -987,7 +1013,7 @@ export function ParticipantView({ roomId }) {
         setRevealed(false)
       }
       if (msg.type === 'methodfit_start') {
-        const { gate, dim, project: proj } = msg.payload
+        const { gate, dim, project: proj, methodNames } = msg.payload
         const newGate = gate || 1
         const newDim  = dim  || 'all'
         const cur = stateRef.current
@@ -1001,6 +1027,16 @@ export function ParticipantView({ roomId }) {
         setSessionGate(newGate)
         setSessionDim(newDim)
         setProject(proj || null)
+        // Resolve curated names against the local catalogue. Anything
+        // we can't find is dropped so the deck never has phantom cards.
+        if (Array.isArray(methodNames) && methodNames.length > 0) {
+          const tools = methodNames
+            .map(n => TOOLS.find(t => t.n === n))
+            .filter(Boolean)
+          setSessionTools(tools)
+        } else {
+          setSessionTools(null)
+        }
         setMode('methodfit')
       }
       if (msg.type === 'reveal') setRevealed(true)
@@ -1108,11 +1144,14 @@ export function ParticipantView({ roomId }) {
     ? toolsForGateDim(sessionGate, activeDim)
     : []
 
-  // For method-fit, the whole gate (or the picked dim) is the deck —
-  // we don't ask participants to drill into a dim picker like triage.
-  const fitDeckTools = sessionDim === 'all'
-    ? toolsForGate(sessionGate)
-    : toolsForGateDim(sessionGate, sessionDim)
+  // For method-fit, the deck is either the AI-curated shortlist sent
+  // by the facilitator (sessionTools !== null) or the whole gate /
+  // picked dim — same model as triage.
+  const fitDeckTools = sessionTools && sessionTools.length > 0
+    ? sessionTools
+    : sessionDim === 'all'
+      ? toolsForGate(sessionGate)
+      : toolsForGateDim(sessionGate, sessionDim)
 
   return (
     <div style={{
