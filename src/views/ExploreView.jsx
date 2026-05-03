@@ -377,11 +377,16 @@ export function ImageLightbox({ src, alt, onClose }) {
     }
   }, [zoomed])
 
-  return (
+  // Render via a portal directly under <body>. The CardStack uses 3D
+  // transforms (rotateY) which create a new containing block — without
+  // the portal, `position: fixed` would be relative to the rotated card
+  // and the lightbox would clip to the card's bounds instead of filling
+  // the browser viewport.
+  return createPortal((
     <div onClick={onClose}
       role="dialog" aria-modal="true" aria-label="Image preview"
       style={{
-        position: 'fixed', inset: 0, zIndex: 1000,
+        position: 'fixed', inset: 0, zIndex: 9998,
         background: 'rgba(0,0,0,0.92)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: 0,
@@ -440,7 +445,7 @@ export function ImageLightbox({ src, alt, onClose }) {
       }}>{zoomed ? 'Drag to pan · click to zoom out' : 'Click image to zoom in'}</div>
       <style>{`@keyframes lb-fade { from { opacity:0 } to { opacity:1 } }`}</style>
     </div>
-  )
+  ), document.body)
 }
 
 // ── Cover (face A) ────────────────────────────────────────────

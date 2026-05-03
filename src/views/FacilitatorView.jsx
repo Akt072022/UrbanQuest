@@ -962,24 +962,34 @@ export function FacilitatorView() {
               )}
             </div>
 
-            {currentQ.type === 'slider' && responses.length > 0 && (
-              <div>
-                <div style={{
-                  fontFamily: FONT_HEAD,
-                  fontWeight: 900, fontSize: 56,
-                  color: INK, textAlign: 'center', lineHeight: 1, marginBottom: 12,
-                }}>
-                  {sliderAvg}
-                  <span style={{ fontSize: 22, color: '#9C958A' }}>/5</span>
+            {currentQ.type === 'slider' && responses.length > 0 && (() => {
+              // Only the preset readiness Q (q2) gets the readiness labels;
+              // any other slider — including custom-typed ones — falls back
+              // to neutral Low/Mid/High buckets so the categories don't
+              // contradict the question wording.
+              const isReadiness = currentQ.id === 'q2'
+              const labelLow  = isReadiness ? 'Not ready (0-1)'      : 'Low (0-1)'
+              const labelMid  = isReadiness ? 'In development (2-3)' : 'Mid (2-3)'
+              const labelHigh = isReadiness ? 'Ready to adopt (4-5)' : 'High (4-5)'
+              return (
+                <div>
+                  <div style={{
+                    fontFamily: FONT_HEAD,
+                    fontWeight: 900, fontSize: 56,
+                    color: INK, textAlign: 'center', lineHeight: 1, marginBottom: 12,
+                  }}>
+                    {sliderAvg}
+                    <span style={{ fontSize: 22, color: '#9C958A' }}>/5</span>
+                  </div>
+                  <ResponseBar label={labelLow}  value={responses.filter(r => r.value < 2).length}
+                    max={responses.length} col={CORAL} />
+                  <ResponseBar label={labelMid}  value={responses.filter(r => r.value >= 2 && r.value < 4).length}
+                    max={responses.length} col="#C17B2A" />
+                  <ResponseBar label={labelHigh} value={responses.filter(r => r.value >= 4).length}
+                    max={responses.length} col="#2A6B45" />
                 </div>
-                <ResponseBar label="Not ready (0-1)" value={responses.filter(r => r.value < 2).length}
-                  max={responses.length} col={CORAL} />
-                <ResponseBar label="In development (2-3)" value={responses.filter(r => r.value >= 2 && r.value < 4).length}
-                  max={responses.length} col="#C17B2A" />
-                <ResponseBar label="Ready to adopt (4-5)" value={responses.filter(r => r.value >= 4).length}
-                  max={responses.length} col="#2A6B45" />
-              </div>
-            )}
+              )
+            })()}
 
             {currentQ.type === 'word' && topWords.length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>

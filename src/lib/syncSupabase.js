@@ -8,6 +8,20 @@
 //                  stays in localStorage as before.
 import { supabase, hasSupabase } from './supabase'
 import { useStore } from '../store/useStore'
+import { SKILL_LEVELS } from '../data/tools'
+
+// XP weights mirror useStore.LEVEL_W. We re-derive xp from `practiced`
+// after a pull so a fresh device that just signed in shows the correct
+// XP / level / badges instead of starting at 0.
+const LEVEL_W = Object.fromEntries(
+  Object.entries(SKILL_LEVELS).map(([k, v]) => [k, v.weight])
+)
+function xpFromPracticed(practiced) {
+  return Object.values(practiced).reduce(
+    (s, lvl) => s + Math.round(10 * (LEVEL_W[lvl] ?? 0)),
+    0,
+  )
+}
 
 const PUSH_DEBOUNCE = 800   // ms — coalesce rapid swipe-rights
 const ENABLED       = hasSupabase
@@ -107,6 +121,10 @@ async function pullFull(userId) {
   useStore.setState({
     practiced: merged_practiced,
     skipped:   merged_skipped,
+    // Pick the higher of the locally-tracked xp and the xp derived from
+    // the merged set, so signing in on a fresh device restores progress
+    // without ever clobbering an unsynced local gain.
+    xp:        Math.max(useStore.getState().xp || 0, xpFromPracticed(merged_practiced)),
   })
   lastPushed = { practiced: { ...merged_practiced }, skipped: [...merged_skipped] }
   // Push merged set so the cloud catches up to anything that was local-only.

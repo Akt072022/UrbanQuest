@@ -7,6 +7,7 @@ import { ExploreView } from './views/ExploreView'
 import { DashboardView } from './views/DashboardView'
 import { FacilitatorView } from './views/FacilitatorView'
 import { ParticipantView } from './views/ParticipantView'
+import { ProfileView } from './views/ProfileView'
 
 class ErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { error: null } }
@@ -39,9 +40,11 @@ function AppInner() {
   // Per-view max widths:
   //   • Dashboard / Facilitator → 960 (multi-column friendly)
   //   • Explore (cards)        → 560 (so the bigger desktop card fits)
+  //   • Profile (badges grid)  → 720 (auto-fill grid likes a bit of room)
   //   • Map / Welcome          → 480 (path geometry is fixed; form is narrow)
   const maxW = (view === 'dashboard' || view === 'facilitator') ? 960
     : view === 'explore'                                          ? 560
+    : view === 'profile'                                          ? 720
     : 480
 
   return (
@@ -65,6 +68,7 @@ function AppInner() {
           {view === 'explore'     && <ExploreView />}
           {view === 'dashboard'   && <DashboardView />}
           {view === 'facilitator' && <FacilitatorView />}
+          {view === 'profile'     && <ProfileView />}
         </div>
       </div>
     </div>

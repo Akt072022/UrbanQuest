@@ -14,8 +14,8 @@ const LEVEL_BADGE = {
 }
 
 export function Navbar() {
-  const { team, xp, goMap, view } = useStore(useShallow(s => ({
-    team: s.team, xp: s.xp, goMap: s.goMap, view: s.view,
+  const { team, xp, goMap, goProfile, view } = useStore(useShallow(s => ({
+    team: s.team, xp: s.xp, goMap: s.goMap, goProfile: s.goProfile, view: s.view,
   })))
 
   const { min, max, label } = getLevel(xp)
@@ -50,12 +50,17 @@ export function Navbar() {
         </span>
       </div>
 
-      {/* Right side: badge + level pill */}
+      {/* Right side: badge + level pill — clickable, opens Profile */}
       {team && (
-        <div style={{
-          marginLeft: 'auto',
-          display: 'flex', alignItems: 'center', gap: 8,
-        }}>
+        <div
+          onClick={goProfile}
+          role="button" tabIndex={0}
+          aria-label="Open profile"
+          style={{
+            marginLeft: 'auto',
+            display: 'flex', alignItems: 'center', gap: 8,
+            cursor: 'pointer',
+          }}>
           {/* Achievement badge — scrappy circular sticker */}
           <div title={`${label} · ${xp} XP`}
             style={{

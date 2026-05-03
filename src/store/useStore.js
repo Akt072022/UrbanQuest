@@ -58,6 +58,7 @@ export const useStore = create(
       goMap:         () => set({ view: 'map', eGate: null, eDim: null, eFlipped: false }),
       goDashboard:   (gate = null) => set({ view: 'dashboard', dashboardGate: gate }),
       goFacilitator: () => set({ view: 'facilitator' }),
+      goProfile:     () => set({ view: 'profile' }),
 
       // Resume at the first un-touched tool of the gate (or dim).
       goExplore: (gate) => set(state => {
