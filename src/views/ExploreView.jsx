@@ -1222,11 +1222,16 @@ export function ExploreView() {
     nextCard()
   }
 
+  // Three-beat commit so the user sees feedback before the deck moves:
+  //   1. close the modal
+  //   2. write the level → banner appears on the current card
+  //   3. ~700ms beat, then advance — `lastAction` is still 'practice'
+  //      so the next card slides in from the left (conveyor belt).
   const commitEvaluation = (level) => {
-    practiceTool(tool.n, level)
     try { window.speechSynthesis?.cancel() } catch { /* noop */ }
     setPendingEval(false)
-    nextCard()
+    practiceTool(tool.n, level)
+    setTimeout(() => { nextCard() }, 700)
   }
 
   return (

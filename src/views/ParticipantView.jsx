@@ -337,11 +337,15 @@ function ToolDeck({ tools, gate, evals, skipped, onPick, onSkip, onDone }) {
     setIdx(i => i + 1)
   }
 
+  // Three-beat commit (matches solo journey board): close modal first,
+  // write the level so the banner shows on the current card, then a
+  // ~700ms beat before advancing — keeps `lastAction = 'practice'` so
+  // the next card slides in from the left.
   const commit = (level) => {
-    onPick(tool, level)
     try { window.speechSynthesis?.cancel() } catch { /* noop */ }
     setPendingEval(false)
-    setIdx(i => i + 1)
+    onPick(tool, level)
+    setTimeout(() => { setIdx(i => i + 1) }, 700)
   }
 
   return (
