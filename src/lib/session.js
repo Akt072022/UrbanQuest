@@ -42,12 +42,15 @@ function makeBcWrapper(roomId) {
     _kind: 'bc',
     _send: (msg) => bc.postMessage(msg),
     _setHandler: (h) => { handler = h },
+    onStatus: (cb) => { cb?.('SUBSCRIBED') },     // local channels are always live
+    isConnected: () => true,
     close: () => bc.close(),
   }
 }
 
 function makeSbWrapper(roomId) {
   let handler   = null
+  let statusCb  = null
   let connected = false
   const queue   = []
   const ch = supabase.channel('ovpm-' + roomId, {
@@ -56,12 +59,22 @@ function makeSbWrapper(roomId) {
   ch.on('broadcast', { event: EVENT }, ({ payload }) => {
     handler?.(payload)
   })
-  ch.subscribe((status) => {
+  ch.subscribe((status, err) => {
+    // Always surface the status. Common values:
+    //   SUBSCRIBED       → channel is live, queue can be flushed
+    //   CHANNEL_ERROR    → server rejected the channel (RLS, paused project)
+    //   TIMED_OUT        → no response from realtime in time
+    //   CLOSED           → channel was closed
+    statusCb?.(status, err)
     if (status === 'SUBSCRIBED') {
       connected = true
       while (queue.length) {
         ch.send({ type: 'broadcast', event: EVENT, payload: queue.shift() })
       }
+    } else if (status === 'CLOSED') {
+      connected = false
+    } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+      console.warn('[session] realtime channel', status, err || '')
     }
   })
   return {
@@ -74,6 +87,8 @@ function makeSbWrapper(roomId) {
       }
     },
     _setHandler: (h) => { handler = h },
+    onStatus: (cb) => { statusCb = cb },
+    isConnected: () => connected,
     close: () => { try { supabase.removeChannel(ch) } catch { /* noop */ } },
   }
 }
@@ -94,6 +109,17 @@ export function sendMsg(channel, msg) {
 export function subscribe(channel, handler) {
   if (!channel) return
   channel._setHandler(handler)
+}
+
+/** Register a connection-status listener. Calls the callback with the
+ *  Supabase channel status (SUBSCRIBED / CHANNEL_ERROR / TIMED_OUT /
+ *  CLOSED). For BroadcastChannel fallback it fires SUBSCRIBED once. */
+export function onStatus(channel, cb) {
+  channel?.onStatus?.(cb)
+}
+
+export function isConnected(channel) {
+  return !!channel?.isConnected?.()
 }
 
 /** Cleanup. Safe to call more than once. */

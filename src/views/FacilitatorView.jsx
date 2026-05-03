@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore } from '../store/useStore'
 import { QRCode } from '../components/QRCode'
-import { makeRoomId, openChannel, sendMsg, subscribe, participantUrl } from '../lib/session'
+import { makeRoomId, openChannel, sendMsg, subscribe, participantUrl, onStatus } from '../lib/session'
 import { TOOLS, GATE_LABEL, DIMENSIONS, DIM_BY_ID } from '../data/tools'
 import { ScrappyButton, ScrappyChip } from '../components/ScrappyButton'
 
@@ -201,6 +201,7 @@ export function FacilitatorView() {
   const [roomId] = useState(savedRoomId || makeRoomId())
   const [started, setStarted] = useState(false)
   const [tab, setTab] = useState('triage')
+  const [chanStatus, setChanStatus] = useState('idle') // 'idle' | 'connecting' | 'live' | 'error'
 
   const [filterGate, setFilterGate] = useState(1)
   const [filterDim,  setFilterDim]  = useState('all')
@@ -246,13 +247,29 @@ export function FacilitatorView() {
         setResponses(prev => [...prev, msg.payload])
       }
     })
+    onStatus(ch, (status, err) => {
+      if (status === 'SUBSCRIBED')          setChanStatus('live')
+      else if (status === 'CHANNEL_ERROR')  setChanStatus('error')
+      else if (status === 'TIMED_OUT')      setChanStatus('error')
+      else if (status === 'CLOSED')         setChanStatus('idle')
+      if (err) console.warn('[facilitator] channel error:', err)
+    })
   }
 
   const startSession = () => {
-    openChan()
-    setSession(roomId, 'facilitator')
+    // Switch the UI immediately so the user sees feedback even if the
+    // realtime channel takes a moment to connect (or never does).
     setStarted(true)
-    sendMsg(channelRef.current, { type: 'ping' })
+    setChanStatus('connecting')
+    setSession(roomId, 'facilitator')
+    try {
+      openChan()
+      // ping is queued internally if not yet SUBSCRIBED
+      sendMsg(channelRef.current, { type: 'ping' })
+    } catch (err) {
+      console.error('[facilitator] startSession failed:', err)
+      setChanStatus('error')
+    }
   }
 
   const launchTriage = () => {
@@ -510,11 +527,46 @@ export function FacilitatorView() {
         </div>
         <div style={{
           padding: '4px 10px', borderRadius: 999,
-          background: '#E6F4EC', border: `2px solid #2A6B45`,
+          background: chanStatus === 'live' ? '#E6F4EC'
+            : chanStatus === 'error' ? '#FCE8E2'
+            : '#FFF4D8',
+          border: `2px solid ${
+            chanStatus === 'live' ? '#2A6B45'
+            : chanStatus === 'error' ? '#C0452A'
+            : '#C17B2A'}`,
           fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 10,
-          color: '#2A6B45', letterSpacing: '.06em',
-        }}>● LIVE</div>
+          color: chanStatus === 'live' ? '#2A6B45'
+            : chanStatus === 'error' ? '#C0452A'
+            : '#C17B2A',
+          letterSpacing: '.06em',
+        }}>
+          {chanStatus === 'live'       ? '● LIVE'
+            : chanStatus === 'error'    ? '⚠ OFFLINE'
+            : '◌ CONNECTING…'}
+        </div>
       </div>
+
+      {/* Channel error banner — surfaces the most common reason
+          participants stay stuck on "waiting for facilitator" */}
+      {chanStatus === 'error' && (
+        <SectionCard style={{ marginBottom: 14, background: '#FCE8E2', borderColor: '#C0452A' }}>
+          <Eyebrow color="#C0452A">⚠ Realtime channel failed</Eyebrow>
+          <div style={{ fontSize: 12, color: INK, lineHeight: 1.5 }}>
+            The session UI is open but messages aren't reaching
+            participants. Most often: <b>Realtime is disabled</b> on the
+            Supabase project, or <b>Private channels</b> require an auth
+            policy. Open the project's Realtime settings and enable
+            "Broadcast" without the private flag, then click{' '}
+            <button onClick={() => { channelRef.current?.close(); openChan() }}
+              style={{
+                background: '#FFFFFF', border: `2px solid ${INK}`,
+                borderRadius: 8, padding: '2px 8px', cursor: 'pointer',
+                fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 10,
+                letterSpacing: '.04em', textTransform: 'uppercase',
+              }}>retry</button>.
+          </div>
+        </SectionCard>
+      )}
 
       {/* QR + URL compact */}
       <SectionCard style={{ marginBottom: 14 }}>

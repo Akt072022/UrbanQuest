@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { openChannel, sendMsg, subscribe, closeChannel } from '../lib/session'
+import { openChannel, sendMsg, subscribe, closeChannel, onStatus } from '../lib/session'
 import {
   TOOLS, GATE_LABEL, DIMENSIONS, DIM_BY_ID,
   toolsForGate, toolsForGateDim, SKILL_LEVELS,
@@ -64,7 +64,14 @@ function HexBadge({ gate, dimsData, size = 100 }) {
 }
 
 // ── Header bar — RECITY wordmark + room + connection state ────
-function Header({ roomId, connected }) {
+function Header({ roomId, status }) {
+  // status: 'connecting' | 'live' | 'error'
+  const colour = status === 'live' ? '#2A6B45'
+    : status === 'error' ? '#C0452A' : '#C17B2A'
+  const bg = status === 'live' ? '#E6F4EC'
+    : status === 'error' ? '#FCE8E2' : '#FFF4D8'
+  const label = status === 'live' ? '● LIVE'
+    : status === 'error' ? '⚠ OFFLINE' : '◌ CONNECTING…'
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 10,
@@ -90,18 +97,17 @@ function Header({ roomId, connected }) {
       </div>
       <div style={{
         padding: '3px 10px', borderRadius: 999,
-        background: connected ? '#E6F4EC' : '#FCE8E2',
-        border: `2px solid ${connected ? '#2A6B45' : '#C0452A'}`,
+        background: bg, border: `2px solid ${colour}`,
         fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 9,
-        color: connected ? '#2A6B45' : '#C0452A',
-        letterSpacing: '.06em',
-      }}>● {connected ? 'LIVE' : 'CONNECTING…'}</div>
+        color: colour, letterSpacing: '.06em',
+      }}>{label}</div>
     </div>
   )
 }
 
 // ── Waiting state ─────────────────────────────────────────────
-function WaitingState() {
+function WaitingState({ status }) {
+  const isError = status === 'error'
   return (
     <div style={{
       flex: 1, display: 'flex', flexDirection: 'column',
@@ -110,25 +116,38 @@ function WaitingState() {
     }}>
       <div style={{
         width: 80, height: 80, borderRadius: '50%',
-        background: CARD, border: `3px solid ${INK}`,
+        background: isError ? '#FCE8E2' : CARD,
+        border: `3px solid ${isError ? '#C0452A' : INK}`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         marginBottom: 18,
-        animation: 'pulse-ink 2s ease-in-out infinite',
+        animation: isError ? 'none' : 'pulse-ink 2s ease-in-out infinite',
       }}>
-        <svg viewBox="0 0 24 24" width="40" height="40" fill="none">
-          <circle cx="12" cy="12" r="9" stroke={INK} strokeWidth="2" />
-          <path d="M12 7v5l3 2" stroke={INK} strokeWidth="2"
-            strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+        {isError ? (
+          <svg viewBox="0 0 24 24" width="40" height="40" fill="none">
+            <path d="M12 3l10 18H2L12 3z" stroke="#C0452A" strokeWidth="2"
+              strokeLinejoin="round" fill="none" />
+            <path d="M12 10v5M12 18v.01" stroke="#C0452A" strokeWidth="2.5"
+              strokeLinecap="round" />
+          </svg>
+        ) : (
+          <svg viewBox="0 0 24 24" width="40" height="40" fill="none">
+            <circle cx="12" cy="12" r="9" stroke={INK} strokeWidth="2" />
+            <path d="M12 7v5l3 2" stroke={INK} strokeWidth="2"
+              strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        )}
       </div>
       <div style={{
         fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 22,
-        color: INK, letterSpacing: '.04em', marginBottom: 6,
-      }}>WAITING FOR FACILITATOR</div>
+        color: isError ? '#C0452A' : INK,
+        letterSpacing: '.04em', marginBottom: 6,
+      }}>{isError ? 'CONNECTION FAILED' : 'WAITING FOR FACILITATOR'}</div>
       <div style={{
         color: '#5A5550', fontSize: 13, lineHeight: 1.45, maxWidth: 320,
       }}>
-        The session opens as soon as the facilitator launches it. You can leave this page open — your spot is reserved.
+        {isError
+          ? 'Couldn\'t reach the realtime server. Check the Wi-Fi and reload the page. If the problem persists, ask the facilitator to verify their Supabase Realtime settings.'
+          : 'The session opens as soon as the facilitator launches it. You can leave this page open — your spot is reserved.'}
       </div>
       <style>{`
         @keyframes pulse-ink {
@@ -596,7 +615,7 @@ function QuestionMode({ question, channel, answered, setAnswered, revealed }) {
 
 // ── Main view ─────────────────────────────────────────────────
 export function ParticipantView({ roomId }) {
-  const [connected, setConnected]   = useState(false)
+  const [chanStatus, setChanStatus] = useState('connecting') // 'connecting' | 'live' | 'error'
   const [mode, setMode]             = useState('waiting')
   const [sessionGate, setSessionGate] = useState(1)
   const [sessionDim, setSessionDim] = useState('all')
@@ -617,13 +636,11 @@ export function ParticipantView({ roomId }) {
     subscribe(ch, (msg) => {
       if (msg.type === 'ping') {
         sendMsg(ch, { type: 'pong', payload: { participantId: PARTICIPANT_ID } })
-        setConnected(true)
       }
       if (msg.type === 'triage_start') {
         const { gate, dim } = msg.payload
         setSessionGate(gate || 1)
         setSessionDim(dim || 'all')
-        // If single dim → straight to deck; if all → picker first.
         if (dim && dim !== 'all') {
           setActiveDim(dim)
           setMode('deck')
@@ -631,20 +648,27 @@ export function ParticipantView({ roomId }) {
           setActiveDim(null)
           setMode('pick')
         }
-        setConnected(true)
       }
       if (msg.type === 'question') {
         setQuestion(msg.payload)
         setMode('question')
         setAnswered(false)
         setRevealed(false)
-        setConnected(true)
       }
       if (msg.type === 'reveal') setRevealed(true)
     })
-    // Tell the facilitator we're here, in case they're already running.
-    sendMsg(ch, { type: 'pong', payload: { participantId: PARTICIPANT_ID } })
-    setConnected(true)
+    onStatus(ch, (status, err) => {
+      if (status === 'SUBSCRIBED') {
+        setChanStatus('live')
+        // Announce ourselves once the channel is actually live.
+        sendMsg(ch, { type: 'pong', payload: { participantId: PARTICIPANT_ID } })
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        setChanStatus('error')
+        if (err) console.warn('[participant] channel error:', err)
+      } else if (status === 'CLOSED') {
+        setChanStatus('error')
+      }
+    })
     return () => { stopTTS(); closeChannel(ch) }
   }, [roomId])
 
@@ -702,9 +726,9 @@ export function ParticipantView({ roomId }) {
       display: 'flex', flexDirection: 'column',
       color: INK, fontFamily: '-apple-system, Helvetica Neue, sans-serif',
     }}>
-      <Header roomId={roomId} connected={connected} />
+      <Header roomId={roomId} status={chanStatus} />
 
-      {mode === 'waiting' && <WaitingState />}
+      {mode === 'waiting' && <WaitingState status={chanStatus} />}
 
       {mode === 'pick' && (
         <DimPicker
