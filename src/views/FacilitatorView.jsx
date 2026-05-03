@@ -310,7 +310,7 @@ export function FacilitatorView() {
         setUseAiDeck(true)   // opt the facilitator into the AI deck by default
       }
     } catch (e) {
-      setAiError(e?.message || 'Could not contact Mistral.')
+      setAiError(e?.message || 'Analysis failed. Try again in a moment.')
     } finally {
       setAiLoading(false)
     }
@@ -828,7 +828,7 @@ export function FacilitatorView() {
                       <div style={{
                         fontSize: 11, color: '#5A5550', lineHeight: 1.45, marginBottom: 10,
                       }}>
-                        Let Mistral read your project description and
+                        Let the AI read your project description and
                         suggest the most relevant methods from the catalogue.
                       </div>
                     )}
@@ -842,7 +842,7 @@ export function FacilitatorView() {
                       size="md" full>
                       {aiLoading ? 'ANALYZING…'
                         : aiSugg.length > 0 ? '↻ RE-ANALYZE'
-                        : '✨ ANALYZE WITH MISTRAL'}
+                        : '✨ ANALYZE PROJECT'}
                     </ScrappyButton>
 
                     {aiError && (

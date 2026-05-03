@@ -29,7 +29,7 @@ function compactCatalogue() {
 
 export async function suggestMethods({ name, desc }) {
   const key = import.meta.env.VITE_MISTRAL_API_KEY
-  if (!key) throw new Error('Mistral API key not configured')
+  if (!key) throw new Error('AI is not configured.')
 
   const sys = [
     'You are an expert urban-planning and co-design method advisor.',
@@ -73,15 +73,18 @@ ${compactCatalogue()}`
   })
   if (!res.ok) {
     const txt = await res.text().catch(() => '')
-    throw new Error(`Mistral HTTP ${res.status} ${txt.slice(0, 200)}`)
+    // Surface a generic message to the UI; keep the raw body in the
+    // console so the developer can still diagnose.
+    if (txt) console.warn('[ai] HTTP', res.status, txt)
+    throw new Error(`Analysis service returned an error (${res.status}).`)
   }
   const json = await res.json()
   const content = json?.choices?.[0]?.message?.content
-  if (!content) throw new Error('Mistral returned no content')
+  if (!content) throw new Error('Analysis returned no content.')
 
   let parsed
   try { parsed = JSON.parse(content) }
-  catch { throw new Error('Mistral returned non-JSON content') }
+  catch { throw new Error('Analysis returned an unexpected response.') }
 
   const raw = Array.isArray(parsed?.suggestions) ? parsed.suggestions : []
 
