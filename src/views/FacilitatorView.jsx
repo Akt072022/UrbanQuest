@@ -161,6 +161,30 @@ function GateGlyph({ gate, active }) {
   )
 }
 
+// ── Wizard summary row — label · value, used in Step 4 ────────
+function SummaryRow({ label, value, col }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 10,
+      padding: '8px 10px',
+      background: PAGE,
+      border: `2px solid ${INK}`, borderRadius: 10,
+    }}>
+      <div style={{
+        fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 10,
+        color: '#5A5550', letterSpacing: '.06em',
+        textTransform: 'uppercase', flexShrink: 0, width: 96,
+      }}>{label}</div>
+      <div style={{
+        flex: 1,
+        fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 14,
+        color: col, letterSpacing: '.02em',
+        textAlign: 'right',
+      }}>{value}</div>
+    </div>
+  )
+}
+
 // ── Selector tiles — used for both gate and dimension filters ──
 function TileButton({ active, color, label, glyph, onClick }) {
   return (
@@ -205,6 +229,12 @@ export function FacilitatorView() {
 
   const [filterGate, setFilterGate] = useState(1)
   const [filterDim,  setFilterDim]  = useState('all')
+
+  // Pre-start wizard: 1 process step → 2 dimension+deck → 3 mode → 4 launch.
+  // The session page (post-launch) still lets the facilitator switch
+  // between modes — `initialMode` only seeds `tab` on launch.
+  const [wizardStep, setWizardStep] = useState(1)
+  const [initialMode, setInitialMode] = useState('triage')
 
   // Session state
   const [participants, setParticipants]     = useState([])
@@ -308,6 +338,9 @@ export function FacilitatorView() {
   }, [started])
 
   const startSession = () => {
+    // Seed the active tab with what the facilitator picked at step 3,
+    // but keep the toggle on the session page so they can switch later.
+    setTab(initialMode)
     // Switch the UI immediately so the user sees feedback even if the
     // realtime channel takes a moment to connect (or never does).
     setStarted(true)
@@ -379,12 +412,13 @@ export function FacilitatorView() {
 
   useEffect(() => () => channelRef.current?.close(), [])
 
-  // ── Pre-start ──────────────────────────────────────────────────
+  // ── Pre-start wizard ───────────────────────────────────────────
   if (!started) {
+    const STEP_LABELS = ['Process step', 'Design dimension', 'Mode', 'Launch']
+    const totalMin = Math.ceil(toolList.length * 0.4)
+
     return (
-      <div className="anim-fadein" style={{
-        padding: '6px 0 32px',
-      }}>
+      <div className="anim-fadein" style={{ padding: '6px 0 32px' }}>
         {/* Nav */}
         <ScrappyButton onClick={goMap} color={CARD} size="sm">← MAP</ScrappyButton>
 
@@ -394,174 +428,271 @@ export function FacilitatorView() {
             fontFamily: FONT_HEAD,
             fontWeight: 900, fontSize: 'clamp(36px,12vw,60px)',
             color: INK, lineHeight: .9, letterSpacing: '.005em',
-          }}>LIVE</div>
+          }}>NEW</div>
           <div style={{
             fontFamily: FONT_HEAD,
             fontWeight: 900, fontSize: 'clamp(36px,12vw,60px)',
             color: GATE_COL[filterGate], lineHeight: .9, letterSpacing: '.005em',
           }}>WORKSHOP</div>
         </div>
-        <p style={{
-          fontFamily: '-apple-system, Helvetica Neue, sans-serif',
-          fontSize: 13, color: '#3F3A36', lineHeight: 1.45,
-          margin: '0 0 18px',
+
+        {/* Wizard breadcrumb — 4 steps, current highlighted */}
+        <div style={{
+          display: 'flex', gap: 6, margin: '18px 0 14px', alignItems: 'center',
         }}>
-          Triage tools collectively. Each participant joins from their phone and
-          rates the methods at their own pace — async-friendly.
-        </p>
+          {STEP_LABELS.map((label, i) => {
+            const n = i + 1
+            const active = wizardStep === n
+            const done   = wizardStep >  n
+            return (
+              <button key={n}
+                onClick={() => { if (n < wizardStep) setWizardStep(n) }}
+                disabled={n > wizardStep}
+                style={{
+                  flex: 1, padding: '7px 4px',
+                  background: active ? INK : (done ? GATE_COL[filterGate] : CARD),
+                  color: active || done ? '#FFFFFF' : '#9C958A',
+                  border: `2px solid ${INK}`,
+                  borderRadius: 999,
+                  fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 9,
+                  letterSpacing: '.04em', textTransform: 'uppercase',
+                  cursor: n < wizardStep ? 'pointer' : (active ? 'default' : 'not-allowed'),
+                  boxShadow: active ? '2px 2px 0 ' + INK : 'none',
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                }}>
+                {n}. {label}
+              </button>
+            )
+          })}
+        </div>
 
-        {/* Step 1 — Gate (one full-width row per gate, breathing room) */}
-        <SectionCard>
-          <Eyebrow color={GATE_COL[filterGate]}>Step 1 · Process step</Eyebrow>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {[1,2,3,4].map(g => {
-              const active = filterGate === g
-              return (
-                <button key={g} onClick={() => setFilterGate(g)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 14,
-                    padding: '12px 16px', textAlign: 'left',
-                    background: active ? GATE_COL[g] : CARD,
-                    border: `2.5px solid ${INK}`,
-                    borderRadius: 14,
-                    cursor: 'pointer',
-                    boxShadow: active ? '2px 2px 0 ' + INK : 'none',
-                    transform: active ? 'translate(-1px,-1px)' : 'none',
-                    transition: 'transform .08s',
-                  }}>
-                  <span style={{
-                    flexShrink: 0,
-                    width: 28, height: 28,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    <GateGlyph gate={g} active={active} />
-                  </span>
-                  <span style={{
-                    flex: 1,
-                    fontFamily: FONT_HEAD,
-                    fontWeight: 900, fontSize: 16,
-                    letterSpacing: '.04em', textTransform: 'uppercase',
-                    color: active ? '#FFFFFF' : INK, lineHeight: 1.1,
-                  }}>{GATE_LABEL[g]}</span>
-                  <span style={{
-                    flexShrink: 0,
-                    fontFamily: FONT_HEAD,
-                    fontWeight: 900, fontSize: 11,
-                    letterSpacing: '.06em',
-                    color: active ? 'rgba(255,255,255,.85)' : '#9C958A',
-                  }}>STEP {g}</span>
-                </button>
-              )
-            })}
-          </div>
-        </SectionCard>
-
-        {/* Step 2 — Dimension (optional) */}
-        <SectionCard>
-          <Eyebrow color={filterDim === 'all' ? INK : DIM_BY_ID[filterDim].color}>
-            Step 2 · Design dimension <span style={{ color: '#9C958A' }}>(optional)</span>
-          </Eyebrow>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6 }}>
-            <TileButton
-              active={filterDim === 'all'}
-              color={INK}
-              label="All"
-              glyph={null}
-              onClick={() => setFilterDim('all')} />
-            {DIMENSIONS.map(d => (
-              <TileButton key={d.id}
-                active={filterDim === d.id}
-                color={d.color}
-                label={d.label}
-                glyph={null}
-                onClick={() => setFilterDim(d.id)} />
-            ))}
-          </div>
-        </SectionCard>
-
-        {/* Step 3 — Session code + scannable QR. Generous on phones,
-            capped on desktop so it doesn't spread across the whole
-            screen and stays sharp. Always centred. */}
-        <SectionCard>
-          <Eyebrow color={INK}>Step 3 · Scan to join</Eyebrow>
-          <div style={{
-            display: 'flex', flexDirection: 'column', alignItems: 'center',
-            gap: 14,
-          }}>
-            <div style={{
-              padding: 10, background: '#FFFFFF',
-              border: `3px solid ${INK}`, borderRadius: 12,
-              boxShadow: '3px 3px 0 ' + INK,
-              width: '100%', maxWidth: 420,
-            }}>
-              <QRCode value={url} />
+        {/* ── STEP 1 — Process step (gate) ──────────────────── */}
+        {wizardStep === 1 && (
+          <SectionCard>
+            <Eyebrow color={GATE_COL[filterGate]}>Step 1 · Process step</Eyebrow>
+            <div style={{ fontSize: 12, color: '#5A5550', marginBottom: 12, lineHeight: 1.45 }}>
+              Which gate of the journey is this workshop about?
             </div>
-            <div style={{ textAlign: 'center', width: '100%' }}>
-              <div style={{
-                fontFamily: FONT_HEAD,
-                fontWeight: 900, fontSize: 32,
-                color: INK, letterSpacing: '.08em',
-                lineHeight: 1,
-              }}>{roomId}</div>
-              <div style={{
-                fontSize: 10, color: '#5A5550', fontWeight: 700,
-                marginTop: 6, letterSpacing: '.04em',
-                textTransform: 'uppercase',
-              }}>session code</div>
-              <div style={{
-                fontSize: 10, color: '#9C958A',
-                marginTop: 8, wordBreak: 'break-all',
-              }}>{url}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {[1,2,3,4].map(g => {
+                const active = filterGate === g
+                return (
+                  <button key={g} onClick={() => setFilterGate(g)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 14,
+                      padding: '12px 16px', textAlign: 'left',
+                      background: active ? GATE_COL[g] : CARD,
+                      border: `2.5px solid ${INK}`,
+                      borderRadius: 14,
+                      cursor: 'pointer',
+                      boxShadow: active ? '2px 2px 0 ' + INK : 'none',
+                      transform: active ? 'translate(-1px,-1px)' : 'none',
+                      transition: 'transform .08s',
+                    }}>
+                    <span style={{
+                      flexShrink: 0,
+                      width: 28, height: 28,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <GateGlyph gate={g} active={active} />
+                    </span>
+                    <span style={{
+                      flex: 1,
+                      fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 16,
+                      letterSpacing: '.04em', textTransform: 'uppercase',
+                      color: active ? '#FFFFFF' : INK, lineHeight: 1.1,
+                    }}>{GATE_LABEL[g]}</span>
+                    <span style={{
+                      flexShrink: 0,
+                      fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
+                      letterSpacing: '.06em',
+                      color: active ? 'rgba(255,255,255,.85)' : '#9C958A',
+                    }}>STEP {g}</span>
+                  </button>
+                )
+              })}
             </div>
-          </div>
-        </SectionCard>
+          </SectionCard>
+        )}
 
-        {/* Deck preview */}
-        <SectionCard>
-          <Eyebrow color={INK}>Deck preview</Eyebrow>
-          <div style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-            marginBottom: 10,
-          }}>
-            <span style={{
-              fontFamily: FONT_HEAD,
-              fontWeight: 900, fontSize: 14, color: INK,
-              textTransform: 'uppercase', letterSpacing: '.04em',
-            }}>
-              {GATE_LABEL[filterGate]}
-              {filterDim !== 'all' && (
-                <span style={{ color: DIM_BY_ID[filterDim].color, marginLeft: 8 }}>
-                  · {DIM_BY_ID[filterDim].label}
+        {/* ── STEP 2 — Design dimension + deck preview ───────── */}
+        {wizardStep === 2 && (
+          <>
+            <SectionCard>
+              <Eyebrow color={filterDim === 'all' ? INK : DIM_BY_ID[filterDim].color}>
+                Step 2 · Design dimension <span style={{ color: '#9C958A' }}>(optional)</span>
+              </Eyebrow>
+              <div style={{ fontSize: 12, color: '#5A5550', marginBottom: 12, lineHeight: 1.45 }}>
+                Narrow the deck to one lens — or keep "All" to triage every method in this gate.
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6 }}>
+                <TileButton
+                  active={filterDim === 'all'}
+                  color={INK}
+                  label="All"
+                  glyph={null}
+                  onClick={() => setFilterDim('all')} />
+                {DIMENSIONS.map(d => (
+                  <TileButton key={d.id}
+                    active={filterDim === d.id}
+                    color={d.color}
+                    label={d.label}
+                    glyph={null}
+                    onClick={() => setFilterDim(d.id)} />
+                ))}
+              </div>
+            </SectionCard>
+
+            <SectionCard>
+              <Eyebrow color={INK}>Deck preview</Eyebrow>
+              <div style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+                marginBottom: 10,
+              }}>
+                <span style={{
+                  fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 14, color: INK,
+                  textTransform: 'uppercase', letterSpacing: '.04em',
+                }}>
+                  {GATE_LABEL[filterGate]}
+                  {filterDim !== 'all' && (
+                    <span style={{ color: DIM_BY_ID[filterDim].color, marginLeft: 8 }}>
+                      · {DIM_BY_ID[filterDim].label}
+                    </span>
+                  )}
                 </span>
-              )}
-            </span>
-            <span style={{
-              fontFamily: FONT_HEAD,
-              fontWeight: 900, fontSize: 22, color: GATE_COL[filterGate],
-            }}>{toolList.length} tools</span>
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {toolList.slice(0, 6).map(t => (
-              <ScrappyChip key={t.n} color={CARD} textColor={INK}>
-                {t.n}
-              </ScrappyChip>
-            ))}
-            {toolList.length > 6 && (
-              <ScrappyChip color={GATE_COL[filterGate]} textColor="#FFFFFF">
-                +{toolList.length - 6} more
-              </ScrappyChip>
-            )}
-          </div>
-          <div style={{
-            marginTop: 10, fontSize: 11, color: '#9C958A', fontStyle: 'italic',
-          }}>
-            ≈ {Math.ceil(toolList.length * 0.4)} min for participants to complete the deck.
-          </div>
-        </SectionCard>
+                <span style={{
+                  fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 22, color: GATE_COL[filterGate],
+                }}>{toolList.length} tools</span>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {toolList.slice(0, 6).map(t => (
+                  <ScrappyChip key={t.n} color={CARD} textColor={INK}>{t.n}</ScrappyChip>
+                ))}
+                {toolList.length > 6 && (
+                  <ScrappyChip color={GATE_COL[filterGate]} textColor="#FFFFFF">
+                    +{toolList.length - 6} more
+                  </ScrappyChip>
+                )}
+              </div>
+              <div style={{
+                marginTop: 10, fontSize: 11, color: '#9C958A', fontStyle: 'italic',
+              }}>
+                ≈ {totalMin} min for participants to complete the deck.
+              </div>
+            </SectionCard>
+          </>
+        )}
 
-        <ScrappyButton onClick={startSession} color={YELLOW} size="lg" full>
-          OPEN SESSION →
-        </ScrappyButton>
+        {/* ── STEP 3 — Mode picker ───────────────────────────── */}
+        {wizardStep === 3 && (
+          <SectionCard>
+            <Eyebrow color={INK}>Step 3 · How will the workshop run?</Eyebrow>
+            <div style={{ fontSize: 12, color: '#5A5550', marginBottom: 12, lineHeight: 1.45 }}>
+              You can switch modes any time during the session.
+            </div>
+            <div style={{
+              display: 'grid', gap: 10,
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            }}>
+              {[
+                { id: 'triage',
+                  title: 'Collective triage',
+                  desc:  'Each participant rates every method in the deck on their own phone. Live heatmap shows where the team converges or diverges.',
+                  icon:  '🗂' },
+                { id: 'question',
+                  title: 'Live question',
+                  desc:  'Pick one method at a time and broadcast a question. Free text / slider / 3-way vote — instant aggregated results.',
+                  icon:  '❓' },
+              ].map(m => {
+                const active = initialMode === m.id
+                return (
+                  <button key={m.id} onClick={() => setInitialMode(m.id)}
+                    style={{
+                      textAlign: 'left',
+                      padding: '14px 14px',
+                      background: active ? GATE_COL[filterGate] : CARD,
+                      color: active ? '#FFFFFF' : INK,
+                      border: `2.5px solid ${INK}`,
+                      borderRadius: 14,
+                      cursor: 'pointer',
+                      boxShadow: active ? '3px 3px 0 ' + INK : '2px 2px 0 ' + INK + '33',
+                      transform: active ? 'translate(-1px,-1px)' : 'none',
+                      transition: 'transform .08s',
+                    }}>
+                    <div style={{ fontSize: 22, marginBottom: 6 }}>{m.icon}</div>
+                    <div style={{
+                      fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 16,
+                      letterSpacing: '.04em', textTransform: 'uppercase',
+                      lineHeight: 1.1, marginBottom: 6,
+                    }}>{m.title}</div>
+                    <div style={{
+                      fontSize: 12, lineHeight: 1.4,
+                      color: active ? 'rgba(255,255,255,.92)' : '#5A5550',
+                      fontWeight: 600,
+                    }}>{m.desc}</div>
+                  </button>
+                )
+              })}
+            </div>
+          </SectionCard>
+        )}
+
+        {/* ── STEP 4 — Launch summary ────────────────────────── */}
+        {wizardStep === 4 && (
+          <SectionCard>
+            <Eyebrow color={GATE_COL[filterGate]}>Step 4 · Ready to launch</Eyebrow>
+            <div style={{
+              display: 'grid', gap: 10, marginBottom: 16,
+            }}>
+              <SummaryRow label="Process step"
+                value={GATE_LABEL[filterGate]} col={GATE_COL[filterGate]} />
+              <SummaryRow label="Dimension"
+                value={filterDim === 'all' ? 'All dimensions' : DIM_BY_ID[filterDim].label}
+                col={filterDim === 'all' ? INK : DIM_BY_ID[filterDim].color} />
+              <SummaryRow label="Initial mode"
+                value={initialMode === 'triage' ? 'Collective triage' : 'Live question'}
+                col={INK} />
+              <SummaryRow label="Deck"
+                value={`${toolList.length} tools · ≈ ${totalMin} min`}
+                col={INK} />
+            </div>
+            <div style={{
+              fontSize: 11, color: '#5A5550', lineHeight: 1.5,
+              padding: '8px 10px', background: PAGE,
+              border: `1.5px dashed ${INK}33`, borderRadius: 10,
+              marginBottom: 14,
+            }}>
+              Once launched, the QR code and the join link will appear on the
+              session page — share them with participants then.
+            </div>
+            <ScrappyButton onClick={startSession} color={YELLOW} size="lg" full>
+              LAUNCH SESSION →
+            </ScrappyButton>
+          </SectionCard>
+        )}
+
+        {/* Wizard footer — Back / Next (Launch is in Step 4 above) */}
+        {wizardStep < 4 && (
+          <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+            <ScrappyButton
+              onClick={() => setWizardStep(s => Math.max(1, s - 1))}
+              color={CARD} size="md" full>
+              ← BACK
+            </ScrappyButton>
+            <ScrappyButton
+              onClick={() => setWizardStep(s => s + 1)}
+              color={YELLOW} size="md" full>
+              NEXT →
+            </ScrappyButton>
+          </div>
+        )}
+        {wizardStep === 4 && (
+          <ScrappyButton
+            onClick={() => setWizardStep(s => s - 1)}
+            color={CARD} size="md" full>
+            ← BACK
+          </ScrappyButton>
+        )}
       </div>
     )
   }
