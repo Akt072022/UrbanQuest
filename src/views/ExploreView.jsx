@@ -502,7 +502,7 @@ export function CardCover({ tool, gate }) {
 }
 
 // ── Synthesis face (face B) ───────────────────────────────────
-export function CardSynthesis({ tool, gate, onDive }) {
+export function CardSynthesis({ tool, gate, onDive, alreadyLevel = null, alreadySkipped = false }) {
   const toolNum  = TOOLS.indexOf(tool) + 1
   const col      = GATE_COL[gate]
   const thumbSrc = canvasThumbUrl(toolNum)
@@ -591,6 +591,35 @@ export function CardSynthesis({ tool, gate, onDive }) {
       {zoom && thumbSrc && (
         <ImageLightbox src={thumbSrc} alt={`${tool.n} canvas`}
           onClose={() => setZoom(false)} />
+      )}
+      {/* Already-evaluated banner — visible when the user revisits a
+          tool they've already rated, so they don't loop endlessly. */}
+      {(alreadyLevel || alreadySkipped) && (
+        <div style={{
+          flexShrink: 0,
+          padding: '8px 14px',
+          display: 'flex', alignItems: 'center', gap: 8,
+          background: alreadySkipped
+            ? '#9C958A'
+            : (alreadyLevel === 'regular' ? '#2A6B45'
+               : alreadyLevel === 'occasional' ? '#C17B2A' : '#5A5550'),
+          color: '#FFFFFF',
+          borderBottom: `2px solid ${INK}`,
+          fontFamily: 'Barlow Condensed, Impact, sans-serif',
+          fontWeight: 900, fontSize: 11,
+          letterSpacing: '.06em', textTransform: 'uppercase',
+        }}>
+          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+            <path d="M5 13l4 4L19 7" fill="none" stroke="#FFFFFF"
+              strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          {alreadySkipped
+            ? 'Already skipped'
+            : `Already evaluated · ${SKILL_LEVELS[alreadyLevel]?.label || alreadyLevel}`}
+          <span style={{ marginLeft: 'auto', opacity: .85, fontSize: 10 }}>
+            (re-pick to update)
+          </span>
+        </div>
       )}
       <div style={{
         padding: '14px 16px 12px', flex: 1, minHeight: 0,
@@ -942,7 +971,7 @@ function Section({ label, emoji, children }) {
 const CARD_W = 340
 const CARD_H = 540
 
-export function CardStack({ tool, gate, face, onDive, onBack }) {
+export function CardStack({ tool, gate, face, onDive, onBack, alreadyLevel, alreadySkipped }) {
   const flipped = face !== 'cover'
   return (
     <div className="perspective-900" style={{ width: CARD_W, height: CARD_H }}>
@@ -956,7 +985,8 @@ export function CardStack({ tool, gate, face, onDive, onBack }) {
         </div>
         <div className="backface-hidden rotate-y-180" style={{ position: 'absolute', inset: 0 }}>
           {face !== 'deep'
-            ? <CardSynthesis tool={tool} gate={gate} onDive={onDive} />
+            ? <CardSynthesis tool={tool} gate={gate} onDive={onDive}
+                alreadyLevel={alreadyLevel} alreadySkipped={alreadySkipped} />
             : <CardDeep tool={tool} gate={gate} onBack={onBack} />}
         </div>
       </div>
@@ -1136,10 +1166,13 @@ export function ProgressDots({ tools, idx }) {
 
 // ── Main Explore view ──────────────────────────────────────────
 export function ExploreView() {
-  const { eGate, eDim, eIdx, goMap, practiceTool, skipTool, nextCard } =
+  const { eGate, eDim, eIdx, practiced, skipped,
+          goMap, practiceTool, skipTool, nextCard } =
     useStore(useShallow(s => ({
       eGate: s.eGate, eDim: s.eDim, eIdx: s.eIdx,
-      goMap: s.goMap,
+      practiced:    s.practiced,
+      skipped:      s.skipped,
+      goMap:        s.goMap,
       practiceTool: s.practiceTool,
       skipTool:     s.skipTool,
       nextCard:     s.nextCard,
@@ -1262,6 +1295,8 @@ export function ExploreView() {
               tool={tool} gate={gate} face={face}
               onDive={() => setFace('deep')}
               onBack={() => setFace('synth')}
+              alreadyLevel={practiced[tool.n] || null}
+              alreadySkipped={skipped.includes(tool.n)}
             />
           </div>
         </SwipeWrap>

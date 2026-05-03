@@ -381,6 +381,8 @@ function ToolDeck({ tools, gate, evals, skipped, onPick, onSkip, onDone }) {
               tool={tool} gate={gate} face={face}
               onDive={() => setFace('deep')}
               onBack={() => setFace('synth')}
+              alreadyLevel={evals[tool.n] || null}
+              alreadySkipped={skipped.includes(tool.n)}
             />
           </div>
         </SwipeWrap>

@@ -12,9 +12,12 @@ const LEVEL_W = Object.fromEntries(
 // First tool in `pool` that the user hasn't yet evaluated nor skipped.
 // Returns 0 when everything is done so the user can browse from the top.
 function resumeIdx(pool, practiced, skipped) {
+  if (!pool.length) return 0
   const skip = skipped instanceof Set ? skipped : new Set(skipped || [])
   const idx = pool.findIndex(t => !practiced[t.n] && !skip.has(t.n))
-  return idx >= 0 ? idx : 0
+  // All done → land on the "complete" screen (idx === pool.length).
+  // Only fresh state (nothing touched yet) returns 0.
+  return idx >= 0 ? idx : pool.length
 }
 
 export const useStore = create(
@@ -78,17 +81,23 @@ export const useStore = create(
 
       flipCard: () => set({ eFlipped: true }),
 
-      // "I know it" — record skill level. XP scales with depth.
+      // "I know it" — record skill level. XP is only awarded on the
+      // delta: the first time a tool is evaluated, or when the user
+      // upgrades the level (theory → occasional → regular). Re-tapping
+      // the same level on an already-evaluated tool yields no XP, so
+      // the user can revisit cards without farming the score.
       practiceTool: (name, level = 'regular') => set(state => {
-        const w = LEVEL_W[level] ?? 0
-        // Skipped → un-skipped automatically when you finally evaluate it.
+        const w        = LEVEL_W[level] ?? 0
+        const prevLvl  = state.practiced[name] ?? null
+        const prevW    = LEVEL_W[prevLvl] ?? 0
+        const xpDelta  = Math.max(0, Math.round(10 * (w - prevW)))
         const newSkipped = state.skipped.includes(name)
           ? state.skipped.filter(n => n !== name)
           : state.skipped
         return {
           practiced: { ...state.practiced, [name]: level },
           skipped:   newSkipped,
-          xp:        state.xp + Math.round(10 * w),
+          xp:        state.xp + xpDelta,
         }
       }),
 
