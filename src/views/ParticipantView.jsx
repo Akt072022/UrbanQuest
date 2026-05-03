@@ -540,73 +540,14 @@ function QuestionMode({ question, channel, answered, setAnswered, revealed }) {
     )
   }
 
+  // Local card-face state — lets the participant flip to the
+  // "Dive deeper" face for full details / references / canvas DL.
+  const [cardFace, setCardFace] = useState('synth')
+  useEffect(() => { setCardFace('synth') }, [tool?.n])
+
   return (
     <div style={{ padding: '20px 16px' }}>
-      {/* Tool context — name, dimensions, definition, tip */}
-      {tool && (
-        <div style={{
-          background: CARD, border: `2.5px solid ${INK}`,
-          borderRadius: 14, padding: '12px 14px',
-          boxShadow: '2px 2px 0 ' + INK,
-          marginBottom: 16,
-        }}>
-          <div style={{
-            fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 10,
-            letterSpacing: '.08em', color: GATE_COL[gate] || INK,
-            textTransform: 'uppercase', marginBottom: 4,
-          }}>
-            About this tool{gate ? ` · ${GATE_LABEL[gate]}` : ''}
-          </div>
-          <div style={{
-            fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 17,
-            color: INK, lineHeight: 1.15, marginBottom: 8,
-          }}>{tool.n}</div>
-          {tool.d?.length > 0 && (
-            <div style={{
-              display: 'flex', flexWrap: 'wrap', gap: 4,
-              marginBottom: 8,
-            }}>
-              {tool.d.map(did => {
-                const d = DIM_BY_ID[did]
-                if (!d) return null
-                return (
-                  <span key={did} style={{
-                    padding: '2px 8px', borderRadius: 6,
-                    background: d.color + '22', color: d.color,
-                    fontFamily: FONT_HEAD, fontWeight: 900,
-                    fontSize: 9, letterSpacing: '.04em',
-                    textTransform: 'uppercase',
-                  }}>{d.label}</span>
-                )
-              })}
-            </div>
-          )}
-          {tool.def && (
-            <p style={{
-              fontFamily: '-apple-system, Helvetica Neue, sans-serif',
-              fontSize: 12, color: '#3F3A36', lineHeight: 1.45,
-              margin: 0,
-            }}>{tool.def}</p>
-          )}
-          {tool.t && (
-            <div style={{
-              marginTop: 10, padding: '8px 10px',
-              background: YELLOW + '40', borderRadius: 8,
-              border: `1.5px solid ${INK}`,
-            }}>
-              <div style={{
-                fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 9,
-                color: INK, letterSpacing: '.06em',
-                textTransform: 'uppercase', marginBottom: 4,
-              }}>Practitioner tip</div>
-              <div style={{
-                fontSize: 12, color: '#3F3A36', lineHeight: 1.4,
-              }}>{tool.t}</div>
-            </div>
-          )}
-        </div>
-      )}
-
+      {/* Question first — it's the action the facilitator is asking for */}
       <div style={{
         fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
         letterSpacing: '.08em', color: '#5A5550',
@@ -616,6 +557,31 @@ function QuestionMode({ question, channel, answered, setAnswered, revealed }) {
         fontSize: 17, fontWeight: 700, color: INK,
         lineHeight: 1.4, margin: '0 0 18px',
       }}>{question.text}</p>
+
+      {/* Method card — same visual as the journey-board card so the
+          participant has the full tool context (canvas thumb, dims,
+          definition, tip) and can dive deeper for steps & refs. */}
+      {tool && (
+        <>
+          <div style={{
+            fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
+            letterSpacing: '.08em', color: GATE_COL[gate] || '#5A5550',
+            textTransform: 'uppercase', marginBottom: 8,
+          }}>
+            About the method{gate ? ` · ${GATE_LABEL[gate]}` : ''}
+          </div>
+          <div style={{
+            display: 'flex', justifyContent: 'center',
+            marginBottom: 18,
+          }}>
+            <CardStack
+              tool={tool} gate={gate || 1} face={cardFace}
+              onDive={() => setCardFace('deep')}
+              onBack={() => setCardFace('synth')}
+            />
+          </div>
+        </>
+      )}
 
       {question.type === 'slider' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
