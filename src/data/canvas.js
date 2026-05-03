@@ -139,12 +139,17 @@ export const CANVAS_FILES = [
   "OVPM-133-WELL-BuildingCommunity-Standard.pptx",
 ]
 
+// BASE prefix — Vite injects "/UrbanQuest/" on GitHub Pages and "/"
+// in local dev. Without this the assets in /public/canvas/ resolve
+// to the wrong host root and 404 in production.
+const BASE = (import.meta.env?.BASE_URL ?? '/').replace(/\/+$/, '/') || '/'
+
 export function canvasUrl(toolId) {
   const file = CANVAS_FILES[toolId]
-  return file ? `/canvas/${file}` : null
+  return file ? `${BASE}canvas/${file}` : null
 }
 
 export function canvasThumbUrl(toolId) {
   const id = String(toolId).padStart(3, "0")
-  return `/canvas-thumbs/OVPM-${id}.png`
+  return `${BASE}canvas-thumbs/OVPM-${id}.png`
 }

@@ -36,15 +36,34 @@ function AppInner() {
     return <ParticipantView roomId={roomId} />
   }
 
+  // Wide views (Dashboard, Facilitator) get more breathing room on
+  // desktop; the card-driven views (Map, Explore, Welcome) stay in a
+  // narrow column for the same handheld-feel layout.
+  const wide = view === 'dashboard' || view === 'facilitator'
+  const maxW = wide ? 960 : 480
+
   return (
-    <div style={{ background: '#F2EDE4', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div style={{
+      background: '#F2EDE4', minHeight: '100vh',
+      display: 'flex', flexDirection: 'column',
+    }}>
       {view !== 'welcome' && <Navbar />}
-      <div style={{ flex: 1, padding: view === 'welcome' ? 0 : '20px 18px', overflowY: 'auto' }}>
-        {view === 'welcome'     && <WelcomeView />}
-        {view === 'map'         && <MapView />}
-        {view === 'explore'     && <ExploreView />}
-        {view === 'dashboard'   && <DashboardView />}
-        {view === 'facilitator' && <FacilitatorView />}
+      <div style={{
+        flex: 1, overflowY: 'auto',
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center',
+      }}>
+        <div style={{
+          width: '100%', maxWidth: maxW,
+          padding: view === 'welcome' ? 0 : '20px 18px',
+          boxSizing: 'border-box',
+        }}>
+          {view === 'welcome'     && <WelcomeView />}
+          {view === 'map'         && <MapView />}
+          {view === 'explore'     && <ExploreView />}
+          {view === 'dashboard'   && <DashboardView />}
+          {view === 'facilitator' && <FacilitatorView />}
+        </div>
       </div>
     </div>
   )

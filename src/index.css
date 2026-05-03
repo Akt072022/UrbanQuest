@@ -7,15 +7,14 @@
   body {
     background: #F2EDE4;
     min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    margin: 0;
     font-family: -apple-system, Helvetica Neue, sans-serif;
     color: #1C2530;
   }
+  /* No max-width on the root — each view inside controls its own
+     constraint (mobile-card layout vs wide desktop dashboard). */
   #root {
     width: 100%;
-    max-width: 430px;
     min-height: 100vh;
   }
 }

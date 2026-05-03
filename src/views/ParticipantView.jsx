@@ -829,42 +829,55 @@ export function ParticipantView({ roomId }) {
       color: INK, fontFamily: '-apple-system, Helvetica Neue, sans-serif',
     }}>
       <Header roomId={roomId} status={chanStatus} />
+      {/* Centred content column — narrow on phones, comfortable on
+          desktop without going full-width which would feel oversized. */}
+      <div style={{
+        flex: 1,
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center',
+        width: '100%',
+      }}>
+        <div style={{
+          width: '100%', maxWidth: 540,
+          display: 'flex', flexDirection: 'column', flex: 1,
+        }}>
+          {mode === 'waiting' && <WaitingState status={chanStatus} />}
 
-      {mode === 'waiting' && <WaitingState status={chanStatus} />}
+          {mode === 'pick' && (
+            <DimPicker
+              gate={sessionGate}
+              sessionDim={sessionDim}
+              evals={evals}
+              skipped={skipped}
+              onPickDim={(dimId) => { setActiveDim(dimId); setMode('deck') }}
+              onFinish={handleSubmitFinal} />
+          )}
 
-      {mode === 'pick' && (
-        <DimPicker
-          gate={sessionGate}
-          sessionDim={sessionDim}
-          evals={evals}
-          skipped={skipped}
-          onPickDim={(dimId) => { setActiveDim(dimId); setMode('deck') }}
-          onFinish={handleSubmitFinal} />
-      )}
+          {mode === 'deck' && (
+            <ToolDeck
+              tools={deckTools}
+              gate={sessionGate}
+              evals={evals}
+              skipped={skipped}
+              onPick={handlePick}
+              onSkip={handleSkip}
+              onDone={handleDeckDone} />
+          )}
 
-      {mode === 'deck' && (
-        <ToolDeck
-          tools={deckTools}
-          gate={sessionGate}
-          evals={evals}
-          skipped={skipped}
-          onPick={handlePick}
-          onSkip={handleSkip}
-          onDone={handleDeckDone} />
-      )}
+          {mode === 'done' && (
+            <SummaryState gate={sessionGate} evals={evals} skipped={skipped} />
+          )}
 
-      {mode === 'done' && (
-        <SummaryState gate={sessionGate} evals={evals} skipped={skipped} />
-      )}
-
-      {mode === 'question' && question && (
-        <QuestionMode
-          question={question}
-          channel={channelRef.current}
-          answered={answered}
-          setAnswered={setAnswered}
-          revealed={revealed} />
-      )}
+          {mode === 'question' && question && (
+            <QuestionMode
+              question={question}
+              channel={channelRef.current}
+              answered={answered}
+              setAnswered={setAnswered}
+              revealed={revealed} />
+          )}
+        </div>
+      </div>
     </div>
   )
 }
