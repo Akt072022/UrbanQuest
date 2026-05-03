@@ -10,7 +10,7 @@ export const GATE_DESC  = [
   'Frame the value the project should create — for whom, against what baseline, and how impact will be measured.',
   'Pressure-test feasibility — site, capacity, technical fit, and the gap between ambition and what is realistically possible.',
   'Connect the project to local fabric — stakeholders, governance, heritage, and the everyday practices it must blend with.',
-  'Plan for the long run — funding, maintenance, climate resilience, and shared ownership beyond the launch.',
+  'Plan for the long run across economic, environmental and social pillars — funding model, maintenance, climate resilience, and shared ownership beyond the launch.',
 ]
 export const GATE_ARR   = ['', '1st District', '2nd District', '3rd District', '4th District']
 export const GATE_SHORT = ['', 'Impact', 'Fit', 'Anchoring', 'Sustain.']
