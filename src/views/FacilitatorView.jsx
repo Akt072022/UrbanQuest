@@ -162,6 +162,68 @@ function GateGlyph({ gate, active }) {
   )
 }
 
+// ── Mode-picker icons — line art that matches the project's
+//   hand-drawn ink language. All three render at the same visual
+//   weight so the tiles read as siblings instead of competing.
+//   `active` swaps the stroke colour so they remain legible against
+//   the coloured tile background. ──────────────────────────────
+function ModeIcon({ id, active, size = 28 }) {
+  const c = active ? '#FFFFFF' : INK
+  if (id === 'triage') {
+    // Three stacked cards with a check on the front one — the
+    // visual metaphor for sorting / triaging a deck.
+    return (
+      <svg width={size} height={size} viewBox="0 0 28 28" fill="none"
+        style={{ display: 'block' }}>
+        {/* back card */}
+        <rect x="9" y="5" width="13" height="16" rx="2"
+          stroke={c} strokeWidth="1.8" strokeLinejoin="round"
+          transform="rotate(8 15.5 13)" fill="none" />
+        {/* middle card */}
+        <rect x="6" y="6" width="13" height="16" rx="2"
+          stroke={c} strokeWidth="1.8" strokeLinejoin="round"
+          fill="none" />
+        {/* front card */}
+        <rect x="3" y="7" width="13" height="16" rx="2"
+          stroke={c} strokeWidth="2" strokeLinejoin="round"
+          fill="none" />
+        {/* check mark on front */}
+        <path d="M6 14.5 l2.4 2.4 L13 12"
+          stroke={c} strokeWidth="2"
+          strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      </svg>
+    )
+  }
+  if (id === 'question') {
+    // Speech bubble with a question mark inside.
+    return (
+      <svg width={size} height={size} viewBox="0 0 28 28" fill="none"
+        style={{ display: 'block' }}>
+        <path d="M4 6 H24 V19 H13 L7 24 V19 H4 Z"
+          stroke={c} strokeWidth="2" strokeLinejoin="round" fill="none" />
+        <path d="M11 11 Q11 8 14 8 Q17 8 17 11 Q17 13 14 14"
+          stroke={c} strokeWidth="2" strokeLinecap="round" fill="none" />
+        <circle cx="14" cy="17" r="1" fill={c} />
+      </svg>
+    )
+  }
+  if (id === 'methodfit') {
+    // Concentric target — the bullseye for project-fit.
+    return (
+      <svg width={size} height={size} viewBox="0 0 28 28" fill="none"
+        style={{ display: 'block' }}>
+        <circle cx="14" cy="14" r="10" stroke={c} strokeWidth="2" fill="none" />
+        <circle cx="14" cy="14" r="6"  stroke={c} strokeWidth="1.8" fill="none" />
+        <circle cx="14" cy="14" r="2"  fill={c} />
+        {/* hand-drawn cross-hair ticks at N, S, E, W */}
+        <path d="M14 1.5 V4 M14 24 V26.5 M1.5 14 H4 M24 14 H26.5"
+          stroke={c} strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    )
+  }
+  return null
+}
+
 // ── Wizard summary row — label · value, used in Step 4 ────────
 function SummaryRow({ label, value, col }) {
   return (
@@ -696,16 +758,13 @@ export function FacilitatorView() {
               {[
                 { id: 'triage',
                   title: 'Collective triage',
-                  desc:  'Each participant rates every method on their own phone. Live heatmap shows where the team converges or diverges.',
-                  icon:  '🗂' },
+                  desc:  'Each participant rates every method on their own phone. Live heatmap shows where the team converges or diverges.' },
                 { id: 'question',
                   title: 'Live question',
-                  desc:  'Pick one method at a time and broadcast a question. Free text / slider / 3-way vote — aggregated live.',
-                  icon:  '❓' },
+                  desc:  'Pick one method at a time and broadcast a question. Free text / slider / 3-way vote — aggregated live.' },
                 { id: 'methodfit',
                   title: 'Project method-fit',
-                  desc:  'Pin a real project. Participants rate each method as Essential / Helpful / Optional — crossed with capability to surface train-vs-run gaps.',
-                  icon:  '🎯' },
+                  desc:  'Pin a real project. Participants rate each method as Essential / Helpful / Optional — crossed with capability to surface train-vs-run gaps.' },
               ].map(m => {
                 const active = initialMode === m.id
                 return (
@@ -722,7 +781,9 @@ export function FacilitatorView() {
                       transform: active ? 'translate(-1px,-1px)' : 'none',
                       transition: 'transform .08s',
                     }}>
-                    <div style={{ fontSize: 22, marginBottom: 6 }}>{m.icon}</div>
+                    <div style={{ marginBottom: 8 }}>
+                      <ModeIcon id={m.id} active={active} size={32} />
+                    </div>
                     <div style={{
                       fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 16,
                       letterSpacing: '.04em', textTransform: 'uppercase',
