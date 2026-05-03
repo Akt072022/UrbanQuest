@@ -5,6 +5,13 @@ export const GATE_COLOR = ['', '#C17B2A', '#1B3A6B', '#1F6B3A', '#5C2B8E']
 export const GATE_DARK  = ['', '#3D2206', '#071233', '#0A2912', '#1E0835']
 export const GATE_LABEL = ['', 'Proof of Impact', 'Proof of Fit', 'Proof of Anchoring', 'Proof of Sustainability']
 export const GATE_Q     = ['', 'Does it create value here?', 'Can it work here?', 'Can it take root here?', 'Can it endure here?']
+export const GATE_DESC  = [
+  '',
+  'Frame the value the project should create — for whom, against what baseline, and how impact will be measured.',
+  'Pressure-test feasibility — site, capacity, technical fit, and the gap between ambition and what is realistically possible.',
+  'Connect the project to local fabric — stakeholders, governance, heritage, and the everyday practices it must blend with.',
+  'Plan for the long run — funding, maintenance, climate resilience, and shared ownership beyond the launch.',
+]
 export const GATE_ARR   = ['', '1st District', '2nd District', '3rd District', '4th District']
 export const GATE_SHORT = ['', 'Impact', 'Fit', 'Anchoring', 'Sustain.']
 

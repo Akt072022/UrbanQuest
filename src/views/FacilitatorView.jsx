@@ -3,7 +3,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { useStore } from '../store/useStore'
 import { QRCode } from '../components/QRCode'
 import { makeRoomId, openChannel, sendMsg, subscribe, participantUrl, onStatus } from '../lib/session'
-import { TOOLS, GATE_LABEL, DIMENSIONS, DIM_BY_ID } from '../data/tools'
+import { TOOLS, GATE_LABEL, GATE_DESC, DIMENSIONS, DIM_BY_ID } from '../data/tools'
 import { ScrappyButton, ScrappyChip } from '../components/ScrappyButton'
 import { suggestMethods, hasMistral } from '../lib/mistral'
 
@@ -566,8 +566,8 @@ export function FacilitatorView() {
                 return (
                   <button key={g} onClick={() => setFilterGate(g)}
                     style={{
-                      display: 'flex', alignItems: 'center', gap: 14,
-                      padding: '12px 16px', textAlign: 'left',
+                      display: 'flex', alignItems: 'flex-start', gap: 14,
+                      padding: '14px 16px', textAlign: 'left',
                       background: active ? GATE_COL[g] : CARD,
                       border: `2.5px solid ${INK}`,
                       borderRadius: 14,
@@ -578,23 +578,35 @@ export function FacilitatorView() {
                     }}>
                     <span style={{
                       flexShrink: 0,
-                      width: 28, height: 28,
+                      width: 28, height: 28, marginTop: 1,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
                       <GateGlyph gate={g} active={active} />
                     </span>
-                    <span style={{
-                      flex: 1,
-                      fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 16,
-                      letterSpacing: '.04em', textTransform: 'uppercase',
-                      color: active ? '#FFFFFF' : INK, lineHeight: 1.1,
-                    }}>{GATE_LABEL[g]}</span>
-                    <span style={{
-                      flexShrink: 0,
-                      fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
-                      letterSpacing: '.06em',
-                      color: active ? 'rgba(255,255,255,.85)' : '#9C958A',
-                    }}>STEP {g}</span>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{
+                        display: 'flex', alignItems: 'center',
+                        justifyContent: 'space-between', gap: 8,
+                      }}>
+                        <span style={{
+                          fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 16,
+                          letterSpacing: '.04em', textTransform: 'uppercase',
+                          color: active ? '#FFFFFF' : INK, lineHeight: 1.1,
+                        }}>{GATE_LABEL[g]}</span>
+                        <span style={{
+                          flexShrink: 0,
+                          fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
+                          letterSpacing: '.06em',
+                          color: active ? 'rgba(255,255,255,.85)' : '#9C958A',
+                        }}>STEP {g}</span>
+                      </span>
+                      <span style={{
+                        display: 'block', marginTop: 6,
+                        fontFamily: '-apple-system, Helvetica Neue, sans-serif',
+                        fontSize: 12, lineHeight: 1.4, fontWeight: 600,
+                        color: active ? 'rgba(255,255,255,.92)' : '#5A5550',
+                      }}>{GATE_DESC[g]}</span>
+                    </span>
                   </button>
                 )
               })}
