@@ -79,19 +79,12 @@ function Header({ roomId, status }) {
       background: PAGE,
       borderBottom: `2px solid ${INK}`,
     }}>
-      <div style={{
-        width: 30, height: 30, flexShrink: 0,
-        background: INK, color: '#FFFFFF',
-        border: `2px solid ${INK}`, borderRadius: 8,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 13,
-      }}>R</div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
-          fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 16,
+          fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 18,
           color: INK, letterSpacing: '.04em', lineHeight: 1,
         }}>RECITY</div>
-        <div style={{ fontSize: 9, color: '#5A5550', fontWeight: 700, marginTop: 2 }}>
+        <div style={{ fontSize: 9, color: '#5A5550', fontWeight: 700, marginTop: 3 }}>
           Session {roomId} · #{PARTICIPANT_ID}
         </div>
       </div>
@@ -630,6 +623,15 @@ export function ParticipantView({ roomId }) {
 
   const channelRef = useRef(null)
 
+  // Latest state mirrors so the subscribe handler reads fresh values
+  // instead of the closure that was active when it was registered.
+  const stateRef = useRef({ mode, sessionGate, sessionDim, qId: null })
+  useEffect(() => {
+    stateRef.current.mode        = mode
+    stateRef.current.sessionGate = sessionGate
+    stateRef.current.sessionDim  = sessionDim
+  }, [mode, sessionGate, sessionDim])
+
   useEffect(() => {
     const ch = openChannel(roomId)
     channelRef.current = ch
@@ -639,10 +641,18 @@ export function ParticipantView({ roomId }) {
       }
       if (msg.type === 'triage_start') {
         const { gate, dim } = msg.payload
-        setSessionGate(gate || 1)
-        setSessionDim(dim || 'all')
-        if (dim && dim !== 'all') {
-          setActiveDim(dim)
+        const newGate = gate || 1
+        const newDim  = dim  || 'all'
+        const cur = stateRef.current
+        // IDEMPOTENT: if we're already locked into this exact
+        // (gate, dim) configuration, ignore — don't reset the deck.
+        const sameConfig = cur.sessionGate === newGate && cur.sessionDim === newDim
+        const inDeckOrPick = cur.mode === 'deck' || cur.mode === 'pick' || cur.mode === 'done'
+        if (sameConfig && inDeckOrPick) return
+        setSessionGate(newGate)
+        setSessionDim(newDim)
+        if (newDim !== 'all') {
+          setActiveDim(newDim)
           setMode('deck')
         } else {
           setActiveDim(null)
@@ -650,6 +660,10 @@ export function ParticipantView({ roomId }) {
         }
       }
       if (msg.type === 'question') {
+        // IDEMPOTENT: don't replay the same question (heartbeat).
+        if (stateRef.current.qId === msg.payload.questionId &&
+            stateRef.current.mode === 'question') return
+        stateRef.current.qId = msg.payload.questionId
         setQuestion(msg.payload)
         setMode('question')
         setAnswered(false)
@@ -660,7 +674,8 @@ export function ParticipantView({ roomId }) {
     onStatus(ch, (status, err) => {
       if (status === 'SUBSCRIBED') {
         setChanStatus('live')
-        // Announce ourselves once the channel is actually live.
+        // Announce ourselves once the channel is actually live so
+        // the facilitator can resync us with the current state.
         sendMsg(ch, { type: 'pong', payload: { participantId: PARTICIPANT_ID } })
       } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
         setChanStatus('error')
@@ -671,6 +686,20 @@ export function ParticipantView({ roomId }) {
     })
     return () => { stopTTS(); closeChannel(ch) }
   }, [roomId])
+
+  // Re-announce ourselves periodically so the facilitator always
+  // knows we're alive, even if a previous pong was dropped.
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (channelRef.current && chanStatus === 'live') {
+        sendMsg(channelRef.current, {
+          type: 'pong',
+          payload: { participantId: PARTICIPANT_ID },
+        })
+      }
+    }, 12000)
+    return () => clearInterval(id)
+  }, [chanStatus])
 
   // ── Handlers passed to the deck ───────────────────────────
   const handlePick = (tool, level) => {

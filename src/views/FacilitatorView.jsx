@@ -219,6 +219,15 @@ export function FacilitatorView() {
   const [activeTool, setActiveTool] = useState(null)
 
   const channelRef = useRef(null)
+  // Latest broadcastable state — read by the resync helpers below
+  // without relying on stale closures inside subscribe().
+  const stateRef = useRef({
+    triageActive: false,
+    gate: 1, dim: 'all',
+    questionActive: false,
+    question: null,
+  })
+  const seenIdsRef = useRef(new Set())   // dedup pong → resync
   const url = participantUrl(roomId)
 
   // Filtered tool list
@@ -228,13 +237,35 @@ export function FacilitatorView() {
     return gateOk && dimOk
   })
 
+  // Push the current session state to anyone who reconnects or joins
+  // late. Idempotent on the participant side so re-emitting is safe.
+  const broadcastState = () => {
+    const ch = channelRef.current
+    if (!ch) return
+    const s = stateRef.current
+    if (s.triageActive) {
+      sendMsg(ch, { type: 'triage_start', payload: { gate: s.gate, dim: s.dim } })
+    }
+    if (s.questionActive && s.question) {
+      sendMsg(ch, { type: 'question', payload: s.question })
+    }
+  }
+
   const openChan = () => {
     const ch = openChannel(roomId)
     channelRef.current = ch
     subscribe(ch, (msg) => {
       if (msg.type === 'pong') {
-        setParticipants(prev => prev.includes(msg.payload.participantId)
-          ? prev : [...prev, msg.payload.participantId])
+        const id = msg.payload.participantId
+        setParticipants(prev => prev.includes(id) ? prev : [...prev, id])
+        // Resync the late-joiner immediately. Always rebroadcast on
+        // first-seen pong; for known IDs (probably reconnect) also
+        // rebroadcast — cheap insurance.
+        const isNew = !seenIdsRef.current.has(id)
+        seenIdsRef.current.add(id)
+        if (stateRef.current.triageActive || stateRef.current.questionActive) {
+          broadcastState()
+        }
       }
       if (msg.type === 'triage_card') {
         setTriageResponses(prev => [...prev, msg.payload])
@@ -248,13 +279,30 @@ export function FacilitatorView() {
       }
     })
     onStatus(ch, (status, err) => {
-      if (status === 'SUBSCRIBED')          setChanStatus('live')
-      else if (status === 'CHANNEL_ERROR')  setChanStatus('error')
+      if (status === 'SUBSCRIBED') {
+        setChanStatus('live')
+        // Channel just (re)connected — push a state tick so any
+        // already-connected participant who missed the previous beat
+        // is back in sync.
+        broadcastState()
+      } else if (status === 'CHANNEL_ERROR') setChanStatus('error')
       else if (status === 'TIMED_OUT')      setChanStatus('error')
       else if (status === 'CLOSED')         setChanStatus('idle')
       if (err) console.warn('[facilitator] channel error:', err)
     })
   }
+
+  // Heartbeat — every 8 s, rebroadcast the current state if anything
+  // is active. Catches participants whose channel briefly dropped.
+  useEffect(() => {
+    if (!started) return
+    const id = setInterval(() => {
+      if (stateRef.current.triageActive || stateRef.current.questionActive) {
+        broadcastState()
+      }
+    }, 8000)
+    return () => clearInterval(id)
+  }, [started])
 
   const startSession = () => {
     // Switch the UI immediately so the user sees feedback even if the
@@ -277,15 +325,13 @@ export function FacilitatorView() {
     setTriageResponses([])
     setTriageDone([])
     setTriageStarted(true)
-    // Send only the scope (gate + dim filter). Participants share the
-    // same bundled TOOLS so they can rebuild the deck themselves —
-    // smaller payload + lets them browse multi-dim sessions freely.
+    // Update the resync state so heartbeat/late-join re-pushes work.
+    stateRef.current.triageActive = true
+    stateRef.current.gate = filterGate
+    stateRef.current.dim  = filterDim
     sendMsg(channelRef.current, {
       type: 'triage_start',
-      payload: {
-        gate: filterGate,
-        dim:  filterDim,    // 'all' | specific dim id
-      },
+      payload: { gate: filterGate, dim: filterDim },
     })
   }
 
@@ -294,10 +340,13 @@ export function FacilitatorView() {
     setCurrentQ(q)
     setResponses([])
     setRevealed(false)
-    sendMsg(channelRef.current, {
-      type: 'question',
-      payload: { questionId: q.id, text: q.text, type: q.type, tool: activeTool.n, gate: filterGate },
-    })
+    const payload = {
+      questionId: q.id, text: q.text, type: q.type,
+      tool: activeTool.n, gate: filterGate,
+    }
+    stateRef.current.questionActive = true
+    stateRef.current.question = payload
+    sendMsg(channelRef.current, { type: 'question', payload })
   }
 
   const revealResults = () => {
@@ -427,32 +476,38 @@ export function FacilitatorView() {
           </div>
         </SectionCard>
 
-        {/* Step 3 — Session code (huge) + QR */}
+        {/* Step 3 — Session code + scannable QR (large by default
+            so a phone can grab it from across the room). */}
         <SectionCard>
-          <Eyebrow color={INK}>Step 3 · Session code</Eyebrow>
+          <Eyebrow color={INK}>Step 3 · Scan to join</Eyebrow>
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 14,
-            padding: '12px 14px',
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            gap: 14, padding: '16px 14px',
             background: PAGE,
             border: `2px solid ${INK}`, borderRadius: 14,
           }}>
             <div style={{
-              padding: 4, background: '#FFFFFF',
-              border: `2px solid ${INK}`, borderRadius: 8,
-              flexShrink: 0,
+              padding: 10, background: '#FFFFFF',
+              border: `3px solid ${INK}`, borderRadius: 12,
+              boxShadow: '3px 3px 0 ' + INK,
             }}>
-              <QRCode value={url} size={72} />
+              <QRCode value={url} size={260} />
             </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ textAlign: 'center', width: '100%' }}>
               <div style={{
                 fontFamily: FONT_HEAD,
-                fontWeight: 900, fontSize: 36,
-                color: INK, letterSpacing: '.06em',
-                lineHeight: 1, marginBottom: 4,
+                fontWeight: 900, fontSize: 32,
+                color: INK, letterSpacing: '.08em',
+                lineHeight: 1,
               }}>{roomId}</div>
               <div style={{
-                fontSize: 11, color: '#5A5550', fontWeight: 600,
-                wordBreak: 'break-all',
+                fontSize: 10, color: '#5A5550', fontWeight: 700,
+                marginTop: 6, letterSpacing: '.04em',
+                textTransform: 'uppercase',
+              }}>session code</div>
+              <div style={{
+                fontSize: 10, color: '#9C958A',
+                marginTop: 8, wordBreak: 'break-all',
               }}>{url}</div>
             </div>
           </div>
@@ -568,20 +623,25 @@ export function FacilitatorView() {
         </SectionCard>
       )}
 
-      {/* QR + URL compact */}
+      {/* QR + URL — kept generous in the active session view too,
+          so the facilitator can show their screen across the room. */}
       <SectionCard style={{ marginBottom: 14 }}>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+        <div style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          gap: 12,
+        }}>
           <div style={{
-            padding: 4, background: '#FFFFFF',
-            border: `2px solid ${INK}`, borderRadius: 8,
-            flexShrink: 0,
+            padding: 8, background: '#FFFFFF',
+            border: `3px solid ${INK}`, borderRadius: 12,
+            boxShadow: '2px 2px 0 ' + INK,
           }}>
-            <QRCode value={url} size={56} />
+            <QRCode value={url} size={200} />
           </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ textAlign: 'center', width: '100%' }}>
             <Eyebrow color="#5A5550">Join via</Eyebrow>
             <div style={{
-              fontSize: 11, color: INK, fontWeight: 600, wordBreak: 'break-all',
+              fontSize: 11, color: INK, fontWeight: 600,
+              wordBreak: 'break-all',
             }}>{url}</div>
           </div>
         </div>
