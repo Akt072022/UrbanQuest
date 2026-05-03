@@ -217,6 +217,9 @@ export function FacilitatorView() {
   const [currentQ,   setCurrentQ]   = useState(QUESTIONS[0])
   const [revealed,   setRevealed]   = useState(false)
   const [activeTool, setActiveTool] = useState(null)
+  // Free-form custom question
+  const [customText, setCustomText] = useState('')
+  const [customType, setCustomType] = useState('word') // 'word' | 'slider' | 'vote'
 
   const channelRef = useRef(null)
   // Latest broadcastable state — read by the resync helpers below
@@ -476,22 +479,22 @@ export function FacilitatorView() {
           </div>
         </SectionCard>
 
-        {/* Step 3 — Session code + scannable QR (large by default
-            so a phone can grab it from across the room). */}
+        {/* Step 3 — Session code + scannable QR. The QR fills the
+            full available width so the facilitator can hold up the
+            screen and have phones across the room scan it. */}
         <SectionCard>
           <Eyebrow color={INK}>Step 3 · Scan to join</Eyebrow>
           <div style={{
-            display: 'flex', flexDirection: 'column', alignItems: 'center',
-            gap: 14, padding: '16px 14px',
-            background: PAGE,
-            border: `2px solid ${INK}`, borderRadius: 14,
+            display: 'flex', flexDirection: 'column', alignItems: 'stretch',
+            gap: 14,
           }}>
             <div style={{
               padding: 10, background: '#FFFFFF',
               border: `3px solid ${INK}`, borderRadius: 12,
               boxShadow: '3px 3px 0 ' + INK,
+              width: '100%',
             }}>
-              <QRCode value={url} size={260} />
+              <QRCode value={url} />
             </div>
             <div style={{ textAlign: 'center', width: '100%' }}>
               <div style={{
@@ -623,19 +626,17 @@ export function FacilitatorView() {
         </SectionCard>
       )}
 
-      {/* QR + URL — kept generous in the active session view too,
-          so the facilitator can show their screen across the room. */}
+      {/* QR + URL — full-width in the active session too, so the
+          facilitator can keep the screen up for late joiners. */}
       <SectionCard style={{ marginBottom: 14 }}>
-        <div style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'center',
-          gap: 12,
-        }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{
             padding: 8, background: '#FFFFFF',
             border: `3px solid ${INK}`, borderRadius: 12,
             boxShadow: '2px 2px 0 ' + INK,
+            width: '100%',
           }}>
-            <QRCode value={url} size={200} />
+            <QRCode value={url} />
           </div>
           <div style={{ textAlign: 'center', width: '100%' }}>
             <Eyebrow color="#5A5550">Join via</Eyebrow>
@@ -762,7 +763,7 @@ export function FacilitatorView() {
       {/* ── TAB QUESTION ──────────────────────────────────────── */}
       {tab === 'question' && (
         <div>
-          {/* Tool selection */}
+          {/* Tool selection — select + rich preview pane */}
           <SectionCard>
             <Eyebrow color={INK}>Tool in discussion</Eyebrow>
             <select
@@ -779,6 +780,7 @@ export function FacilitatorView() {
                 fontSize: 13, fontWeight: 700, outline: 'none',
                 appearance: 'none', WebkitAppearance: 'none',
                 cursor: 'pointer',
+                marginBottom: activeTool ? 12 : 0,
               }}>
               <option value="">— Choose a tool —</option>
               {toolList.map(t => <option key={t.n} value={t.n}>{t.n}</option>)}
@@ -786,11 +788,69 @@ export function FacilitatorView() {
               {filterDim !== 'all' && TOOLS.filter(t => !toolList.find(tl => tl.n === t.n))
                 .map(t => <option key={t.n} value={t.n}>{t.n}</option>)}
             </select>
+
+            {/* Preview — gives the facilitator enough context to pick
+                the right tool without flipping screens. */}
+            {activeTool && (
+              <div style={{
+                background: PAGE,
+                border: `2px solid ${INK}`, borderRadius: 12,
+                padding: '12px 14px',
+              }}>
+                <div style={{
+                  fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 16,
+                  color: INK, lineHeight: 1.15, marginBottom: 8,
+                }}>{activeTool.n}</div>
+                {activeTool.d?.length > 0 && (
+                  <div style={{
+                    display: 'flex', flexWrap: 'wrap', gap: 4,
+                    marginBottom: 8,
+                  }}>
+                    {activeTool.d.map(did => {
+                      const d = DIM_BY_ID[did]
+                      if (!d) return null
+                      return (
+                        <span key={did} style={{
+                          padding: '2px 8px', borderRadius: 6,
+                          background: d.color + '22', color: d.color,
+                          fontFamily: FONT_HEAD, fontWeight: 900,
+                          fontSize: 9, letterSpacing: '.04em',
+                          textTransform: 'uppercase',
+                        }}>{d.label}</span>
+                      )
+                    })}
+                  </div>
+                )}
+                {activeTool.def && (
+                  <p style={{
+                    fontFamily: '-apple-system, Helvetica Neue, sans-serif',
+                    fontSize: 12, color: '#3F3A36', lineHeight: 1.45,
+                    margin: 0,
+                  }}>{activeTool.def}</p>
+                )}
+                {activeTool.t && (
+                  <div style={{
+                    marginTop: 10, padding: '8px 10px',
+                    background: YELLOW + '40', borderRadius: 8,
+                    border: `1.5px solid ${INK}`,
+                  }}>
+                    <div style={{
+                      fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 9,
+                      color: INK, letterSpacing: '.06em',
+                      textTransform: 'uppercase', marginBottom: 4,
+                    }}>Practitioner tip</div>
+                    <div style={{
+                      fontSize: 12, color: '#3F3A36', lineHeight: 1.4,
+                    }}>{activeTool.t}</div>
+                  </div>
+                )}
+              </div>
+            )}
           </SectionCard>
 
-          {/* Questions */}
+          {/* Questions — 3 presets */}
           <SectionCard>
-            <Eyebrow color={INK}>Send a question</Eyebrow>
+            <Eyebrow color={INK}>Send a quick question</Eyebrow>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {QUESTIONS.map(q => {
                 const active = currentQ.id === q.id
@@ -825,6 +885,64 @@ export function FacilitatorView() {
                 Select a tool above first.
               </div>
             )}
+          </SectionCard>
+
+          {/* Custom question — free-form, with response-type chooser */}
+          <SectionCard>
+            <Eyebrow color={INK}>Or write your own</Eyebrow>
+            <textarea value={customText}
+              onChange={e => setCustomText(e.target.value)}
+              placeholder="Type your question — participants receive it instantly along with the tool context."
+              rows={3}
+              style={{
+                width: '100%', padding: '10px 12px',
+                background: PAGE, color: INK,
+                border: `2px solid ${INK}`, borderRadius: 12,
+                fontFamily: '-apple-system, Helvetica Neue, sans-serif',
+                fontSize: 13, fontWeight: 600, outline: 'none', resize: 'none',
+                boxSizing: 'border-box', marginBottom: 8,
+              }} />
+            <div style={{
+              fontSize: 10, color: '#5A5550', fontWeight: 700,
+              letterSpacing: '.06em', textTransform: 'uppercase',
+              marginBottom: 6,
+            }}>Response type</div>
+            <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+              {[
+                ['word',   'Free text'],
+                ['slider', 'Slider 0-5'],
+                ['vote',   '3-way vote'],
+              ].map(([type, lbl]) => {
+                const active = customType === type
+                return (
+                  <button key={type} onClick={() => setCustomType(type)}
+                    style={{
+                      flex: 1, padding: '8px 6px',
+                      background: active ? INK : CARD,
+                      color: active ? '#FFFFFF' : INK,
+                      border: `2px solid ${INK}`, borderRadius: 999,
+                      fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 10,
+                      letterSpacing: '.05em', textTransform: 'uppercase',
+                      cursor: 'pointer',
+                      boxShadow: active ? '2px 2px 0 ' + INK : 'none',
+                    }}>{lbl}</button>
+                )
+              })}
+            </div>
+            <ScrappyButton
+              onClick={() => {
+                if (!customText.trim() || !activeTool) return
+                broadcast({
+                  id: 'custom-' + Date.now(),
+                  text: customText.trim(),
+                  type: customType,
+                })
+                setCustomText('')
+              }}
+              color={(activeTool && customText.trim()) ? YELLOW : '#E0DAD2'}
+              size="md" full>
+              SEND CUSTOM QUESTION →
+            </ScrappyButton>
           </SectionCard>
 
           {/* Results */}

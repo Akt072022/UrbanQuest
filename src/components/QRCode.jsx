@@ -1,7 +1,10 @@
 import { useEffect, useRef } from 'react'
 import QRCodeLib from 'qrcode'
 
-export function QRCode({ value, size = 180 }) {
+// `size` controls the internal canvas resolution (= sharpness when
+// scaled). The CSS makes the canvas fill its container, so callers
+// just have to pick the wrapper width.
+export function QRCode({ value, size = 600, fluid = true }) {
   const canvasRef = useRef(null)
   useEffect(() => {
     if (canvasRef.current && value) {
@@ -15,5 +18,8 @@ export function QRCode({ value, size = 180 }) {
       })
     }
   }, [value, size])
-  return <canvas ref={canvasRef} style={{ display: 'block' }} />
+  return <canvas ref={canvasRef}
+    style={fluid
+      ? { display: 'block', width: '100%', height: 'auto', imageRendering: 'pixelated' }
+      : { display: 'block' }} />
 }

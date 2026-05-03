@@ -485,7 +485,8 @@ function SummaryState({ gate, evals, skipped }) {
   )
 }
 
-// ── Live Question (kept identical to before) ──────────────────
+// ── Live Question — now shows the tool context so participants
+//   know what the question is *about* before answering. ────────
 function QuestionMode({ question, channel, answered, setAnswered, revealed }) {
   const [sliderVal, setSliderVal] = useState(3)
   const [wordVal, setWordVal] = useState('')
@@ -498,6 +499,13 @@ function QuestionMode({ question, channel, answered, setAnswered, revealed }) {
     })
     setAnswered(true)
   }
+
+  // Look up the actual tool record from the local TOOLS bundle so we
+  // can display its dimensions, definition and tip — the broadcast
+  // only carries the tool name to keep the payload small.
+  const toolName = question?.tool
+  const tool = toolName ? TOOLS.find(t => t.n === toolName) : null
+  const gate = question?.gate
 
   if (answered) {
     return (
@@ -530,6 +538,71 @@ function QuestionMode({ question, channel, answered, setAnswered, revealed }) {
 
   return (
     <div style={{ padding: '20px 16px' }}>
+      {/* Tool context — name, dimensions, definition, tip */}
+      {tool && (
+        <div style={{
+          background: CARD, border: `2.5px solid ${INK}`,
+          borderRadius: 14, padding: '12px 14px',
+          boxShadow: '2px 2px 0 ' + INK,
+          marginBottom: 16,
+        }}>
+          <div style={{
+            fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 10,
+            letterSpacing: '.08em', color: GATE_COL[gate] || INK,
+            textTransform: 'uppercase', marginBottom: 4,
+          }}>
+            About this tool{gate ? ` · ${GATE_LABEL[gate]}` : ''}
+          </div>
+          <div style={{
+            fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 17,
+            color: INK, lineHeight: 1.15, marginBottom: 8,
+          }}>{tool.n}</div>
+          {tool.d?.length > 0 && (
+            <div style={{
+              display: 'flex', flexWrap: 'wrap', gap: 4,
+              marginBottom: 8,
+            }}>
+              {tool.d.map(did => {
+                const d = DIM_BY_ID[did]
+                if (!d) return null
+                return (
+                  <span key={did} style={{
+                    padding: '2px 8px', borderRadius: 6,
+                    background: d.color + '22', color: d.color,
+                    fontFamily: FONT_HEAD, fontWeight: 900,
+                    fontSize: 9, letterSpacing: '.04em',
+                    textTransform: 'uppercase',
+                  }}>{d.label}</span>
+                )
+              })}
+            </div>
+          )}
+          {tool.def && (
+            <p style={{
+              fontFamily: '-apple-system, Helvetica Neue, sans-serif',
+              fontSize: 12, color: '#3F3A36', lineHeight: 1.45,
+              margin: 0,
+            }}>{tool.def}</p>
+          )}
+          {tool.t && (
+            <div style={{
+              marginTop: 10, padding: '8px 10px',
+              background: YELLOW + '40', borderRadius: 8,
+              border: `1.5px solid ${INK}`,
+            }}>
+              <div style={{
+                fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 9,
+                color: INK, letterSpacing: '.06em',
+                textTransform: 'uppercase', marginBottom: 4,
+              }}>Practitioner tip</div>
+              <div style={{
+                fontSize: 12, color: '#3F3A36', lineHeight: 1.4,
+              }}>{tool.t}</div>
+            </div>
+          )}
+        </div>
+      )}
+
       <div style={{
         fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
         letterSpacing: '.08em', color: '#5A5550',
