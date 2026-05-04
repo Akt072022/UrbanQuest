@@ -106,3 +106,120 @@ ${compactCatalogue()}`
   }
   return out
 }
+
+// ── AI capability analysis ─────────────────────────────────────
+// Reads the team's evaluation state and returns a small structured
+// recommendation: a narrative + 3-5 actionable items the dashboard
+// can render as cards. Used by the "AI insights" button on the
+// Recommended Actions panel — never auto-fired (each call costs).
+export async function analyzeTeamCapability({ practiced, scoresByDim, gateStats }) {
+  const key = import.meta.env.VITE_MISTRAL_API_KEY
+  if (!key) throw new Error('AI is not configured.')
+
+  // Compact summary the model can reason over without the 133-row
+  // catalogue (the Recommended Actions don't need to suggest from a
+  // wider set than what's on the user's current map).
+  const total       = Object.keys(practiced).length
+  const byLevel     = { regular: 0, occasional: 0, theory: 0 }
+  for (const lvl of Object.values(practiced)) byLevel[lvl] = (byLevel[lvl] || 0) + 1
+  const dimSummary  = scoresByDim.map(d =>
+    `- ${d.label}: ${d.count}/${d.total} (${d.score}%)`).join('\n')
+  const gateSummary = gateStats.map(g =>
+    `- ${GATE_LABEL[g.gate]}: ${g.done}/${g.total} (${g.pct}%)`).join('\n')
+
+  const stage = total < 15 ? 'sparse'
+              : total < 50 ? 'mixed'
+              : 'rich'
+
+  const sys = [
+    'You are advising an urban planning team on how to grow their method capability.',
+    'They are using a 133-method catalogue across 4 gates (Impact, Fit, Anchoring, Sustainability) and 6 dimensions (Spatial, Heritage, Social, Environmental, Economic, Regulation).',
+    'Recommend ONLY methods that are in the catalogue. Output strict JSON.',
+  ].join(' ')
+
+  const user = `Team capability snapshot:
+- Total methods evaluated: ${total} of ${TOOLS.length}
+- At regular practice level: ${byLevel.regular}
+- At occasional level: ${byLevel.occasional}
+- At theoretical-only level: ${byLevel.theory}
+- Stage: ${stage}
+
+Coverage by dimension:
+${dimSummary}
+
+Coverage by gate:
+${gateSummary}
+
+Catalogue (compact):
+${TOOLS.map(t => `- ${t.n} [g:${(t.g || []).join(',')}; d:${(t.d || []).join('/')}]`).join('\n')}
+
+Based on this snapshot:
+${stage === 'sparse'
+  ? '- The team has barely populated its capability map. Recommend 3 specific WORKSHOPS or CHALLENGES they should run next to fill in the most useful diagnostic data (e.g., "Run a triage on the dimensions with 0% coverage", "Have each team member rate 5 methods they use most"). Do NOT suggest individual methods to evaluate yet — the priority is to get more data.'
+  : stage === 'mixed'
+  ? '- Mid-stage. Recommend 2 workshops/challenges to deepen the weakest gate or dimension AND 2 specific methods (by exact name) to evaluate next that would unlock the best follow-up insight.'
+  : '- They have rich data. Recommend 3 methods (by exact name) to APPLY now on a typical urban transformation project (preferably methods at regular practice level), and 3 methods to LEARN next (theoretical-only or untouched, in their weakest dimensions).'}
+
+Return ONLY this JSON shape — no prose, no code fences:
+{
+  "narrative": "<one short paragraph (≤ 60 words) framing the team's current state>",
+  "actions": [
+    {
+      "type": "workshop" | "evaluate" | "apply" | "learn",
+      "title": "<imperative ≤ 8 words>",
+      "method_name": "<exact catalogue name>" | null,
+      "rationale": "<one short sentence explaining why this matters now>"
+    }
+  ]
+}`
+
+  const res = await fetch(URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${key}`,
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: sys },
+        { role: 'user',   content: user },
+      ],
+      temperature: 0.4,
+    }),
+  })
+  if (!res.ok) {
+    const txt = await res.text().catch(() => '')
+    if (txt) console.warn('[ai] HTTP', res.status, txt)
+    throw new Error(`Analysis service returned an error (${res.status}).`)
+  }
+  const json = await res.json()
+  const content = json?.choices?.[0]?.message?.content
+  if (!content) throw new Error('Analysis returned no content.')
+  let parsed
+  try { parsed = JSON.parse(content) }
+  catch { throw new Error('Analysis returned an unexpected response.') }
+
+  // Normalize: resolve method_name to a TOOLS entry where possible.
+  const actions = Array.isArray(parsed?.actions) ? parsed.actions.map(a => {
+    const name = (a?.method_name || '').trim()
+    let tool = null
+    if (name) {
+      tool = TOOLS.find(t => t.n === name)
+      if (!tool) tool = TOOLS.find(t => t.n.toLowerCase() === name.toLowerCase())
+    }
+    return {
+      type:      String(a?.type || '').toLowerCase(),
+      title:     String(a?.title || '').trim(),
+      rationale: String(a?.rationale || '').trim(),
+      tool,
+    }
+  }).filter(a => a.title) : []
+
+  return {
+    narrative: String(parsed?.narrative || '').trim(),
+    actions,
+    stage,
+  }
+}

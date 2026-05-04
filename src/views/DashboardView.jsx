@@ -10,6 +10,7 @@ import { supabase, hasSupabase } from '../lib/supabase'
 import { listSessionsForTeam, loadSessionFull } from '../lib/sessionStore'
 import { TriageHeatmap } from '../components/TriageHeatmap'
 import { MethodfitMatrix } from '../components/MethodfitMatrix'
+import { analyzeTeamCapability, hasMistral } from '../lib/mistral'
 
 const INK      = '#1C2530'
 const GATE_COL = ['','#C17B2A','#1B5FA0','#2A6B45','#7A3A8E']
@@ -41,27 +42,122 @@ function gateStats(practiced) {
   })
 }
 
-function makeSuggestions(scores, practiced) {
-  const suggestions = []
-  const used = new Set()
-  for (const dim of [...scores].sort((a,b) => a.score - b.score)) {
-    if (suggestions.length >= 5) break
-    if (dim.total === 0) continue
-    const candidates = TOOLS.filter(t =>
-      t.d?.includes(dim.id) && !isEvaluated(practiced, t.n) && !used.has(t.n)
-    )
-    if (!candidates.length) continue
-    const top = candidates.sort((a,b) =>
-      (b.g.length * 2 + (b.d?.length || 0)) -
-      (a.g.length * 2 + (a.d?.length || 0))
-    )[0]
-    used.add(top.n)
-    suggestions.push({
-      dim, tool: top,
-      reason: `${dim.label} needs strengthening (${dim.score}% covered). This method activates ${top.d.length} dimension${top.d.length === 1 ? '' : 's'} and ${top.g.length} gate${top.g.length === 1 ? '' : 's'}.`,
+// Classify the dashboard state into one of three modes — sparse,
+// mixed, rich — and return the right kind of recommendations for
+// each. The previous implementation only suggested next tools to
+// rate, which made no sense when the user had barely told us
+// anything yet (sparse) or already had enough data to act on (rich).
+//
+// Sparse  → "Map your knowledge" — workshops + light evaluation prompts
+// Mixed   → "Build out your map" — top tool suggestions + 1 deepening prompt
+// Rich    → "Apply your toolkit" — two columns: Apply now / Learn next
+function classifyDashboard(scores, gates, practiced) {
+  const total = Object.keys(practiced).length
+
+  // Find weakest-covered dim (lowest pct, but ignore dims with 0 tools)
+  const dimsByScore = [...scores]
+    .filter(s => s.total > 0)
+    .sort((a, b) => (a.count / a.total) - (b.count / b.total))
+  const weakestDim = dimsByScore[0] || null
+
+  // Find weakest-covered gate (lowest pct)
+  const gatesByPct = [...gates].sort((a, b) => a.pct - b.pct)
+  const weakestGate = gatesByPct[0] || null
+
+  // Rich-mode pools
+  const regularTools = TOOLS.filter(t => practiced[t.n] === 'regular')
+  const theoryTools  = TOOLS.filter(t => practiced[t.n] === 'theory')
+
+  if (total < 15) {
+    // SPARSE: encourage data collection over per-tool suggestions.
+    const challenges = []
+    if (weakestGate) {
+      challenges.push({
+        kind: 'workshop',
+        title: `Run a 30-min triage on ${GATE_LABEL[weakestGate.gate]}`,
+        rationale:
+          `Get the team to rate the ${weakestGate.total} methods of this gate together — ` +
+          `the live heatmap surfaces convergence and blind spots in real time.`,
+        action: { type: 'facilitator' },
+      })
+    }
+    if (weakestDim) {
+      challenges.push({
+        kind: 'evaluate',
+        title: `Rate 5 ${weakestDim.label} methods`,
+        rationale:
+          `${weakestDim.label} has only ${weakestDim.count} method${weakestDim.count === 1 ? '' : 's'} ` +
+          `evaluated so far. A solo pass adds depth without needing a workshop.`,
+        action: { type: 'exploreDim', gate: weakestGate?.gate || 1, dim: weakestDim.id },
+      })
+    }
+    challenges.push({
+      kind: 'team',
+      title: 'Invite a teammate',
+      rationale:
+        'Multiple ratings on the same method reveal disagreement, which is where the most ' +
+        'useful conversations start. Share an invite code from your Profile.',
+      action: { type: 'profile' },
     })
+    return { mode: 'sparse', challenges }
   }
-  return suggestions
+
+  if (total < 50) {
+    // MIXED: a few tool suggestions in the weakest dim + one deepening prompt.
+    const used = new Set()
+    const tools = []
+    for (const dim of dimsByScore) {
+      if (tools.length >= 3) break
+      const candidates = TOOLS.filter(t =>
+        t.d?.includes(dim.id) && !practiced[t.n] && !used.has(t.n)
+      )
+      if (!candidates.length) continue
+      const top = candidates.sort((a, b) =>
+        (b.g.length * 2 + (b.d?.length || 0)) -
+        (a.g.length * 2 + (a.d?.length || 0))
+      )[0]
+      used.add(top.n)
+      tools.push({
+        dim, tool: top,
+        rationale: `${dim.label} is at ${dim.score}% — this method covers ${top.d.length} ` +
+                   `dimension${top.d.length === 1 ? '' : 's'} and ${top.g.length} gate${top.g.length === 1 ? '' : 's'}.`,
+      })
+    }
+    const deepenPrompt = weakestGate ? {
+      kind: 'workshop',
+      title: `Deepen ${GATE_LABEL[weakestGate.gate]}`,
+      rationale: `${weakestGate.pct}% covered. Run a focused workshop to fill the gap.`,
+      action: { type: 'facilitator' },
+    } : null
+    return { mode: 'mixed', tools, deepenPrompt }
+  }
+
+  // RICH: apply now + learn next.
+  // Apply now: top regular-level tools, weighted by reach (how many
+  // gates × dims a tool spans — the more universal, the better an
+  // opening move on a typical project).
+  const apply = [...regularTools]
+    .sort((a, b) =>
+      (b.g.length + (b.d?.length || 0)) -
+      (a.g.length + (a.d?.length || 0))
+    )
+    .slice(0, 3)
+
+  // Learn next: theory-only OR untouched, prioritised by weakest dim.
+  const weakDimId = weakestDim?.id
+  const learnPool = TOOLS.filter(t => {
+    const lvl = practiced[t.n]
+    if (lvl === 'regular' || lvl === 'occasional') return false
+    return weakDimId ? t.d?.includes(weakDimId) : true
+  })
+  const learn = learnPool
+    .sort((a, b) =>
+      (b.g.length + (b.d?.length || 0)) -
+      (a.g.length + (a.d?.length || 0))
+    )
+    .slice(0, 3)
+
+  return { mode: 'rich', apply, learn, weakestDim }
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -545,7 +641,10 @@ function CapabilityCell({ title, subtitle, tone, tools, highlight = false }) {
 
 // Overall view — tab "Overall"
 // ──────────────────────────────────────────────────────────────
-function OverallView({ practiced, scores, gates, suggestions, xp }) {
+function OverallView({
+  practiced, scores, gates, recommendations, xp,
+  goExplore, goExploreDim, goFacilitator, goProfile,
+}) {
   const evaluatedCount = Object.keys(practiced).length
 
   return (
@@ -637,61 +736,402 @@ function OverallView({ practiced, scores, gates, suggestions, xp }) {
           for themselves or for the team. */}
       <CapabilityMap practiced={practiced} />
 
-      {/* Suggestions */}
-      <div style={{
-        borderRadius: 14, background: '#FFFFFF',
-        border: '1px solid #E0DAD2', padding: 16,
-      }}>
+      {/* Recommended actions — state-aware. Sparse maps grow into
+          workshops; rich maps surface tools to apply now or learn
+          next. The "AI insights" button is opt-in; the heuristic
+          renders without it. */}
+      <RecommendedActions
+        recommendations={recommendations}
+        practiced={practiced}
+        scores={scores}
+        gates={gates}
+        goExplore={goExplore}
+        goExploreDim={goExploreDim}
+        goFacilitator={goFacilitator}
+        goProfile={goProfile} />
+    </>
+  )
+}
+
+// ──────────────────────────────────────────────────────────────
+// Recommended actions — state-aware (sparse / mixed / rich) plus
+// optional AI insights enriching the heuristic. The previous flat
+// "next tool to evaluate" list didn't scale with the user's stage:
+// when the map was empty it surfaced random tools; when full it
+// kept pushing more tools to rate instead of how to act on them.
+// ──────────────────────────────────────────────────────────────
+function RecommendedActions({
+  recommendations, practiced, scores, gates,
+  goExplore, goExploreDim, goFacilitator, goProfile,
+}) {
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiError,   setAiError]   = useState('')
+  const [aiResult,  setAiResult]  = useState(null)
+
+  const runAi = async () => {
+    setAiLoading(true); setAiError(''); setAiResult(null)
+    try {
+      const out = await analyzeTeamCapability({
+        practiced,
+        scoresByDim: scores,
+        gateStats:   gates,
+      })
+      setAiResult(out)
+    } catch (e) {
+      setAiError(e?.message || 'Analysis failed.')
+    } finally { setAiLoading(false) }
+  }
+
+  // Action dispatcher — translates a recommendation's `action` into
+  // a navigation call. Null-safe so any unknown type is a no-op.
+  const dispatch = (action) => {
+    if (!action) return
+    if (action.type === 'facilitator') goFacilitator?.()
+    else if (action.type === 'profile') goProfile?.()
+    else if (action.type === 'explore'    && action.gate) goExplore?.(action.gate)
+    else if (action.type === 'exploreDim' && action.gate && action.dim) goExploreDim?.(action.gate, action.dim)
+  }
+
+  // ── Header (title + tagline + AI button) ────────────────────
+  const header = (
+    <div style={{
+      display: 'flex', alignItems: 'flex-start',
+      justifyContent: 'space-between', gap: 12, marginBottom: 14,
+    }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
           fontSize: 11, fontWeight: 800, color: '#6B6460',
-          textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 14,
+          textTransform: 'uppercase', letterSpacing: '.06em',
         }}>Recommended actions</div>
-        {suggestions.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '16px 0' }}>
-            <div className="text-mega" style={{ fontSize: 18, color: '#2A6B45', marginBottom: 4 }}>
-              ALL DIMENSIONS COVERED
-            </div>
-            <div style={{ fontSize: 12, color: '#8B8074' }}>Excellent work!</div>
-          </div>
-        ) : suggestions.map((s, i) => (
-          <div key={i} style={{
-            display: 'flex', gap: 12, alignItems: 'flex-start',
-            paddingTop: i > 0 ? 12 : 0,
-            borderTop: i > 0 ? '1px solid #F0EBE4' : 'none',
-          }}>
-            <div style={{
-              flexShrink: 0, width: 24, height: 24, borderRadius: '50%',
-              background: s.dim.color + '20',
-              border: '1.5px solid ' + s.dim.color,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 12, marginTop: 1,
-            }}>{s.dim.icon}</div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{
-                fontFamily: 'Georgia, serif', fontSize: 14, fontWeight: 700,
-                color: INK, marginBottom: 2,
-              }}>{s.tool.n}</div>
-              <div style={{
-                fontSize: 11, color: '#8B8074', lineHeight: 1.4, marginBottom: 5,
-              }}>{s.reason}</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
-                {s.tool.d?.map(did => {
-                  const d = DIM_BY_ID[did]
-                  if (!d) return null
-                  return (
-                    <span key={did} style={{
-                      padding: '1px 6px', borderRadius: 6,
-                      fontSize: 9, fontWeight: 700,
-                      background: d.color + '15', color: d.color,
-                    }}>{d.label}</span>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
-        ))}
+        <div style={{
+          fontFamily: 'Barlow Condensed, Impact, sans-serif',
+          fontWeight: 900, fontSize: 18, color: INK,
+          lineHeight: 1.15, marginTop: 4,
+          letterSpacing: '.02em',
+        }}>
+          {recommendations.mode === 'sparse'  && 'Map your knowledge'}
+          {recommendations.mode === 'mixed'   && 'Build out your map'}
+          {recommendations.mode === 'rich'    && 'Apply your toolkit'}
+        </div>
+        <div style={{
+          fontSize: 12, color: '#8B8074',
+          lineHeight: 1.45, marginTop: 4,
+        }}>
+          {recommendations.mode === 'sparse' &&
+            'Run a workshop or do a quick solo pass — both grow the diagnostic.'}
+          {recommendations.mode === 'mixed' &&
+            'A few targeted evaluations now will unlock the rich-stage recommendations.'}
+          {recommendations.mode === 'rich' &&
+            'Methods to deploy on a typical urban transformation project, plus the gaps worth closing.'}
+        </div>
       </div>
-    </>
+      {hasMistral && (
+        <button onClick={runAi} disabled={aiLoading}
+          style={{
+            flexShrink: 0,
+            padding: '6px 10px', borderRadius: 999,
+            background: aiLoading ? '#E0DAD2' : '#FFFFFF',
+            border: `2px solid ${INK}`,
+            cursor: aiLoading ? 'wait' : 'pointer',
+            fontFamily: 'Barlow Condensed, Impact, sans-serif',
+            fontWeight: 900, fontSize: 10,
+            color: INK, letterSpacing: '.06em',
+          }}>
+          {aiLoading ? 'ANALYSING…' : aiResult ? '↻ RE-RUN' : '✨ AI INSIGHTS'}
+        </button>
+      )}
+    </div>
+  )
+
+  return (
+    <div style={{
+      borderRadius: 14, background: '#FFFFFF',
+      border: '1px solid #E0DAD2', padding: 16,
+    }}>
+      {header}
+
+      {recommendations.mode === 'sparse' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {recommendations.challenges.map((c, i) => (
+            <ChallengeRow key={i} challenge={c} onAction={() => dispatch(c.action)} />
+          ))}
+        </div>
+      )}
+
+      {recommendations.mode === 'mixed' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {recommendations.tools.map((t, i) => (
+            <ToolSuggestionRow key={i}
+              dim={t.dim} tool={t.tool} rationale={t.rationale}
+              onClick={() => goExploreDim?.(t.tool.g[0], t.dim.id)} />
+          ))}
+          {recommendations.deepenPrompt && (
+            <ChallengeRow
+              challenge={recommendations.deepenPrompt}
+              onAction={() => dispatch(recommendations.deepenPrompt.action)} />
+          )}
+        </div>
+      )}
+
+      {recommendations.mode === 'rich' && (
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          gap: 12,
+        }}>
+          <RichColumn title="APPLY NOW"
+            subtitle="Methods you run regularly — go-to picks for the next project."
+            tone="ok"
+            tools={recommendations.apply} />
+          <RichColumn title="LEARN NEXT"
+            subtitle={recommendations.weakestDim
+              ? `Coverage gap: ${recommendations.weakestDim.label}.`
+              : 'Methods to grow into.'}
+            tone="gold"
+            tools={recommendations.learn} />
+        </div>
+      )}
+
+      {/* AI overlay — narrative + actions, rendered below the
+          heuristic recommendations so the user sees both. */}
+      {aiError && (
+        <div style={{
+          marginTop: 12, padding: '8px 10px',
+          background: '#FCE8E2', border: '1.5px solid #C0452A',
+          borderRadius: 8, fontSize: 11, color: '#7A1F0E', lineHeight: 1.4,
+        }}>{aiError}</div>
+      )}
+      {aiResult && (
+        <div style={{
+          marginTop: 14, padding: '12px 12px 10px',
+          background: '#F2EDE4', borderRadius: 12,
+          border: '2px solid ' + INK,
+          boxShadow: '2px 2px 0 ' + INK,
+        }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8,
+          }}>
+            <span style={{ fontSize: 14 }}>✨</span>
+            <span style={{
+              fontFamily: 'Barlow Condensed, Impact, sans-serif',
+              fontWeight: 900, fontSize: 11, color: INK,
+              letterSpacing: '.08em', textTransform: 'uppercase',
+            }}>AI insights</span>
+          </div>
+          {aiResult.narrative && (
+            <p style={{
+              fontSize: 12, color: '#3F3A36', lineHeight: 1.5,
+              margin: '0 0 10px',
+            }}>{aiResult.narrative}</p>
+          )}
+          {aiResult.actions.map((a, i) => (
+            <AiActionRow key={i} action={a}
+              onClick={() => {
+                if (a.tool) {
+                  // Open the tool in its own gate/dim
+                  const gate = a.tool.g?.[0] || 1
+                  const dim  = a.tool.d?.[0]
+                  if (dim) goExploreDim?.(gate, dim)
+                  else goExplore?.(gate)
+                } else if (a.type === 'workshop') {
+                  goFacilitator?.()
+                }
+              }} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Challenge row (sparse + mixed deepen prompt) ───────────────
+function ChallengeRow({ challenge, onAction }) {
+  const ICON = {
+    workshop: '🗂',
+    evaluate: '✏',
+    team:     '👥',
+  }
+  return (
+    <button onClick={onAction}
+      style={{
+        display: 'flex', alignItems: 'flex-start', gap: 12,
+        padding: '12px 14px',
+        background: '#F2EDE4',
+        border: `2px solid ${INK}33`, borderRadius: 12,
+        textAlign: 'left', cursor: 'pointer', width: '100%',
+        transition: 'transform .08s, border-color .15s',
+      }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = INK }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = INK + '33' }}>
+      <div style={{
+        flexShrink: 0, width: 32, height: 32, borderRadius: '50%',
+        background: '#FFFFFF', border: `2px solid ${INK}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 16,
+      }}>{ICON[challenge.kind] || '◆'}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontFamily: 'Barlow Condensed, Impact, sans-serif',
+          fontWeight: 900, fontSize: 14, color: INK,
+          letterSpacing: '.04em', textTransform: 'uppercase',
+          lineHeight: 1.15, marginBottom: 4,
+        }}>{challenge.title}</div>
+        <div style={{
+          fontSize: 11, color: '#5A5550', lineHeight: 1.5,
+        }}>{challenge.rationale}</div>
+      </div>
+      <div style={{
+        flexShrink: 0, alignSelf: 'center',
+        fontFamily: 'Barlow Condensed, Impact, sans-serif',
+        fontWeight: 900, fontSize: 18, color: '#9C958A',
+      }}>›</div>
+    </button>
+  )
+}
+
+// ── Tool suggestion (mixed mode) ───────────────────────────────
+function ToolSuggestionRow({ dim, tool, rationale, onClick }) {
+  return (
+    <button onClick={onClick}
+      style={{
+        display: 'flex', gap: 12, alignItems: 'flex-start',
+        padding: '10px 12px',
+        background: '#FFFFFF',
+        border: `2px solid ${dim.color}33`, borderRadius: 12,
+        textAlign: 'left', cursor: 'pointer', width: '100%',
+      }}>
+      <div style={{
+        flexShrink: 0, width: 24, height: 24, borderRadius: '50%',
+        background: dim.color + '22',
+        border: '1.5px solid ' + dim.color,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 12, marginTop: 1,
+      }}>{dim.icon}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontFamily: 'Georgia, serif', fontSize: 14, fontWeight: 700,
+          color: INK, marginBottom: 2,
+        }}>{tool.n}</div>
+        <div style={{ fontSize: 11, color: '#8B8074', lineHeight: 1.5 }}>
+          {rationale}
+        </div>
+      </div>
+    </button>
+  )
+}
+
+// ── Rich-mode column (apply now / learn next) ──────────────────
+function RichColumn({ title, subtitle, tone, tools }) {
+  const tones = {
+    ok:   { bg: '#E6F4EC', border: '#2A6B45', label: '#1F4E32' },
+    gold: { bg: '#FFF4D8', border: '#C17B2A', label: '#7B4A12' },
+  }
+  const t = tones[tone] || tones.ok
+  return (
+    <div style={{
+      background: t.bg, borderRadius: 12,
+      border: `2px solid ${t.border}`, padding: '12px 12px 10px',
+      boxShadow: '2px 2px 0 ' + t.border,
+    }}>
+      <div style={{
+        fontFamily: 'Barlow Condensed, Impact, sans-serif',
+        fontWeight: 900, fontSize: 12, color: t.label,
+        letterSpacing: '.08em', marginBottom: 4,
+      }}>{title}</div>
+      <div style={{ fontSize: 11, color: t.label, opacity: 0.85, marginBottom: 10, lineHeight: 1.4 }}>
+        {subtitle}
+      </div>
+      {tools.length === 0 && (
+        <div style={{
+          fontSize: 11, color: t.label, opacity: 0.6,
+          fontStyle: 'italic',
+        }}>—</div>
+      )}
+      {tools.map((tl, i) => (
+        <div key={tl.n} style={{
+          padding: '8px 0',
+          borderTop: i > 0 ? `1px solid ${t.border}33` : 'none',
+        }}>
+          <div style={{
+            fontFamily: 'Georgia, serif', fontSize: 13, fontWeight: 700,
+            color: INK, marginBottom: 3,
+          }}>{tl.n}</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+            {(tl.d || []).map(did => {
+              const d = DIM_BY_ID[did]
+              if (!d) return null
+              return (
+                <span key={did} style={{
+                  padding: '1px 5px', borderRadius: 5,
+                  background: d.color + '22', color: d.color,
+                  fontSize: 9, fontWeight: 700,
+                }}>{d.short}</span>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── AI action row (renders an AI-generated suggestion) ─────────
+function AiActionRow({ action, onClick }) {
+  const TONE = {
+    workshop: { col: '#1B5FA0', icon: '🗂', label: 'Workshop' },
+    evaluate: { col: '#7C2D12', icon: '✏',  label: 'Evaluate' },
+    apply:    { col: '#2A6B45', icon: '🚀', label: 'Apply now' },
+    learn:    { col: '#C17B2A', icon: '📘', label: 'Learn next' },
+  }
+  const t = TONE[action.type] || TONE.evaluate
+  return (
+    <button onClick={onClick}
+      style={{
+        display: 'flex', gap: 10, alignItems: 'flex-start',
+        padding: '8px 10px', marginTop: 6,
+        background: '#FFFFFF',
+        border: `1.5px solid ${t.col}55`, borderRadius: 10,
+        textAlign: 'left', cursor: action.tool ? 'pointer' : 'default',
+        width: '100%',
+      }}>
+      <div style={{
+        flexShrink: 0, width: 22, height: 22, borderRadius: '50%',
+        background: t.col + '22', border: `1.5px solid ${t.col}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 11,
+      }}>{t.icon}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          display: 'flex', alignItems: 'baseline',
+          justifyContent: 'space-between', gap: 8,
+        }}>
+          <span style={{
+            fontFamily: 'Barlow Condensed, Impact, sans-serif',
+            fontWeight: 900, fontSize: 12, color: INK,
+            letterSpacing: '.04em', textTransform: 'uppercase',
+            flex: 1, minWidth: 0, overflow: 'hidden',
+            textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>{action.title}</span>
+          <span style={{
+            flexShrink: 0,
+            fontFamily: 'Barlow Condensed, Impact, sans-serif',
+            fontWeight: 900, fontSize: 9, color: t.col,
+            letterSpacing: '.06em',
+          }}>{t.label}</span>
+        </div>
+        {action.tool && (
+          <div style={{
+            fontFamily: 'Georgia, serif', fontSize: 12, fontWeight: 700,
+            color: '#3F3A36', marginTop: 3,
+          }}>{action.tool.n}</div>
+        )}
+        {action.rationale && (
+          <div style={{
+            fontSize: 11, color: '#5A5550', lineHeight: 1.45, marginTop: 3,
+          }}>{action.rationale}</div>
+        )}
+      </div>
+    </button>
   )
 }
 
@@ -724,7 +1164,7 @@ export function DashboardView() {
 
   const scores      = dimScores(practiced)
   const gates       = gateStats(practiced)
-  const suggestions = makeSuggestions(scores, practiced)
+  const recommendations = classifyDashboard(scores, gates, practiced)
 
   const tabs = [
     { id: 'overall', label: 'Overall', color: INK },
@@ -773,7 +1213,11 @@ export function DashboardView() {
       {/* Tab content */}
       {tab === 'overall' ? (
         <OverallView practiced={practiced} scores={scores} gates={gates}
-          suggestions={suggestions} xp={xp} />
+          recommendations={recommendations}
+          xp={xp}
+          goExplore={goExplore} goExploreDim={goExploreDim}
+          goFacilitator={goFacilitator}
+          goProfile={() => useStore.getState().goProfile()} />
       ) : tab === 'team' ? (
         <TeamView team={currentTeam} userId={userId} />
       ) : (

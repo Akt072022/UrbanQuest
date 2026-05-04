@@ -678,16 +678,17 @@ function BadgeTile({ b }) {
         transition: 'transform .15s',
       }}>
       {/* Icon — image when the badge has an iconSrc (the dim PNGs),
-          emoji otherwise. Each is wrapped in a colour-tinted disc
-          so dim and depth badges feel like the same family. */}
+          emoji otherwise. Locked badges show a flat silhouette (the
+          colour is hidden until the badge is earned); unlocked
+          badges reveal the full-colour illustration sitting on a
+          tinted disc that picks up the dim's accent. */}
       <div style={{
         width: 38, height: 38, borderRadius: '50%',
         margin: '0 auto 6px',
-        background: on ? b.col : '#C8C0B5',
-        border: `2px solid ${on ? INK : '#9C958A'}`,
+        background: on ? '#FFFFFF' : '#D6CFC1',
+        border: `2px solid ${on ? b.col : '#9C958A'}`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 18, color: '#FFFFFF',
-        filter: on ? 'none' : 'grayscale(.7)',
+        fontSize: 18, color: on ? INK : '#9C958A',
         overflow: 'hidden',
       }}>
         {b.iconSrc ? (
@@ -695,7 +696,10 @@ function BadgeTile({ b }) {
             draggable={false}
             style={{
               width: '88%', height: '88%', objectFit: 'contain',
-              filter: on ? 'brightness(0) invert(1)' : 'none',
+              // Locked: flatten to a single grey silhouette so the
+              // illustration's colours don't spoil the achievement.
+              // Unlocked: full-colour, no filter.
+              filter: on ? 'none' : 'brightness(0) opacity(.4)',
               userSelect: 'none', pointerEvents: 'none',
             }} />
         ) : b.icon}
