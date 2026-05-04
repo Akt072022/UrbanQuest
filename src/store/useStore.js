@@ -123,6 +123,14 @@ export const useStore = create(
       }),
 
       nextCard: () => set(state => ({ eIdx: state.eIdx + 1, eFlipped: false })),
+      // Free back/forth navigation — does NOT change practiced or
+      // skipped state. Lets the user re-read a card or move ahead
+      // without committing to "I know it" or "I don't know it".
+      prevCard: () => set(state => ({
+        eIdx: Math.max(0, state.eIdx - 1),
+        eFlipped: false,
+      })),
+      goCard: (idx) => set({ eIdx: Math.max(0, idx | 0), eFlipped: false }),
 
       setSession: (id, role) => set({ sessionId: id, sessionRole: role }),
 

@@ -622,7 +622,7 @@ export function CardSynthesis({ tool, gate, onDive, alreadyLevel = null, already
               strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           {alreadySkipped
-            ? 'Already skipped'
+            ? 'Marked as new to me'
             : `Already evaluated · ${SKILL_LEVELS[alreadyLevel]?.label || alreadyLevel}`}
           <span style={{ marginLeft: 'auto', opacity: .85, fontSize: 10 }}>
             (re-pick to update)
@@ -1110,8 +1110,36 @@ export function SwipeWrap({ enabled, onAction, children }) {
       {children}
       {/* Overlay action labels */}
       {showRight && <SwipeTag color={SWIPE_GREEN} pos="left">I KNOW IT</SwipeTag>}
-      {showLeft  && <SwipeTag color="#9C958A"   pos="right">SKIP</SwipeTag>}
+      {showLeft  && <SwipeTag color="#9C958A"   pos="right">NEW TO ME</SwipeTag>}
     </div>
+  )
+}
+
+// Small chevron button used in the deck header to step the cursor
+// back or forward without committing any rating. Disabled at the
+// edges of the deck.
+function NavArrow({ dir, onClick, disabled }) {
+  return (
+    <button onClick={disabled ? undefined : onClick}
+      aria-label={dir === 'prev' ? 'Previous card' : 'Next card'}
+      title={dir === 'prev' ? 'Previous · no commit' : 'Next · no commit'}
+      style={{
+        width: 30, height: 30, padding: 0,
+        background: '#FFFFFF',
+        border: `2px solid ${INK}`, borderRadius: 999,
+        cursor: disabled ? 'default' : 'pointer',
+        opacity: disabled ? 0.35 : 1,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none">
+        {dir === 'prev'
+          ? <path d="M15 5 L8 12 L15 19" stroke={INK} strokeWidth="2.4"
+              strokeLinecap="round" strokeLinejoin="round" />
+          : <path d="M9 5 L16 12 L9 19" stroke={INK} strokeWidth="2.4"
+              strokeLinecap="round" strokeLinejoin="round" />
+        }
+      </svg>
+    </button>
   )
 }
 
@@ -1150,7 +1178,7 @@ export function ActionButtons({ show, onAction }) {
     }}>
       <ScrappyButton onClick={() => onAction('skip')}
         color="#FFFFFF" textColor="#7B746A" size="sm" full>
-        ← SKIP
+        NEW TO ME
       </ScrappyButton>
       <ScrappyButton onClick={() => onAction('practice')}
         color={YELLOW} size="sm" full>
@@ -1179,7 +1207,7 @@ export function ProgressDots({ tools, idx }) {
 // ── Main Explore view ──────────────────────────────────────────
 export function ExploreView() {
   const { eGate, eDim, eIdx, practiced, skipped,
-          goMap, practiceTool, skipTool, nextCard } =
+          goMap, practiceTool, skipTool, nextCard, prevCard } =
     useStore(useShallow(s => ({
       eGate: s.eGate, eDim: s.eDim, eIdx: s.eIdx,
       practiced:    s.practiced,
@@ -1188,6 +1216,7 @@ export function ExploreView() {
       practiceTool: s.practiceTool,
       skipTool:     s.skipTool,
       nextCard:     s.nextCard,
+      prevCard:     s.prevCard,
     })))
 
   // Local card-face state (synth ↔ deep). No more cover-flip
@@ -1280,11 +1309,26 @@ export function ExploreView() {
             )}
           </div>
 
+          {/* Free back/forth navigation — chevrons either side of
+              the counter. Tapping these does NOT change the tool's
+              status; they just move the cursor so the user can
+              re-read a card or jump ahead without committing. */}
           <div style={{
-            fontFamily: 'Barlow Condensed, Impact, sans-serif',
-            fontWeight: 900, fontSize: 16, color: INK, flexShrink: 0,
+            display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
           }}>
-            {eIdx + 1}/{tools.length}
+            <NavArrow dir="prev"
+              onClick={() => prevCard()}
+              disabled={eIdx === 0} />
+            <div style={{
+              fontFamily: 'Barlow Condensed, Impact, sans-serif',
+              fontWeight: 900, fontSize: 16, color: INK,
+              minWidth: 44, textAlign: 'center',
+            }}>
+              {eIdx + 1}/{tools.length}
+            </div>
+            <NavArrow dir="next"
+              onClick={() => nextCard()}
+              disabled={eIdx >= tools.length - 1} />
           </div>
         </div>
 
