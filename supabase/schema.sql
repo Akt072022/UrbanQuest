@@ -159,3 +159,37 @@ create policy profiles_self_rw on public.profiles
   for all
   using      (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+-- ── Team membership UI policies ────────────────────────────────
+-- A teammate must be able to see the *other* members of a team they
+-- belong to (roster display). The default `team_members_self_read`
+-- only exposes the user's own row.
+drop policy if exists team_members_team_read on public.team_members;
+create policy team_members_team_read on public.team_members
+  for select using (
+    exists (
+      select 1 from public.team_members me
+       where me.team_id = team_members.team_id and me.user_id = auth.uid()
+    )
+  );
+
+-- Looking up a team by invite code before joining is tricky: the
+-- caller is not yet a member, so `teams_member_read` denies them. We
+-- can't broaden that policy without leaking the full directory of
+-- teams. A SECURITY DEFINER RPC is the safe middle ground — it only
+-- returns the row that matches the exact invite_code provided, and
+-- the function bypasses RLS only inside its own body.
+create or replace function public.lookup_team_by_invite(p_code text)
+returns table (id uuid, name text, city text, proj text)
+language sql
+security definer
+set search_path = public
+as $$
+  select t.id, t.name, t.city, t.proj
+    from public.teams t
+   where t.invite_code = p_code
+   limit 1;
+$$;
+
+revoke all on function public.lookup_team_by_invite(text) from public;
+grant execute on function public.lookup_team_by_invite(text) to authenticated;

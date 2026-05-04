@@ -47,6 +47,13 @@ export const useStore = create(
       // ── Auth (set by syncSupabase, never persisted) ────────
       userId:    null,
       userEmail: null,
+      // Cached list of teams the signed-in user belongs to. Refreshed
+      // on auth pulls; never persisted (re-derived from Supabase).
+      teams:         [],
+      // Active team for tagging new evaluations + scoping the team
+      // dashboard. Persisted so the same team stays selected across
+      // reloads even when offline.
+      currentTeamId: null,
 
       // ── Actions ────────────────────────────
       startGame: (team) => set((state) => ({
@@ -119,6 +126,11 @@ export const useStore = create(
 
       setSession: (id, role) => set({ sessionId: id, sessionRole: role }),
 
+      // Team membership setters — populated by syncSupabase after auth
+      // pulls / team CRUD calls in ProfileView.
+      setTeams: (arr) => set({ teams: Array.isArray(arr) ? arr : [] }),
+      setCurrentTeamId: (id) => set({ currentTeamId: id || null }),
+
       reset: () => set({
         view: 'welcome',
         team: null,
@@ -129,15 +141,19 @@ export const useStore = create(
         eGate: null, eDim: null, eIdx: 0, eFlipped: false,
         dashboardGate: null,
         sessionId: null, sessionRole: null,
+        // Note: teams/currentTeamId are not reset — they belong to the
+        // signed-in account, not the local game state.
       }),
     }),
     {
       name:    STORAGE_KEY,
       version: SCHEMA_VERSION,
-      // Don't persist auth — it lives in supabase.auth.getSession()
-      // and is re-hydrated by syncSupabase on every page load.
+      // Don't persist auth or the cached teams list — they're
+      // re-hydrated from Supabase on every page load. `currentTeamId`
+      // *is* persisted so the same active team stays selected even
+      // when offline.
       partialize: (s) => {
-        const { userId, userEmail, ...rest } = s
+        const { userId, userEmail, teams, ...rest } = s
         return rest
       },
       // v2 → v3: practiced was string[]. Convert to {name: 'regular'} so

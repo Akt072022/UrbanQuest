@@ -1,10 +1,14 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore } from '../store/useStore'
 import { getLevel, TOOLS, DIMENSIONS, GATE_LABEL, SKILL_LEVELS } from '../data/tools'
 import { computeBadges } from '../data/badges'
 import { ScrappyButton } from '../components/ScrappyButton'
-import { hasSupabase, sendMagicLink, signOut } from '../lib/supabase'
+import {
+  hasSupabase, sendMagicLink, signOut,
+  createTeam, joinTeamByCode, leaveTeam, fetchTeamMembers,
+} from '../lib/supabase'
+import { refreshTeams } from '../lib/syncSupabase'
 
 const INK    = '#1C2530'
 const YELLOW = '#F5C84A'
@@ -27,13 +31,19 @@ const CAT_LABEL = {
 }
 
 export function ProfileView() {
-  const { team, xp, practiced, skipped, userEmail, goMap } = useStore(useShallow(s => ({
-    team:      s.team,
-    xp:        s.xp,
-    practiced: s.practiced,
-    skipped:   s.skipped,
-    userEmail: s.userEmail,
-    goMap:     s.goMap,
+  const {
+    team, xp, practiced, skipped, userEmail, goMap,
+    teams, currentTeamId, setCurrentTeamId,
+  } = useStore(useShallow(s => ({
+    team:             s.team,
+    xp:               s.xp,
+    practiced:        s.practiced,
+    skipped:          s.skipped,
+    userEmail:        s.userEmail,
+    goMap:            s.goMap,
+    teams:            s.teams,
+    currentTeamId:    s.currentTeamId,
+    setCurrentTeamId: s.setCurrentTeamId,
   })))
 
   const lvl     = getLevel(xp)
@@ -62,6 +72,75 @@ export function ProfileView() {
   const [authEmail,  setAuthEmail]  = useState('')
   const [authStatus, setAuthStatus] = useState('idle')
   const [authMsg,    setAuthMsg]    = useState('')
+
+  // Team-management state — local to this view; the canonical state
+  // lives in the store (teams, currentTeamId).
+  const [teamFormOpen, setTeamFormOpen] = useState(null)  // null | 'create' | 'join'
+  const [teamName, setTeamName] = useState('')
+  const [teamCity, setTeamCity] = useState('')
+  const [teamProj, setTeamProj] = useState('mobility')
+  const [joinCode, setJoinCode] = useState('')
+  const [teamBusy, setTeamBusy] = useState(false)
+  const [teamErr,  setTeamErr]  = useState('')
+  const [memberCounts, setMemberCounts] = useState({})  // { teamId: n }
+  // Fetch member counts for the cached teams. Cheap query, gated to
+  // the user's actual memberships by RLS.
+  useEffect(() => {
+    let cancelled = false
+    if (!userEmail || teams.length === 0) { setMemberCounts({}); return }
+    Promise.all(teams.map(async t => {
+      const rows = await fetchTeamMembers(t.id)
+      return [t.id, rows.length]
+    })).then(pairs => {
+      if (!cancelled) setMemberCounts(Object.fromEntries(pairs))
+    })
+    return () => { cancelled = true }
+  }, [teams, userEmail])
+
+  const submitCreateTeam = async (e) => {
+    e.preventDefault()
+    if (!teamName.trim()) return
+    setTeamBusy(true); setTeamErr('')
+    try {
+      const created = await createTeam({
+        name: teamName, city: teamCity, proj: teamProj,
+      })
+      await refreshTeams()
+      setCurrentTeamId(created.id)
+      setTeamFormOpen(null)
+      setTeamName(''); setTeamCity('')
+    } catch (err) {
+      setTeamErr(err?.message || 'Could not create team.')
+    } finally { setTeamBusy(false) }
+  }
+  const submitJoinTeam = async (e) => {
+    e.preventDefault()
+    if (!joinCode.trim()) return
+    setTeamBusy(true); setTeamErr('')
+    try {
+      const joined = await joinTeamByCode(joinCode)
+      await refreshTeams()
+      setCurrentTeamId(joined.id)
+      setTeamFormOpen(null)
+      setJoinCode('')
+    } catch (err) {
+      setTeamErr(err?.message || 'Could not join team.')
+    } finally { setTeamBusy(false) }
+  }
+  const handleLeave = async (teamId) => {
+    if (!confirm('Leave this team? Your evaluations stay tagged with it but you lose team-dashboard access.')) return
+    try {
+      await leaveTeam(teamId)
+      await refreshTeams()
+      // refreshTeams() already drops the currentTeamId if the user
+      // just left their active team.
+    } catch (err) {
+      alert(err?.message || 'Could not leave team.')
+    }
+  }
+  const copyInvite = async (code) => {
+    try { await navigator.clipboard.writeText(code) } catch { /* noop */ }
+  }
 
   const submitMagicLink = async (e) => {
     e.preventDefault()
@@ -270,6 +349,243 @@ export function ProfileView() {
                   fontWeight: 800, textTransform: 'uppercase',
                 }}>cancel</button>
             </form>
+          )}
+        </div>
+      )}
+
+      {/* ── Teams ─────────────────────────────────────── */}
+      {hasSupabase && userEmail && (
+        <div style={{
+          background: CARD,
+          border: `2.5px solid ${INK}`,
+          borderRadius: 18,
+          boxShadow: '3px 3px 0 ' + INK,
+          padding: '14px 14px',
+          marginBottom: 16,
+        }}>
+          <div style={{
+            display: 'flex', alignItems: 'baseline',
+            justifyContent: 'space-between', gap: 8,
+            marginBottom: 10,
+          }}>
+            <div style={{
+              fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
+              color: '#5A5550', letterSpacing: '.08em',
+              textTransform: 'uppercase',
+            }}>Teams</div>
+            <div style={{
+              fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
+              color: '#9C958A',
+            }}>{teams.length}</div>
+          </div>
+
+          {teams.length === 0 && (
+            <div style={{
+              fontSize: 12, color: '#5A5550', lineHeight: 1.45, marginBottom: 10,
+            }}>
+              Teams let you share evaluations with co-workers and unlock the
+              team dashboard. Create one to start, or join with an invite code.
+            </div>
+          )}
+
+          {/* Team list */}
+          {teams.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
+              {teams.map(t => {
+                const active = t.id === currentTeamId
+                const count  = memberCounts[t.id]
+                return (
+                  <div key={t.id} style={{
+                    padding: '10px 12px',
+                    background: active ? '#E6F4EC' : '#F2EDE4',
+                    border: `2px solid ${active ? '#2A6B45' : INK + '33'}`,
+                    borderRadius: 12,
+                    boxShadow: active ? '2px 2px 0 #2A6B45' : 'none',
+                  }}>
+                    <div style={{
+                      display: 'flex', alignItems: 'center',
+                      justifyContent: 'space-between', gap: 8,
+                    }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{
+                          display: 'flex', alignItems: 'center', gap: 6,
+                          marginBottom: 2,
+                        }}>
+                          {active && (
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none">
+                              <path d="M5 13l4 4L19 7" stroke="#2A6B45" strokeWidth="3"
+                                strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          )}
+                          <span style={{
+                            fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 14,
+                            color: INK, letterSpacing: '.04em',
+                            textTransform: 'uppercase', lineHeight: 1.1,
+                          }}>{t.name}</span>
+                          {t.role === 'facilitator' && (
+                            <span style={{
+                              fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 8,
+                              padding: '1px 5px', background: YELLOW,
+                              border: `1.5px solid ${INK}`, borderRadius: 4,
+                              color: INK, letterSpacing: '.06em',
+                            }}>FACILITATOR</span>
+                          )}
+                        </div>
+                        <div style={{
+                          fontSize: 11, color: '#5A5550',
+                        }}>
+                          {t.city ? `${t.city} · ` : ''}{count != null ? `${count} member${count !== 1 ? 's' : ''}` : '…'}
+                        </div>
+                      </div>
+                      <div style={{
+                        display: 'flex', flexDirection: 'column',
+                        alignItems: 'flex-end', gap: 4, flexShrink: 0,
+                      }}>
+                        {!active && (
+                          <button onClick={() => setCurrentTeamId(t.id)}
+                            style={{
+                              padding: '4px 10px',
+                              background: '#FFFFFF', color: INK,
+                              border: `2px solid ${INK}`, borderRadius: 999,
+                              fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 9,
+                              letterSpacing: '.06em', cursor: 'pointer',
+                            }}>SET ACTIVE</button>
+                        )}
+                        {t.invite_code && (
+                          <button onClick={() => copyInvite(t.invite_code)}
+                            title="Click to copy invite code"
+                            style={{
+                              padding: '3px 8px',
+                              background: '#FFFFFF', color: '#5A5550',
+                              border: `1.5px dashed ${INK}55`, borderRadius: 6,
+                              fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 9,
+                              letterSpacing: '.1em', cursor: 'pointer',
+                            }}>{t.invite_code} ⧉</button>
+                        )}
+                      </div>
+                    </div>
+                    {active && (
+                      <button onClick={() => handleLeave(t.id)}
+                        style={{
+                          marginTop: 6, padding: 0,
+                          background: 'transparent', border: 'none',
+                          fontSize: 10, color: '#9C958A', fontWeight: 800,
+                          letterSpacing: '.06em', textTransform: 'uppercase',
+                          cursor: 'pointer',
+                        }}>· leave team</button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Create / Join controls */}
+          {teamFormOpen === null && (
+            <div style={{ display: 'flex', gap: 8 }}>
+              <ScrappyButton onClick={() => { setTeamFormOpen('create'); setTeamErr('') }}
+                color={YELLOW} size="sm" full>
+                + CREATE TEAM
+              </ScrappyButton>
+              <ScrappyButton onClick={() => { setTeamFormOpen('join'); setTeamErr('') }}
+                color="#FFFFFF" size="sm" full>
+                JOIN BY CODE
+              </ScrappyButton>
+            </div>
+          )}
+
+          {teamFormOpen === 'create' && (
+            <form onSubmit={submitCreateTeam}
+              style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <input value={teamName}
+                onChange={e => setTeamName(e.target.value)}
+                placeholder="Team name (e.g. Lyon Urbanism Lab)"
+                style={{
+                  padding: '9px 11px',
+                  border: `2px solid ${INK}`, borderRadius: 10,
+                  fontSize: 13, fontWeight: 700, color: INK,
+                  outline: 'none',
+                  fontFamily: '-apple-system, Helvetica Neue, sans-serif',
+                }} />
+              <input value={teamCity}
+                onChange={e => setTeamCity(e.target.value)}
+                placeholder="City (optional)"
+                style={{
+                  padding: '9px 11px',
+                  border: `2px solid ${INK}`, borderRadius: 10,
+                  fontSize: 13, color: INK,
+                  outline: 'none',
+                  fontFamily: '-apple-system, Helvetica Neue, sans-serif',
+                }} />
+              <select value={teamProj}
+                onChange={e => setTeamProj(e.target.value)}
+                style={{
+                  padding: '9px 11px',
+                  border: `2px solid ${INK}`, borderRadius: 10,
+                  fontSize: 13, color: INK, background: '#FFFFFF',
+                  outline: 'none', cursor: 'pointer',
+                  fontFamily: '-apple-system, Helvetica Neue, sans-serif',
+                }}>
+                <option value="heritage">Heritage & rehabilitation</option>
+                <option value="mobility">Mobility & public space</option>
+                <option value="resilience">Climate resilience</option>
+                <option value="econdev">Economic development</option>
+                <option value="social">Social cohesion</option>
+                <option value="mixed">Mixed-use project</option>
+              </select>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <ScrappyButton type="button"
+                  onClick={() => { setTeamFormOpen(null); setTeamErr('') }}
+                  color="#FFFFFF" size="sm" full>
+                  CANCEL
+                </ScrappyButton>
+                <ScrappyButton type="submit"
+                  onClick={submitCreateTeam}
+                  color={teamBusy || !teamName.trim() ? '#E0DAD2' : YELLOW}
+                  size="sm" full>
+                  {teamBusy ? 'CREATING…' : 'CREATE'}
+                </ScrappyButton>
+              </div>
+            </form>
+          )}
+
+          {teamFormOpen === 'join' && (
+            <form onSubmit={submitJoinTeam}
+              style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <input value={joinCode}
+                onChange={e => setJoinCode(e.target.value.toUpperCase())}
+                placeholder="Invite code (e.g. AB3D5K)"
+                style={{
+                  padding: '9px 11px',
+                  border: `2px solid ${INK}`, borderRadius: 10,
+                  fontSize: 14, fontWeight: 700, color: INK,
+                  letterSpacing: '.1em',
+                  outline: 'none',
+                  fontFamily: 'Barlow Condensed, Impact, sans-serif',
+                  textTransform: 'uppercase',
+                }} />
+              <div style={{ display: 'flex', gap: 8 }}>
+                <ScrappyButton type="button"
+                  onClick={() => { setTeamFormOpen(null); setTeamErr('') }}
+                  color="#FFFFFF" size="sm" full>
+                  CANCEL
+                </ScrappyButton>
+                <ScrappyButton type="submit"
+                  onClick={submitJoinTeam}
+                  color={teamBusy || !joinCode.trim() ? '#E0DAD2' : YELLOW}
+                  size="sm" full>
+                  {teamBusy ? 'JOINING…' : 'JOIN'}
+                </ScrappyButton>
+              </div>
+            </form>
+          )}
+
+          {teamErr && (
+            <div style={{
+              marginTop: 8, padding: '6px 10px',
+              background: '#FCE8E2', border: `1.5px solid #C0452A`,
+              borderRadius: 8, fontSize: 11, color: '#7A1F0E', lineHeight: 1.4,
+            }}>{teamErr}</div>
           )}
         </div>
       )}

@@ -6,7 +6,7 @@
 //                  upsert to the cloud. Deletes are propagated too.
 //   • On sign-out: clear the user pointer in the store; local data
 //                  stays in localStorage as before.
-import { supabase, hasSupabase } from './supabase'
+import { supabase, hasSupabase, listMyTeams } from './supabase'
 import { useStore } from '../store/useStore'
 import { SKILL_LEVELS } from '../data/tools'
 
@@ -52,11 +52,14 @@ async function pushDelta() {
   if (!session?.user) return
   const userId = session.user.id
 
-  const { practiced, skipped } = useStore.getState()
+  const { practiced, skipped, currentTeamId } = useStore.getState()
 
-  // ── Evaluations: upsert all current rows
+  // ── Evaluations: upsert all current rows. team_id is set when the
+  // user has selected an active team in their profile, so cross-member
+  // aggregation can later filter by team. Null means "personal".
   const evalRows = Object.entries(practiced).map(([tool_name, level]) => ({
     user_id: userId, tool_name, level,
+    team_id: currentTeamId || null,
   }))
   if (evalRows.length) {
     const { error } = await supabase.from('evaluations')
@@ -74,7 +77,10 @@ async function pushDelta() {
   }
 
   // ── Skipped: upsert + diff-delete
-  const skipRows = skipped.map(tool_name => ({ user_id: userId, tool_name }))
+  const skipRows = skipped.map(tool_name => ({
+    user_id: userId, tool_name,
+    team_id: currentTeamId || null,
+  }))
   if (skipRows.length) {
     const { error } = await supabase.from('skipped_tools')
       .upsert(skipRows, { onConflict: 'user_id,tool_name' })
@@ -131,6 +137,27 @@ async function pullFull(userId) {
   schedulePush()
 }
 
+async function refreshTeams() {
+  try {
+    const teams = await listMyTeams()
+    useStore.setState({ teams })
+    // Auto-select the first team if the user hasn't picked one yet —
+    // makes the team-aggregate views show something useful out of
+    // the box for users with a single team.
+    const cur = useStore.getState().currentTeamId
+    if (!cur && teams.length > 0) {
+      useStore.setState({ currentTeamId: teams[0].id })
+    }
+    // If the persisted currentTeamId no longer corresponds to a team
+    // the user is a member of (left, deleted, etc.), drop it.
+    if (cur && !teams.some(t => t.id === cur)) {
+      useStore.setState({ currentTeamId: teams[0]?.id || null })
+    }
+  } catch (err) {
+    console.warn('[sync] refreshTeams failed:', err?.message || err)
+  }
+}
+
 export function initSupabaseSync() {
   if (!ENABLED) return () => {}
 
@@ -141,9 +168,15 @@ export function initSupabaseSync() {
         userId:    session.user.id,
         userEmail: session.user.email,
       })
-      await pullFull(session.user.id)
+      await Promise.all([
+        pullFull(session.user.id),
+        refreshTeams(),
+      ])
     } else {
-      useStore.setState({ userId: null, userEmail: null })
+      useStore.setState({
+        userId: null, userEmail: null,
+        teams: [], currentTeamId: null,
+      })
       lastPushed = { practiced: {}, skipped: [] }
     }
   })
@@ -156,13 +189,18 @@ export function initSupabaseSync() {
         userEmail: data.session.user.email,
       })
       pullFull(data.session.user.id)
+      refreshTeams()
     }
   })
 
-  // Push on every change to practiced / skipped (coalesced)
+  // Push on every change to practiced / skipped (coalesced). Also
+  // re-push when the active team changes so previously-personal rows
+  // get retagged with the new team_id.
   const unsub = useStore.subscribe((state, prev) => {
     if (!state.userId) return
-    if (state.practiced !== prev.practiced || state.skipped !== prev.skipped) {
+    if (state.practiced     !== prev.practiced
+     || state.skipped       !== prev.skipped
+     || state.currentTeamId !== prev.currentTeamId) {
       schedulePush()
     }
   })
@@ -172,3 +210,7 @@ export function initSupabaseSync() {
     unsub?.()
   }
 }
+
+// Allow ProfileView to refresh the teams cache after a create/join/
+// leave without waiting for the next auth event.
+export { refreshTeams }
