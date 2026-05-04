@@ -60,7 +60,7 @@ export const BADGES = [
     cat: 'progression',
     desc: 'Evaluate 10 methods.',
     pred: ({ practiced }) => Object.keys(practiced).length >= 10 },
-  { id: 'veteran_30',    name: 'Veteran',       icon: '🛡', col: '#7C2D12',
+  { id: 'veteran_30',    name: 'Veteran',       icon: '🎖', col: '#7C2D12',
     cat: 'progression',
     desc: 'Evaluate 30 methods.',
     pred: ({ practiced }) => Object.keys(practiced).length >= 30 },
