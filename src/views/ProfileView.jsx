@@ -677,6 +677,9 @@ function BadgeTile({ b }) {
         opacity: on ? 1 : 0.65,
         transition: 'transform .15s',
       }}>
+      {/* Icon — image when the badge has an iconSrc (the dim PNGs),
+          emoji otherwise. Each is wrapped in a colour-tinted disc
+          so dim and depth badges feel like the same family. */}
       <div style={{
         width: 38, height: 38, borderRadius: '50%',
         margin: '0 auto 6px',
@@ -685,7 +688,18 @@ function BadgeTile({ b }) {
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontSize: 18, color: '#FFFFFF',
         filter: on ? 'none' : 'grayscale(.7)',
-      }}>{b.icon}</div>
+        overflow: 'hidden',
+      }}>
+        {b.iconSrc ? (
+          <img src={b.iconSrc} alt=""
+            draggable={false}
+            style={{
+              width: '88%', height: '88%', objectFit: 'contain',
+              filter: on ? 'brightness(0) invert(1)' : 'none',
+              userSelect: 'none', pointerEvents: 'none',
+            }} />
+        ) : b.icon}
+      </div>
       <div style={{
         fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
         color: on ? INK : '#7B746A', letterSpacing: '.04em',
@@ -695,6 +709,21 @@ function BadgeTile({ b }) {
       <div style={{
         fontSize: 9, color: on ? '#5A5550' : '#9C958A', lineHeight: 1.3,
       }}>{b.desc}</div>
+      {/* Tier dots — visible for tiered badges (1-4 dots filled to
+          show progression within a dimension). */}
+      {b.tier && (
+        <div style={{
+          marginTop: 5, display: 'flex', justifyContent: 'center', gap: 3,
+        }}>
+          {[1,2,3,4].map(n => (
+            <span key={n} style={{
+              width: 5, height: 5, borderRadius: '50%',
+              background: n <= b.tier && on ? b.col : '#D6CFC1',
+              border: n === b.tier ? `1px solid ${on ? INK : '#9C958A'}` : 'none',
+            }} />
+          ))}
+        </div>
+      )}
       {!on && (
         <div aria-hidden="true" style={{
           position: 'absolute', top: 6, right: 6,

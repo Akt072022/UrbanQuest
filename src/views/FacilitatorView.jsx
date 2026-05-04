@@ -4,6 +4,7 @@ import { useStore } from '../store/useStore'
 import { QRCode } from '../components/QRCode'
 import { makeRoomId, openChannel, sendMsg, subscribe, participantUrl, onStatus } from '../lib/session'
 import { TOOLS, GATE_LABEL, GATE_DESC, DIMENSIONS, DIM_BY_ID } from '../data/tools'
+import { DIM_ICON } from '../data/dimIcons'
 import { ScrappyButton, ScrappyChip } from '../components/ScrappyButton'
 import { suggestMethods, hasMistral } from '../lib/mistral'
 import { TriageHeatmap } from '../components/TriageHeatmap'
@@ -178,14 +179,19 @@ function SummaryRow({ label, value, col }) {
   )
 }
 
-// ── Selector tiles — used for both gate and dimension filters ──
-function TileButton({ active, color, label, glyph, onClick }) {
+// ── Dim tile — picture-on-top selector for the wizard's Step 2.
+//   Reuses the same illustrations the journey map shows on each
+//   dim node so the two surfaces feel like the same product.
+//   The "All" tile uses a 6-dot hexagon glyph instead of a single
+//   illustration since it stands for the union. ────────────────
+function DimTile({ active, color, label, iconSrc, dotGlyph, onClick }) {
   return (
     <button onClick={onClick}
       style={{
         flex: 1,
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-        padding: '10px 6px',
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'flex-start', gap: 4,
+        padding: '10px 4px 8px',
         background: active ? color : CARD,
         border: `2.5px solid ${INK}`,
         borderRadius: 12,
@@ -193,8 +199,25 @@ function TileButton({ active, color, label, glyph, onClick }) {
         boxShadow: active ? '2px 2px 0 ' + INK : 'none',
         transform: active ? 'translate(-1px,-1px)' : 'none',
         transition: 'transform .08s',
+        minHeight: 96,
       }}>
-      {glyph}
+      <div style={{
+        width: 56, height: 56,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        {iconSrc ? (
+          <img src={iconSrc} alt=""
+            draggable={false}
+            style={{
+              width: '100%', height: '100%',
+              objectFit: 'contain',
+              filter: active ? 'brightness(0) invert(1)' : 'none',
+              userSelect: 'none', pointerEvents: 'none',
+            }} />
+        ) : (
+          dotGlyph
+        )}
+      </div>
       <span style={{
         fontFamily: FONT_HEAD,
         fontWeight: 900, fontSize: 11,
@@ -202,6 +225,31 @@ function TileButton({ active, color, label, glyph, onClick }) {
         color: active ? '#FFFFFF' : INK, lineHeight: 1.05, textAlign: 'center',
       }}>{label}</span>
     </button>
+  )
+}
+
+// Six-dot hexagon for the "All" tile. Each dot is the canonical
+// dimension colour, so the meaning is "every lens at once".
+function AllDimsGlyph({ active }) {
+  const RAD = 18
+  const dots = DIMENSIONS.map((d, i) => {
+    const angle = (30 + i * 60) * Math.PI / 180
+    return {
+      cx: RAD * Math.sin(angle),
+      cy: -RAD * Math.cos(angle),
+      fill: active ? '#FFFFFF' : d.color,
+    }
+  })
+  return (
+    <svg width={56} height={56} viewBox="-28 -28 56 56" style={{ display: 'block' }}>
+      {dots.map((d, i) => (
+        <circle key={i} cx={d.cx} cy={d.cy} r={5}
+          fill={d.fill}
+          stroke={active ? '#FFFFFF' : INK}
+          strokeWidth={1.5} />
+      ))}
+      <circle cx={0} cy={0} r={2.5} fill={active ? '#FFFFFF' : INK} />
+    </svg>
   )
 }
 
@@ -709,19 +757,20 @@ export function FacilitatorView() {
               <div style={{ fontSize: 12, color: '#5A5550', marginBottom: 12, lineHeight: 1.45 }}>
                 Narrow the deck to one lens — or keep "All" to triage every method in this gate.
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6 }}>
-                <TileButton
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
+                <DimTile
                   active={filterDim === 'all'}
                   color={INK}
                   label="All"
-                  glyph={null}
+                  iconSrc={null}
+                  dotGlyph={<AllDimsGlyph active={filterDim === 'all'} />}
                   onClick={() => setFilterDim('all')} />
                 {DIMENSIONS.map(d => (
-                  <TileButton key={d.id}
+                  <DimTile key={d.id}
                     active={filterDim === d.id}
                     color={d.color}
                     label={d.label}
-                    glyph={null}
+                    iconSrc={DIM_ICON[d.id] || null}
                     onClick={() => setFilterDim(d.id)} />
                 ))}
               </div>

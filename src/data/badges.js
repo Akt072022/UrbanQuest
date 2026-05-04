@@ -5,6 +5,7 @@
 // on a new device, syncSupabase pulls the same evaluations and the
 // same badges unlock automatically.
 import { TOOLS, DIMENSIONS, GATE_LABEL } from './tools'
+import { DIM_ICON } from './dimIcons'
 
 const GATE_COL = ['', '#C17B2A', '#1B3A6B', '#1F6B3A', '#5C2B8E']
 
@@ -16,6 +17,17 @@ function gateCleared(gate, practiced, skipped) {
   return tools.every(t => practiced[t.n] || skipSet.has(t.n))
 }
 
+// Per-dim helpers — used by the four tiers below to show progress
+// towards mastery without making "Master" the only achievable badge.
+function dimToolsAt(dimId, practiced, levelFilter) {
+  const tools = TOOLS.filter(t => t.d?.includes(dimId))
+  if (!tools.length) return 0
+  return tools.filter(t => {
+    const lvl = practiced[t.n]
+    if (!lvl) return false
+    return levelFilter ? lvl === levelFilter : true
+  }).length
+}
 function dimMastered(dimId, practiced) {
   const tools = TOOLS.filter(t => t.d?.includes(dimId))
   if (!tools.length) return false
@@ -78,16 +90,36 @@ export const BADGES = [
     desc: `Decide on every method in ${GATE_LABEL[4]}.`,
     pred: ({ practiced, skipped }) => gateCleared(4, practiced, skipped) },
 
-  // Dimension mastery — one per dim
-  ...DIMENSIONS.map(d => ({
-    id: `dim_${d.id}`,
-    name: `${d.label} Master`,
-    icon: d.icon || '◆',
-    col: d.color,
-    cat: 'dimension',
-    desc: `Practice 50%+ of ${d.label} methods at the regular level.`,
-    pred: ({ practiced }) => dimMastered(d.id, practiced),
-  })),
+  // Dimension tiers — four ladders per dim so beginners see early
+  // wins and don't have to hit 50% regular practice before unlocking
+  // anything in a lens. Tiers escalate: touch one → cover five →
+  // run three regularly → master the lens.
+  ...DIMENSIONS.flatMap(d => [
+    { id: `dim_${d.id}_curious`,
+      name: `${d.label} · Curious`,
+      icon: d.icon || '◆', iconSrc: DIM_ICON[d.id] || null,
+      col: d.color, cat: 'dimension', tier: 1,
+      desc: `Evaluate your first ${d.label} method.`,
+      pred: ({ practiced }) => dimToolsAt(d.id, practiced) >= 1 },
+    { id: `dim_${d.id}_familiar`,
+      name: `${d.label} · Familiar`,
+      icon: d.icon || '◆', iconSrc: DIM_ICON[d.id] || null,
+      col: d.color, cat: 'dimension', tier: 2,
+      desc: `Evaluate 5+ ${d.label} methods.`,
+      pred: ({ practiced }) => dimToolsAt(d.id, practiced) >= 5 },
+    { id: `dim_${d.id}_practitioner`,
+      name: `${d.label} · Practitioner`,
+      icon: d.icon || '◆', iconSrc: DIM_ICON[d.id] || null,
+      col: d.color, cat: 'dimension', tier: 3,
+      desc: `Run 3+ ${d.label} methods regularly.`,
+      pred: ({ practiced }) => dimToolsAt(d.id, practiced, 'regular') >= 3 },
+    { id: `dim_${d.id}_master`,
+      name: `${d.label} · Master`,
+      icon: d.icon || '◆', iconSrc: DIM_ICON[d.id] || null,
+      col: d.color, cat: 'dimension', tier: 4,
+      desc: `Run 50%+ of ${d.label} methods regularly.`,
+      pred: ({ practiced }) => dimMastered(d.id, practiced) },
+  ]),
 
   // Depth / breadth
   { id: 'theorist',     name: 'Theorist',     icon: '📚', col: '#5A5550',

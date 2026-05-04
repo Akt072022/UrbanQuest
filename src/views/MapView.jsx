@@ -10,22 +10,8 @@ import {
 } from '../data/tools'
 import { ScrappyButton } from '../components/ScrappyButton'
 
-// Dimension illustrations
-import iconSpatial      from '../assets/Icon_Spatial.png'
-import iconHeritage     from '../assets/Icon_Heritage.png'
-import iconSocial       from '../assets/Icon_Social.png'
-import iconEco          from '../assets/Icon_Eco.png'   // "Eco" → Économie
-import iconLegislation  from '../assets/Icon_Legislation.png'
-import iconEnvironment  from '../assets/Icon_Environment.png'
-
-const DIM_ICON = {
-  spatial:       iconSpatial,
-  heritage:      iconHeritage,
-  social:        iconSocial,
-  economic:      iconEco,
-  regulation:    iconLegislation,
-  environmental: iconEnvironment,
-}
+// Dimension illustrations — shared with the workshop wizard.
+import { DIM_ICON } from '../data/dimIcons'
 
 // ── Visual constants ─────────────────────────────────────────
 const INK     = '#1C2530'
@@ -92,6 +78,13 @@ function buildGates(opennessByGate) {
 function buildStops(gates, practiced) {
   const stops = []
   for (const gate of gates) {
+    const gateUnlocked = isUnlocked(gate.g, practiced)
+    const gateStarted  = practicedForGate(gate.g, practiced) > 0
+    // A gate that is technically locked by progression but the user
+    // has already started gets the same visual treatment as unlocked
+    // — encourages the "I'd rather work on Anchoring first" path.
+    const gateLockedVisual = !gateUnlocked && !gateStarted
+
     DIMENSIONS.forEach((dim, i) => {
       const a = DIM_ANGLES[i]
       const nx = gate.cx + gate.radius * Math.sin(a)
@@ -102,9 +95,12 @@ function buildStops(gates, practiced) {
         kind: 'node', gate: gate.g, dim,
         x: nx, y: ny,
         total, done,
-        empty: total === 0,
+        empty:    total === 0,
         complete: total > 0 && done === total,
-        locked: !isUnlocked(gate.g, practiced),
+        // Dim stops follow the gate's visual lock state. They remain
+        // tappable regardless — `locked` now drives styling only.
+        locked:   gateLockedVisual,
+        started:  done > 0,
       })
     })
     const gT = toolsForGate(gate.g).length
@@ -125,7 +121,8 @@ function buildStops(gates, practiced) {
       total: gT, done: gD,
       dims,
       complete: gD === gT,
-      locked: !isUnlocked(gate.g, practiced),
+      locked:   gateLockedVisual,
+      started:  gateStarted,
     })
   }
   return stops
@@ -251,21 +248,21 @@ function PathNode({ stop, onClick, opn = 1 }) {
       zIndex: 2,
     }}>
       <button onClick={onClick}
-        disabled={locked || empty}
-        title={`${dim.label} · ${done}/${total}`}
+        disabled={empty}
+        title={`${dim.label} · ${done}/${total}${locked ? ' · explore ahead' : ''}`}
         style={{
           width: '100%', height: '100%', padding: 0,
           background: locked ? '#E2DBCD' : '#F2EDE4',
           border: 'none',
           borderRadius: '50%',
           outline: 'none',
-          cursor: (locked || empty) ? 'default' : 'pointer',
+          cursor: empty ? 'default' : 'pointer',
           opacity: 1,
           overflow: 'visible',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           transition: 'transform .12s',
         }}
-        onMouseDown={e => { if (!locked && !empty) e.currentTarget.style.transform = 'scale(.95)' }}
+        onMouseDown={e => { if (!empty) e.currentTarget.style.transform = 'scale(.95)' }}
         onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)' }}
         onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)' }}
       >
@@ -385,15 +382,15 @@ function PathMilestone({ stop, onClick }) {
       width: VB, height: VB,
       zIndex: 2,
     }}>
-      <button onClick={onClick} disabled={locked}
-        title={locked ? 'Locked' : `Open ${GATE_LABEL[gate]} details`}
+      <button onClick={onClick}
+        title={locked ? `${GATE_LABEL[gate]} · explore ahead` : `Open ${GATE_LABEL[gate]} details`}
         style={{
           width: '100%', height: '100%', padding: 0,
           background: 'transparent', border: 'none',
-          cursor: locked ? 'default' : 'pointer',
+          cursor: 'pointer',
           transition: 'transform .12s',
         }}
-        onMouseDown={e => { if (!locked) e.currentTarget.style.transform = 'scale(.96)' }}
+        onMouseDown={e => { e.currentTarget.style.transform = 'scale(.96)' }}
         onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)' }}
         onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)' }}
       >
@@ -526,18 +523,18 @@ export function MapView() {
   }, [])
 
   const handleStop = (stop) => {
+    // Lock state is now purely cosmetic — every gate and every dim is
+    // tappable so a user who feels stronger on, say, Anchoring can
+    // dive in there first instead of being forced through Impact.
     if (stop.kind === 'milestone') {
-      if (stop.locked) return
       if (stop.complete) {
-        // Nothing left to evaluate here → jump to the dashboard view.
-        goDashboard(stop.gate)
+        goDashboard(stop.gate)        // jump to dashboard
       } else {
-        // In-progress gate → reveal/hide its dimensions inline.
-        togglePeek(stop.gate)
+        togglePeek(stop.gate)         // expand/collapse its dim rosette
       }
       return
     }
-    if (!stop.locked && !stop.empty) {
+    if (!stop.empty) {
       goExploreDim(stop.gate, stop.dim.id)
     }
   }
