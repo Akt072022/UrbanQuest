@@ -23,7 +23,9 @@ dist-ssr
 *.sln
 *.sw?
 
-# Source artwork / local scratch — the served canvases live in
-# public/canvas/ (.pptx files). The repo-root Canvas/ folder holds
-# 44 MB of PDF working copies and shouldn't ship to git.
-Canvas/
+# Source artwork / local scratch — the served canvases now live in
+# public/canvas/ (.pdf files). The repo-root Canvas/ folder holds
+# 44 MB of source working copies and shouldn't ship. Anchor with a
+# leading "/" so the rule does NOT also match public/canvas/ on
+# case-insensitive filesystems (macOS / Windows default).
+/Canvas/

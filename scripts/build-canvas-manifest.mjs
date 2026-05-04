@@ -1,6 +1,7 @@
-// Scans public/canvas/ for OVPM-NNN-*.pptx files and writes a static
+// Scans public/canvas/ for OVPM-NNN-*.pdf files and writes a static
 // manifest at src/data/canvas.js that the app uses to look up the URL
-// of each tool's source canvas (and where to find its slide-3 thumbnail).
+// of each tool's source canvas (PDF — embedded directly in the
+// in-app viewer for vector zoom and used as the download link).
 // Run after dropping new files into public/canvas/:
 //   node scripts/build-canvas-manifest.mjs
 import { readdirSync, writeFileSync } from 'node:fs'
@@ -11,7 +12,7 @@ const ROOT = dirname(dirname(fileURLToPath(import.meta.url)))
 const SRC  = join(ROOT, 'public', 'canvas')
 const OUT  = join(ROOT, 'src', 'data', 'canvas.js')
 
-const files = readdirSync(SRC).filter(f => /^OVPM-\d{3}-.*\.pptx$/i.test(f))
+const files = readdirSync(SRC).filter(f => /^OVPM-\d{3}-.*\.pdf$/i.test(f))
 const map = {}
 for (const f of files) {
   const id = parseInt(f.slice(5, 8), 10)
