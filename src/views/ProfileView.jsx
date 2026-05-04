@@ -83,6 +83,11 @@ export function ProfileView() {
   const [teamBusy, setTeamBusy] = useState(false)
   const [teamErr,  setTeamErr]  = useState('')
   const [memberCounts, setMemberCounts] = useState({})  // { teamId: n }
+  // After a successful create, show a "share invite code" panel
+  // instead of dropping the user back into the team list with no
+  // feedback. They likely want to invite teammates next.
+  const [teamJustCreated, setTeamJustCreated] = useState(null)
+  const [copyState, setCopyState] = useState('idle')   // 'idle' | 'copied'
   // Fetch member counts for the cached teams. Cheap query, gated to
   // the user's actual memberships by RLS.
   useEffect(() => {
@@ -98,7 +103,12 @@ export function ProfileView() {
   }, [teams, userEmail])
 
   const submitCreateTeam = async (e) => {
-    e.preventDefault()
+    e?.preventDefault?.()
+    // Guard against double-fire — the submit button is type="submit"
+    // inside a <form onSubmit=...>, so a click can otherwise trigger
+    // both the click handler and the form submission, racing two
+    // INSERTs and leaving the UI stuck on "CREATING…".
+    if (teamBusy) return
     if (!teamName.trim()) return
     setTeamBusy(true); setTeamErr('')
     try {
@@ -107,6 +117,9 @@ export function ProfileView() {
       })
       await refreshTeams()
       setCurrentTeamId(created.id)
+      // Land on a success panel showing the invite code so the user
+      // can immediately share it with teammates.
+      setTeamJustCreated(created)
       setTeamFormOpen(null)
       setTeamName(''); setTeamCity('')
     } catch (err) {
@@ -114,7 +127,8 @@ export function ProfileView() {
     } finally { setTeamBusy(false) }
   }
   const submitJoinTeam = async (e) => {
-    e.preventDefault()
+    e?.preventDefault?.()
+    if (teamBusy) return
     if (!joinCode.trim()) return
     setTeamBusy(true); setTeamErr('')
     try {
@@ -127,6 +141,13 @@ export function ProfileView() {
       setTeamErr(err?.message || 'Could not join team.')
     } finally { setTeamBusy(false) }
   }
+  const copyInviteCode = async (code) => {
+    try {
+      await navigator.clipboard.writeText(code)
+      setCopyState('copied')
+      setTimeout(() => setCopyState('idle'), 1500)
+    } catch { /* clipboard might not be available */ }
+  }
   const handleLeave = async (teamId) => {
     if (!confirm('Leave this team? Your evaluations stay tagged with it but you lose team-dashboard access.')) return
     try {
@@ -138,9 +159,7 @@ export function ProfileView() {
       alert(err?.message || 'Could not leave team.')
     }
   }
-  const copyInvite = async (code) => {
-    try { await navigator.clipboard.writeText(code) } catch { /* noop */ }
-  }
+  const copyInvite = (code) => copyInviteCode(code)
 
   const submitMagicLink = async (e) => {
     e.preventDefault()
@@ -294,7 +313,17 @@ export function ProfileView() {
                   Progress synced across devices.
                 </div>
               </div>
-              <ScrappyButton onClick={() => signOut()} color="#FFFFFF" size="sm">
+              <ScrappyButton
+                onClick={async () => {
+                  await signOut()
+                  // Force-clear store auth + team state in case the
+                  // Supabase auth listener missed the event.
+                  useStore.setState({
+                    userId: null, userEmail: null,
+                    teams: [], currentTeamId: null,
+                  })
+                }}
+                color="#FFFFFF" size="sm">
                 SIGN OUT
               </ScrappyButton>
             </div>
@@ -480,8 +509,80 @@ export function ProfileView() {
             </div>
           )}
 
+          {/* Just-created success panel — invite-code share with
+              prominent copy. Replaces the silent "form closes, no
+              feedback" UX from before. */}
+          {teamJustCreated && (
+            <div style={{
+              padding: '14px 14px 12px',
+              background: '#E6F4EC',
+              border: `2.5px solid #2A6B45`,
+              borderRadius: 14,
+              boxShadow: '2px 2px 0 #2A6B45',
+              marginBottom: 10,
+            }}>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6,
+              }}>
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
+                  <circle cx="12" cy="12" r="10" fill="#2A6B45" />
+                  <path d="M7 12.5l3.2 3.2L17 9" stroke="#FFFFFF"
+                    strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <span style={{
+                  fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 12,
+                  color: '#1F4E32', letterSpacing: '.06em',
+                  textTransform: 'uppercase',
+                }}>Team created</span>
+              </div>
+              <div style={{
+                fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 18,
+                color: INK, marginBottom: 10, lineHeight: 1.15,
+              }}>{teamJustCreated.name}</div>
+              <div style={{
+                fontSize: 12, color: '#3F3A36', lineHeight: 1.45,
+                marginBottom: 12,
+              }}>
+                Share this invite code with your teammates so they can
+                join and contribute their evaluations:
+              </div>
+              <div style={{
+                display: 'flex', gap: 8, alignItems: 'stretch',
+                marginBottom: 10,
+              }}>
+                <div style={{
+                  flex: 1,
+                  padding: '12px 14px',
+                  background: '#FFFFFF',
+                  border: `2.5px solid ${INK}`, borderRadius: 12,
+                  fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 22,
+                  color: INK, letterSpacing: '.18em', textAlign: 'center',
+                }}>{teamJustCreated.invite_code}</div>
+                <button onClick={() => copyInviteCode(teamJustCreated.invite_code)}
+                  title="Copy invite code"
+                  style={{
+                    flexShrink: 0,
+                    padding: '0 14px',
+                    background: copyState === 'copied' ? '#2A6B45' : '#FFFFFF',
+                    border: `2.5px solid ${INK}`, borderRadius: 12,
+                    cursor: 'pointer',
+                    fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
+                    color: copyState === 'copied' ? '#FFFFFF' : INK,
+                    letterSpacing: '.06em', textTransform: 'uppercase',
+                  }}>
+                  {copyState === 'copied' ? '✓ COPIED' : 'COPY'}
+                </button>
+              </div>
+              <ScrappyButton
+                onClick={() => setTeamJustCreated(null)}
+                color={YELLOW} size="sm" full>
+                DONE — INVITE LATER
+              </ScrappyButton>
+            </div>
+          )}
+
           {/* Create / Join controls */}
-          {teamFormOpen === null && (
+          {teamFormOpen === null && !teamJustCreated && (
             <div style={{ display: 'flex', gap: 8 }}>
               <ScrappyButton onClick={() => { setTeamFormOpen('create'); setTeamErr('') }}
                 color={YELLOW} size="sm" full>
@@ -540,7 +641,6 @@ export function ProfileView() {
                   CANCEL
                 </ScrappyButton>
                 <ScrappyButton type="submit"
-                  onClick={submitCreateTeam}
                   color={teamBusy || !teamName.trim() ? '#E0DAD2' : YELLOW}
                   size="sm" full>
                   {teamBusy ? 'CREATING…' : 'CREATE'}
@@ -571,7 +671,6 @@ export function ProfileView() {
                   CANCEL
                 </ScrappyButton>
                 <ScrappyButton type="submit"
-                  onClick={submitJoinTeam}
                   color={teamBusy || !joinCode.trim() ? '#E0DAD2' : YELLOW}
                   size="sm" full>
                   {teamBusy ? 'JOINING…' : 'JOIN'}

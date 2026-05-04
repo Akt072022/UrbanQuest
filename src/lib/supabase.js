@@ -36,7 +36,22 @@ export async function sendMagicLink(email) {
 
 export async function signOut() {
   if (!supabase) return
-  await supabase.auth.signOut()
+  try {
+    const { error } = await supabase.auth.signOut()
+    if (error) console.warn('[supabase] signOut error:', error.message)
+  } catch (err) {
+    console.warn('[supabase] signOut threw:', err?.message || err)
+  }
+  // Belt-and-braces: even if onAuthStateChange doesn't fire (it
+  // sometimes doesn't on stale sessions or stub clients), wipe the
+  // persisted Supabase keys so a reload genuinely starts unsigned.
+  try {
+    Object.keys(localStorage).forEach(k => {
+      if (k.startsWith('sb-') || k.startsWith('supabase.')) {
+        localStorage.removeItem(k)
+      }
+    })
+  } catch { /* localStorage might be locked-down */ }
 }
 
 export async function getSession() {

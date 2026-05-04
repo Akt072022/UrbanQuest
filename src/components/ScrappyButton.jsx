@@ -131,7 +131,10 @@ export function ScrappyChip({ children, color = '#F5C84A', textColor = INK,
         top: OY, left: OX,
         right: -OX, bottom: -OY,
         background: color,
-        borderRadius: '40% 60% 50% 55% / 50% 45% 55% 50%',
+        // Match the outline shape — having the fill use an organic
+        // blob made the chip look broken once the offset overflowed
+        // the visible portion of the pill border.
+        borderRadius: radius,
         zIndex: 0,
       }} />
       <span aria-hidden="true" style={{

@@ -779,9 +779,8 @@ export function CardDeep({ tool, gate, onBack }) {
       boxShadow: 'none',
       display: 'flex', flexDirection: 'column',
     }}>
-      <div style={{ height: 6, background: col, flexShrink: 0 }} />
       <div style={{
-        padding: '12px 16px 8px', flexShrink: 0,
+        padding: '14px 16px 10px', flexShrink: 0,
         borderBottom: `2px dashed ${INK}33`,
         display: 'flex', alignItems: 'flex-start', gap: 10,
       }}>
