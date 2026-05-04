@@ -22,7 +22,7 @@ const FILL_RADIUS = '5px 9px 7px 11px / 8px 6px 10px 6px'
 
 export function ScrappyButton({
   children, onClick, disabled = false,
-  color = '#F5C84A',
+  color = '#FFC83D',
   textColor = INK,
   size = 'md',
   full = false,
@@ -102,7 +102,7 @@ export function ScrappyButton({
 }
 
 // Smaller non-interactive chip — same recipe with smaller offset
-export function ScrappyChip({ children, color = '#F5C84A', textColor = INK,
+export function ScrappyChip({ children, color = '#FFC83D', textColor = INK,
   size = 'md', style = {} }) {
   const padding = size === 'sm' ? '6px 14px' : '8px 18px'
   const fontSize = size === 'sm' ? 10 : 13

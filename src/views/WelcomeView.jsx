@@ -5,9 +5,9 @@ import { ScrappyButton, ScrappyChip } from '../components/ScrappyButton'
 import { hasSupabase, sendMagicLink, signOut } from '../lib/supabase'
 
 const INK = '#1C2530'
-const YELLOW = '#F5C84A'
-const TEAL = '#6FCBC9'
-const CORAL = '#E57E72'
+const YELLOW = '#FFC83D'
+const TEAL = '#14B8A6'
+const CORAL = '#FB7185'
 
 const PROJECT_TYPES = [
   { value: 'heritage',   label: 'Heritage & rehabilitation' },
@@ -256,7 +256,7 @@ export function WelcomeView() {
                   disabled={authStatus === 'sending'}
                   style={{
                     padding: '10px',
-                    background: authStatus === 'sent' ? '#2A6B45' : INK,
+                    background: authStatus === 'sent' ? '#10B981' : INK,
                     color: '#FFFFFF',
                     border: 'none', borderRadius: 10,
                     fontFamily: 'Barlow Condensed, Impact, sans-serif',
@@ -269,7 +269,7 @@ export function WelcomeView() {
                 </button>
                 {authMsg && (
                   <div style={{
-                    fontSize: 11, color: authStatus === 'error' ? '#C0452A' : '#2A6B45',
+                    fontSize: 11, color: authStatus === 'error' ? '#C0452A' : '#10B981',
                   }}>{authMsg}</div>
                 )}
                 <button type="button" onClick={() => setAuthOpen(false)}

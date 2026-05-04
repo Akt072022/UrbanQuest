@@ -13,7 +13,7 @@ import { MethodfitMatrix } from '../components/MethodfitMatrix'
 import { analyzeTeamCapability, hasMistral } from '../lib/mistral'
 
 const INK      = '#1C2530'
-const GATE_COL = ['','#C17B2A','#1B5FA0','#2A6B45','#7A3A8E']
+const GATE_COL = ['','#F97316','#3B82F6','#10B981','#8B5CF6']
 
 // ──────────────────────────────────────────────────────────────
 // Score helpers
@@ -367,8 +367,8 @@ function GateDetail({ gate, practiced, goExplore, goExploreDim }) {
           marginBottom: 10,
         }}>Skill depth</div>
         {[
-          { key: 'regular',    label: SKILL_LEVELS.regular.label,    col: '#2A6B45' },
-          { key: 'occasional', label: SKILL_LEVELS.occasional.label, col: '#C17B2A' },
+          { key: 'regular',    label: SKILL_LEVELS.regular.label,    col: '#10B981' },
+          { key: 'occasional', label: SKILL_LEVELS.occasional.label, col: '#F97316' },
           { key: 'theory',     label: SKILL_LEVELS.theory.label,     col: '#5A5550' },
           { key: 'none',       label: 'Not evaluated yet',           col: '#C8C0B8' },
         ].map(row => {
@@ -582,9 +582,9 @@ function CapabilityMap({ practiced }) {
 
 function CapabilityCell({ title, subtitle, tone, tools, highlight = false }) {
   const tones = {
-    ok:    { bg: '#E6F4EC', border: '#2A6B45', label: '#1F4E32' },
-    gold:  { bg: '#FFF4D8', border: '#C17B2A', label: '#7B4A12' },
-    bench: { bg: '#E6EEF8', border: '#1B5FA0', label: '#0F3A66' },
+    ok:    { bg: '#E6F4EC', border: '#10B981', label: '#1F4E32' },
+    gold:  { bg: '#FFF4D8', border: '#F97316', label: '#7B4A12' },
+    bench: { bg: '#E6EEF8', border: '#3B82F6', label: '#0F3A66' },
     muted: { bg: '#F2EDE4', border: '#9C958A', label: '#5A5550' },
   }
   const t = tones[tone] || tones.muted
@@ -656,8 +656,8 @@ function OverallView({
       }}>
         {[
           { label: 'Total XP',  val: xp,             col: '#B8742A' },
-          { label: 'Evaluated', val: evaluatedCount, col: '#1B5FA0' },
-          { label: 'Cleared',   val: gates.filter(g => g.pct === 100).length, col: '#2A6B45' },
+          { label: 'Evaluated', val: evaluatedCount, col: '#3B82F6' },
+          { label: 'Cleared',   val: gates.filter(g => g.pct === 100).length, col: '#10B981' },
         ].map((k, i) => (
           <div key={k.label} style={{
             flex: 1, padding: '14px 8px', textAlign: 'center',
@@ -1023,8 +1023,8 @@ function ToolSuggestionRow({ dim, tool, rationale, onClick }) {
 // ── Rich-mode column (apply now / learn next) ──────────────────
 function RichColumn({ title, subtitle, tone, tools }) {
   const tones = {
-    ok:   { bg: '#E6F4EC', border: '#2A6B45', label: '#1F4E32' },
-    gold: { bg: '#FFF4D8', border: '#C17B2A', label: '#7B4A12' },
+    ok:   { bg: '#E6F4EC', border: '#10B981', label: '#1F4E32' },
+    gold: { bg: '#FFF4D8', border: '#F97316', label: '#7B4A12' },
   }
   const t = tones[tone] || tones.ok
   return (
@@ -1078,10 +1078,10 @@ function RichColumn({ title, subtitle, tone, tools }) {
 // ── AI action row (renders an AI-generated suggestion) ─────────
 function AiActionRow({ action, onClick }) {
   const TONE = {
-    workshop: { col: '#1B5FA0', icon: '🗂', label: 'Workshop' },
+    workshop: { col: '#3B82F6', icon: '🗂', label: 'Workshop' },
     evaluate: { col: '#7C2D12', icon: '✏',  label: 'Evaluate' },
-    apply:    { col: '#2A6B45', icon: '🚀', label: 'Apply now' },
-    learn:    { col: '#C17B2A', icon: '📘', label: 'Learn next' },
+    apply:    { col: '#10B981', icon: '🚀', label: 'Apply now' },
+    learn:    { col: '#F97316', icon: '📘', label: 'Learn next' },
   }
   const t = TONE[action.type] || TONE.evaluate
   return (
@@ -1171,7 +1171,7 @@ export function DashboardView() {
     // Team tab only shows when the user is signed in *and* part of a
     // team. Hide it entirely otherwise — the overall tab already
     // covers personal progress.
-    ...(currentTeam ? [{ id: 'team', label: 'Team', color: '#2A6B45' }] : []),
+    ...(currentTeam ? [{ id: 'team', label: 'Team', color: '#10B981' }] : []),
     ...[1,2,3,4].map(g => ({
       id: `gate-${g}`,
       label: GATE_LABEL[g],
@@ -1304,10 +1304,10 @@ function TeamView({ team, userId }) {
       }}>
         <div style={{
           flexShrink: 0, width: 40, height: 40, borderRadius: '50%',
-          background: '#E6F4EC', border: '2.5px solid #2A6B45',
+          background: '#E6F4EC', border: '2.5px solid #10B981',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontFamily: 'Barlow Condensed, Impact, sans-serif',
-          fontWeight: 900, fontSize: 18, color: '#2A6B45',
+          fontWeight: 900, fontSize: 18, color: '#10B981',
         }}>{(team.name?.[0] || 'T').toUpperCase()}</div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{
@@ -1386,9 +1386,9 @@ function TeamView({ team, userId }) {
 
 // ── Session row + expansion ────────────────────────────────────
 const MODE_META = {
-  triage:    { label: 'Collective triage',    col: '#1B5FA0' },
-  methodfit: { label: 'Project method-fit',   col: '#C17B2A' },
-  question:  { label: 'Live question',        col: '#7A3A8E' },
+  triage:    { label: 'Collective triage',    col: '#3B82F6' },
+  methodfit: { label: 'Project method-fit',   col: '#F97316' },
+  question:  { label: 'Live question',        col: '#8B5CF6' },
 }
 
 function SessionRow({ session, expanded, detail, onToggle }) {
@@ -1597,7 +1597,7 @@ function SessionEvolutionChart({ sessions }) {
         }}>Workshop activity</div>
         <div style={{
           fontFamily: 'Barlow Condensed, Impact, sans-serif',
-          fontWeight: 900, fontSize: 13, color: '#2A6B45',
+          fontWeight: 900, fontSize: 13, color: '#10B981',
         }}>{totalLast} session{totalLast === 1 ? '' : 's'} · 12w</div>
       </div>
       <svg width="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none"
@@ -1612,7 +1612,7 @@ function SessionEvolutionChart({ sessions }) {
           w.n > 0 && (
             <circle key={i}
               cx={PAD + i * xStep} cy={yFor(w.n)} r="3"
-              fill="#2A6B45" stroke="#FFFFFF" strokeWidth="1.5" />
+              fill="#10B981" stroke="#FFFFFF" strokeWidth="1.5" />
           )
         ))}
       </svg>

@@ -33,7 +33,7 @@ export function TriageHeatmap({ responses = [], toolList = [], participantCount 
     <div>
       <div style={{
         fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
-        color: '#2A6B45', letterSpacing: '.08em',
+        color: '#10B981', letterSpacing: '.08em',
         textTransform: 'uppercase', marginBottom: 8,
       }}>
         ● {responses.length} responses · {participantCount} participants
@@ -47,7 +47,7 @@ export function TriageHeatmap({ responses = [], toolList = [], participantCount 
           <div key={s.name} style={{
             marginBottom: 10, padding: '10px 12px',
             background: s.divergence ? '#FFF4D8' : PAGE,
-            border: `2px solid ${s.divergence ? '#C17B2A' : INK + '33'}`,
+            border: `2px solid ${s.divergence ? '#F97316' : INK + '33'}`,
             borderRadius: 12,
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, gap: 8 }}>
@@ -62,7 +62,7 @@ export function TriageHeatmap({ responses = [], toolList = [], participantCount 
                 <span style={{
                   flexShrink: 0,
                   fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
-                  color: '#2A6B45', letterSpacing: '.04em',
+                  color: '#10B981', letterSpacing: '.04em',
                 }}>avg {s.avgLevel}/5</span>
               )}
             </div>
@@ -70,16 +70,16 @@ export function TriageHeatmap({ responses = [], toolList = [], participantCount 
               display: 'flex', height: 8, borderRadius: 999, overflow: 'hidden',
               background: PAGE, border: `1.5px solid ${INK}`,
             }}>
-              <div style={{ width: pctP + '%', background: '#2A6B45' }} />
-              <div style={{ width: pctK + '%', background: '#C17B2A' }} />
+              <div style={{ width: pctP + '%', background: '#10B981' }} />
+              <div style={{ width: pctK + '%', background: '#F97316' }} />
               <div style={{ width: pctU + '%', background: '#9C958A' }} />
             </div>
             <div style={{
               display: 'flex', gap: 14, marginTop: 6,
               fontSize: 10, fontWeight: 700,
             }}>
-              <span style={{ color: '#2A6B45' }}>● Practiced {s.practiced}</span>
-              <span style={{ color: '#C17B2A' }}>● Known {s.known}</span>
+              <span style={{ color: '#10B981' }}>● Practiced {s.practiced}</span>
+              <span style={{ color: '#F97316' }}>● Known {s.known}</span>
               <span style={{ color: '#9C958A' }}>● Unknown {s.unknown}</span>
             </div>
           </div>

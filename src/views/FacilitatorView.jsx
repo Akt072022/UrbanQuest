@@ -12,12 +12,12 @@ import { MethodfitMatrix } from '../components/MethodfitMatrix'
 import { createSession, recordResponse, endSession } from '../lib/sessionStore'
 
 const INK    = '#1C2530'
-const YELLOW = '#F5C84A'
-const TEAL   = '#6FCBC9'
-const CORAL  = '#E57E72'
+const YELLOW = '#FFC83D'
+const TEAL   = '#14B8A6'
+const CORAL  = '#FB7185'
 const PAGE   = '#F2EDE4'
 const CARD   = '#FFFDF8'
-const GATE_COL = ['','#C17B2A','#1B5FA0','#2A6B45','#7A3A8E']
+const GATE_COL = ['','#F97316','#3B82F6','#10B981','#8B5CF6']
 
 const QUESTIONS = [
   { id: 'q1', text: 'What is your main blocker on this method?',         type: 'word' },
@@ -1043,7 +1043,7 @@ export function FacilitatorView() {
                           marginTop: 12,
                           padding: '10px 12px',
                           background: useAiDeck ? '#E6F4EC' : PAGE,
-                          border: `2px solid ${useAiDeck ? '#2A6B45' : INK}33`,
+                          border: `2px solid ${useAiDeck ? '#10B981' : INK}33`,
                           borderRadius: 10,
                           cursor: 'pointer',
                         }}>
@@ -1143,13 +1143,13 @@ export function FacilitatorView() {
             : chanStatus === 'error' ? '#FCE8E2'
             : '#FFF4D8',
           border: `2px solid ${
-            chanStatus === 'live' ? '#2A6B45'
+            chanStatus === 'live' ? '#10B981'
             : chanStatus === 'error' ? '#C0452A'
-            : '#C17B2A'}`,
+            : '#F97316'}`,
           fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 10,
-          color: chanStatus === 'live' ? '#2A6B45'
+          color: chanStatus === 'live' ? '#10B981'
             : chanStatus === 'error' ? '#C0452A'
-            : '#C17B2A',
+            : '#F97316',
           letterSpacing: '.06em',
         }}>
           {chanStatus === 'live'       ? '● LIVE'
@@ -1295,7 +1295,7 @@ export function FacilitatorView() {
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 marginBottom: 10,
               }}>
-                <Eyebrow color="#2A6B45">● Triage in progress</Eyebrow>
+                <Eyebrow color="#10B981">● Triage in progress</Eyebrow>
                 <button onClick={launchTriage}
                   style={{
                     padding: '5px 12px',
@@ -1418,7 +1418,7 @@ export function FacilitatorView() {
                       style={{
                         flex: 1, padding: '11px 12px', textAlign: 'left',
                         background: active ? '#FFF4D8' : (activeTool ? CARD : '#F5F1EB'),
-                        border: `2px solid ${active ? '#C17B2A' : INK + '33'}`,
+                        border: `2px solid ${active ? '#F97316' : INK + '33'}`,
                         borderRadius: 12,
                         fontFamily: '-apple-system, Helvetica Neue, sans-serif',
                         fontWeight: 700, fontSize: 13,
@@ -1539,9 +1539,9 @@ export function FacilitatorView() {
                   <ResponseBar label={labelLow}  value={responses.filter(r => r.value < 2).length}
                     max={responses.length} col={CORAL} />
                   <ResponseBar label={labelMid}  value={responses.filter(r => r.value >= 2 && r.value < 4).length}
-                    max={responses.length} col="#C17B2A" />
+                    max={responses.length} col="#F97316" />
                   <ResponseBar label={labelHigh} value={responses.filter(r => r.value >= 4).length}
-                    max={responses.length} col="#2A6B45" />
+                    max={responses.length} col="#10B981" />
                 </div>
               )
             })()}
@@ -1562,7 +1562,7 @@ export function FacilitatorView() {
 
             {currentQ.type === 'vote' && responses.length > 0 && (() => {
               const opts = ['Yes, priority', 'Maybe', 'Not for this phase']
-              const cols = [TEAL, '#C17B2A', '#9C958A']
+              const cols = [TEAL, '#F97316', '#9C958A']
               return opts.map((o, i) => (
                 <ResponseBar key={o} label={o}
                   value={responses.filter(r => r.value === o).length}
@@ -1669,7 +1669,7 @@ export function FacilitatorView() {
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 marginBottom: 10,
               }}>
-                <Eyebrow color="#2A6B45">
+                <Eyebrow color="#10B981">
                   ● Method-fit · {projectName || 'Project'}
                 </Eyebrow>
                 <button onClick={launchMethodfit}

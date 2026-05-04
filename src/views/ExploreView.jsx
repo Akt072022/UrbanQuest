@@ -13,13 +13,15 @@ import { GateSymbol, stageFromRatio } from '../components/GateSymbol'
 import { ScrappyButton, ScrappyChip } from '../components/ScrappyButton'
 
 const INK = '#1C2530'
-const YELLOW = '#F5C84A'
-const TEAL = '#6FCBC9'
-const CORAL = '#E57E72'
-const GATE_COL = ['','#C17B2A','#1B5FA0','#2A6B45','#7A3A8E']
+const YELLOW = '#FFC83D'
+const TEAL = '#14B8A6'
+const CORAL = '#FB7185'
+const GATE_COL = ['','#F97316','#3B82F6','#10B981','#8B5CF6']
 
 function gateRgba(g, a) {
-  const m = { 1: '193,123,42', 2: '27,95,160', 3: '42,107,69', 4: '122,58,142' }
+  // RGB triples mirror GATE_COL above so any rgba() helper stays in
+  // sync with the headline gate colours.
+  const m = { 1: '249,115,22', 2: '59,130,246', 3: '16,185,129', 4: '139,92,246' }
   return `rgba(${m[g]},${a})`
 }
 
@@ -233,9 +235,9 @@ export function EvaluationModal({ tool, onPick, onCancel }) {
   // Click options: regular > occasional > theory. Keyed colours mirror
   // the radar fill so users learn the visual language.
   const OPTIONS = [
-    { level: 'regular',    color: '#2A6B45', short: 'Regular',
+    { level: 'regular',    color: '#10B981', short: 'Regular',
       hint: 'I use it routinely on real projects.' },
-    { level: 'occasional', color: '#C17B2A', short: 'Occasional',
+    { level: 'occasional', color: '#F97316', short: 'Occasional',
       hint: 'I have run it a handful of times.' },
     { level: 'theory',     color: '#5A5550', short: 'Theoretical',
       hint: 'I know how it works but have not run it.' },
@@ -607,8 +609,8 @@ export function CardSynthesis({ tool, gate, onDive, alreadyLevel = null, already
           display: 'flex', alignItems: 'center', gap: 8,
           background: alreadySkipped
             ? '#9C958A'
-            : (alreadyLevel === 'regular' ? '#2A6B45'
-               : alreadyLevel === 'occasional' ? '#C17B2A' : '#5A5550'),
+            : (alreadyLevel === 'regular' ? '#10B981'
+               : alreadyLevel === 'occasional' ? '#F97316' : '#5A5550'),
           color: '#FFFFFF',
           borderBottom: `2px solid ${INK}`,
           fontFamily: 'Barlow Condensed, Impact, sans-serif',
@@ -1010,7 +1012,7 @@ export function CardStack({ tool, gate, face, onDive, onBack, alreadyLevel, alre
 //   • UP    → I know it (flag)
 const SWIPE_THRESH = 90
 const SWIPE_GREEN  = '#A8D870'
-const SWIPE_CORAL  = '#E57E72'
+const SWIPE_CORAL  = '#FB7185'
 
 export function SwipeWrap({ enabled, onAction, children }) {
   const [drag, setDrag] = useState({ x: 0, y: 0, exiting: false })

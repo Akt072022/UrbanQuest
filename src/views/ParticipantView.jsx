@@ -14,11 +14,11 @@ import { ScrappyButton, ScrappyChip } from '../components/ScrappyButton'
 
 const PARTICIPANT_ID = Math.random().toString(36).slice(2, 8)
 const INK    = '#1C2530'
-const YELLOW = '#F5C84A'
-const TEAL   = '#6FCBC9'
+const YELLOW = '#FFC83D'
+const TEAL   = '#14B8A6'
 const PAGE   = '#F2EDE4'
 const CARD   = '#FFFDF8'
-const GATE_COL = ['','#C17B2A','#1B5FA0','#2A6B45','#7A3A8E']
+const GATE_COL = ['','#F97316','#3B82F6','#10B981','#8B5CF6']
 
 const FONT_HEAD = 'Barlow Condensed, Impact, sans-serif'
 
@@ -67,8 +67,8 @@ function HexBadge({ gate, dimsData, size = 100 }) {
 // ── Header bar — RECITY wordmark + room + connection state ────
 function Header({ roomId, status }) {
   // status: 'connecting' | 'live' | 'error'
-  const colour = status === 'live' ? '#2A6B45'
-    : status === 'error' ? '#C0452A' : '#C17B2A'
+  const colour = status === 'live' ? '#10B981'
+    : status === 'error' ? '#C0452A' : '#F97316'
   const bg = status === 'live' ? '#E6F4EC'
     : status === 'error' ? '#FCE8E2' : '#FFF4D8'
   const label = status === 'live' ? '● LIVE'
@@ -270,7 +270,7 @@ function DimPicker({ gate, sessionDim, evals, skipped, onPickDim, onFinish }) {
       </div>
 
       {/* Submit / wrap-up */}
-      <ScrappyButton onClick={onFinish} color={allDone ? '#2A6B45' : YELLOW} full>
+      <ScrappyButton onClick={onFinish} color={allDone ? '#10B981' : YELLOW} full>
         {allDone ? 'SUBMIT MY ANSWERS →' : (totalTouched > 0 ? 'SUBMIT WHAT I HAVE →' : 'PASS — I HAVE NOTHING')}
       </ScrappyButton>
       <div style={{
@@ -305,12 +305,12 @@ function ToolDeck({ tools, gate, evals, skipped, onPick, onSkip, onDone }) {
       }}>
         <div style={{
           width: 64, height: 64, borderRadius: '50%',
-          background: '#E6F4EC', border: `3px solid #2A6B45`,
+          background: '#E6F4EC', border: `3px solid #10B981`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           marginBottom: 14,
         }}>
           <svg viewBox="0 0 24 24" width="32" height="32" fill="none">
-            <path d="M5 13l4 4L19 7" stroke="#2A6B45" strokeWidth="3"
+            <path d="M5 13l4 4L19 7" stroke="#10B981" strokeWidth="3"
               strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </div>
@@ -442,7 +442,7 @@ function SummaryState({ gate, evals, skipped }) {
       <div style={{ textAlign: 'center', marginBottom: 24 }}>
         <div style={{
           fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
-          color: '#2A6B45', letterSpacing: '.08em', textTransform: 'uppercase',
+          color: '#10B981', letterSpacing: '.08em', textTransform: 'uppercase',
         }}>Submitted</div>
         <div style={{
           fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 28,
@@ -466,8 +466,8 @@ function SummaryState({ gate, evals, skipped }) {
           marginBottom: 10,
         }}>What you reported</div>
         {[
-          { key: 'regular',    label: SKILL_LEVELS.regular.label,    col: '#2A6B45' },
-          { key: 'occasional', label: SKILL_LEVELS.occasional.label, col: '#C17B2A' },
+          { key: 'regular',    label: SKILL_LEVELS.regular.label,    col: '#10B981' },
+          { key: 'occasional', label: SKILL_LEVELS.occasional.label, col: '#F97316' },
           { key: 'theory',     label: SKILL_LEVELS.theory.label,     col: '#5A5550' },
           { key: 'skipped',    label: 'Skipped',                     col: '#9C958A' },
           { key: 'untouched',  label: 'Not evaluated',               col: '#C8C0B8' },
@@ -521,12 +521,12 @@ function QuestionMode({ question, channel, answered, setAnswered, revealed }) {
       }}>
         <div style={{
           width: 64, height: 64, borderRadius: '50%',
-          background: '#E6F4EC', border: `3px solid #2A6B45`,
+          background: '#E6F4EC', border: `3px solid #10B981`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           marginBottom: 14,
         }}>
           <svg viewBox="0 0 24 24" width="32" height="32" fill="none">
-            <path d="M5 13l4 4L19 7" stroke="#2A6B45" strokeWidth="3"
+            <path d="M5 13l4 4L19 7" stroke="#10B981" strokeWidth="3"
               strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </div>
@@ -631,8 +631,8 @@ function QuestionMode({ question, channel, answered, setAnswered, revealed }) {
       {question.type === 'vote' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {[
-            ['Yes, priority',     '#2A6B45'],
-            ['Maybe',             '#C17B2A'],
+            ['Yes, priority',     '#10B981'],
+            ['Maybe',             '#F97316'],
             ['Not for this phase','#9C958A'],
           ].map(([opt, col]) => (
             <button key={opt} onClick={() => submitResponse(opt)}
@@ -657,9 +657,9 @@ function QuestionMode({ question, channel, answered, setAnswered, revealed }) {
 //   If the user has already triaged the same tool earlier this
 //   session, the capability follow-up is skipped automatically.
 const FIT_OPTIONS = [
-  { id: 'essential', label: 'Essential',  hint: 'Must use',     col: '#2A6B45' },
-  { id: 'helpful',   label: 'Helpful',    hint: 'Good to use',  col: '#1B5FA0' },
-  { id: 'optional',  label: 'Optional',   hint: 'Nice to have', col: '#C17B2A' },
+  { id: 'essential', label: 'Essential',  hint: 'Must use',     col: '#10B981' },
+  { id: 'helpful',   label: 'Helpful',    hint: 'Good to use',  col: '#3B82F6' },
+  { id: 'optional',  label: 'Optional',   hint: 'Nice to have', col: '#F97316' },
   { id: 'skip',      label: 'Not for it', hint: 'Skip',         col: '#9C958A' },
 ]
 
@@ -877,8 +877,8 @@ function FitDeck({ tools, gate, project, fits, evals, onPick, onDone }) {
 
 function FitCapabilityModal({ tool, fit, onPick, onCancel }) {
   const OPTIONS = [
-    { level: 'regular',    label: 'I run it routinely',  col: '#2A6B45' },
-    { level: 'occasional', label: 'I have run it sometimes', col: '#C17B2A' },
+    { level: 'regular',    label: 'I run it routinely',  col: '#10B981' },
+    { level: 'occasional', label: 'I have run it sometimes', col: '#F97316' },
     { level: 'theory',     label: 'I know it in theory only', col: '#5A5550' },
     { level: null,         label: "I don't know it",     col: '#9C958A' },
   ]
@@ -1227,12 +1227,12 @@ export function ParticipantView({ roomId }) {
             }}>
               <div style={{
                 width: 64, height: 64, borderRadius: '50%',
-                background: '#E6F4EC', border: `3px solid #2A6B45`,
+                background: '#E6F4EC', border: `3px solid #10B981`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 marginBottom: 14,
               }}>
                 <svg viewBox="0 0 24 24" width="32" height="32" fill="none">
-                  <path d="M5 13l4 4L19 7" stroke="#2A6B45" strokeWidth="3"
+                  <path d="M5 13l4 4L19 7" stroke="#10B981" strokeWidth="3"
                     strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>

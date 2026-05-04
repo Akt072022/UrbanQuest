@@ -11,16 +11,16 @@ import {
 import { refreshTeams } from '../lib/syncSupabase'
 
 const INK    = '#1C2530'
-const YELLOW = '#F5C84A'
-const TEAL   = '#6FCBC9'
+const YELLOW = '#FFC83D'
+const TEAL   = '#14B8A6'
 const CARD   = '#FFFDF8'
 const FONT_HEAD = 'Barlow Condensed, Impact, sans-serif'
 
 const LEVEL_BADGE = {
   Apprentice: { icon: '🌱', col: '#A8D080' },
-  Planner:    { icon: '⚒',  col: '#6FCBC9' },
-  Architect:  { icon: '🏛',  col: '#F5C84A' },
-  Mayor:      { icon: '👑',  col: '#E57E72' },
+  Planner:    { icon: '⚒',  col: '#14B8A6' },
+  Architect:  { icon: '🏛',  col: '#FFC83D' },
+  Mayor:      { icon: '👑',  col: '#FB7185' },
 }
 
 const CAT_LABEL = {
@@ -353,7 +353,7 @@ export function ProfileView() {
                 disabled={authStatus === 'sending'}
                 style={{
                   padding: '10px',
-                  background: authStatus === 'sent' ? '#2A6B45' : INK,
+                  background: authStatus === 'sent' ? '#10B981' : INK,
                   color: '#FFFFFF',
                   border: 'none', borderRadius: 10,
                   fontFamily: FONT_HEAD,
@@ -367,7 +367,7 @@ export function ProfileView() {
               {authMsg && (
                 <div style={{
                   fontSize: 11,
-                  color: authStatus === 'error' ? '#C0452A' : '#2A6B45',
+                  color: authStatus === 'error' ? '#C0452A' : '#10B981',
                 }}>{authMsg}</div>
               )}
               <button type="button" onClick={() => setAuthOpen(false)}
@@ -427,9 +427,9 @@ export function ProfileView() {
                   <div key={t.id} style={{
                     padding: '10px 12px',
                     background: active ? '#E6F4EC' : '#F2EDE4',
-                    border: `2px solid ${active ? '#2A6B45' : INK + '33'}`,
+                    border: `2px solid ${active ? '#10B981' : INK + '33'}`,
                     borderRadius: 12,
-                    boxShadow: active ? '2px 2px 0 #2A6B45' : 'none',
+                    boxShadow: active ? '2px 2px 0 #10B981' : 'none',
                   }}>
                     <div style={{
                       display: 'flex', alignItems: 'center',
@@ -442,7 +442,7 @@ export function ProfileView() {
                         }}>
                           {active && (
                             <svg viewBox="0 0 24 24" width="14" height="14" fill="none">
-                              <path d="M5 13l4 4L19 7" stroke="#2A6B45" strokeWidth="3"
+                              <path d="M5 13l4 4L19 7" stroke="#10B981" strokeWidth="3"
                                 strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
                           )}
@@ -516,16 +516,16 @@ export function ProfileView() {
             <div style={{
               padding: '14px 14px 12px',
               background: '#E6F4EC',
-              border: `2.5px solid #2A6B45`,
+              border: `2.5px solid #10B981`,
               borderRadius: 14,
-              boxShadow: '2px 2px 0 #2A6B45',
+              boxShadow: '2px 2px 0 #10B981',
               marginBottom: 10,
             }}>
               <div style={{
                 display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6,
               }}>
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
-                  <circle cx="12" cy="12" r="10" fill="#2A6B45" />
+                  <circle cx="12" cy="12" r="10" fill="#10B981" />
                   <path d="M7 12.5l3.2 3.2L17 9" stroke="#FFFFFF"
                     strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
@@ -563,7 +563,7 @@ export function ProfileView() {
                   style={{
                     flexShrink: 0,
                     padding: '0 14px',
-                    background: copyState === 'copied' ? '#2A6B45' : '#FFFFFF',
+                    background: copyState === 'copied' ? '#10B981' : '#FFFFFF',
                     border: `2.5px solid ${INK}`, borderRadius: 12,
                     cursor: 'pointer',
                     fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
@@ -695,7 +695,7 @@ export function ProfileView() {
         gap: 8, marginBottom: 18,
       }}>
         <Stat label="Methods" value={totalEvaluated} sub={`/${TOOLS.length}`} col={INK} />
-        <Stat label="Routine" value={byLevel.regular} col="#2A6B45" />
+        <Stat label="Routine" value={byLevel.regular} col="#10B981" />
         <Stat label="Theory" value={byLevel.theory} col="#5A5550" />
         <Stat label="Gates"  value={gatesCleared} sub="/4" col={YELLOW} />
       </div>

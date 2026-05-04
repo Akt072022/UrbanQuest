@@ -48,7 +48,7 @@ export function MethodfitMatrix({
     <div>
       <div style={{
         fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
-        color: '#2A6B45', letterSpacing: '.08em',
+        color: '#10B981', letterSpacing: '.08em',
         textTransform: 'uppercase', marginBottom: 8,
       }}>
         ● {responses.length} responses · {doneCount}/{participantCount} done
@@ -72,7 +72,7 @@ export function MethodfitMatrix({
         <div style={{
           marginTop: 10, padding: '8px 10px',
           background: '#FFF4D8',
-          border: `1.5px dashed #C17B2A`, borderRadius: 10,
+          border: `1.5px dashed #F97316`, borderRadius: 10,
           fontSize: 11, color: '#7B4A12', lineHeight: 1.4,
         }}>
           <b>{buckets.nocap.length}</b> method{buckets.nocap.length > 1 ? 's' : ''}{' '}
@@ -86,9 +86,9 @@ export function MethodfitMatrix({
 
 function Quadrant({ title, hint, tone, tools, highlight = false }) {
   const tones = {
-    gold:   { bg: '#FFF4D8', border: '#C17B2A', label: '#7B4A12' },
-    ok:     { bg: '#E6F4EC', border: '#2A6B45', label: '#1F4E32' },
-    bench:  { bg: '#E6EEF8', border: '#1B5FA0', label: '#0F3A66' },
+    gold:   { bg: '#FFF4D8', border: '#F97316', label: '#7B4A12' },
+    ok:     { bg: '#E6F4EC', border: '#10B981', label: '#1F4E32' },
+    bench:  { bg: '#E6EEF8', border: '#3B82F6', label: '#0F3A66' },
     muted:  { bg: '#F2EDE4', border: '#9C958A', label: '#5A5550' },
   }
   const t = tones[tone] || tones.muted

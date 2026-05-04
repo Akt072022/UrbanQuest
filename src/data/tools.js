@@ -1,8 +1,11 @@
 // ──────────────────────────────────────────
 // Gate metadata
 // ──────────────────────────────────────────
-export const GATE_COLOR = ['', '#C17B2A', '#1B3A6B', '#1F6B3A', '#5C2B8E']
-export const GATE_DARK  = ['', '#3D2206', '#071233', '#0A2912', '#1E0835']
+// Joyful, modern palette — bright primary hues that read as
+// "play + product" instead of textbook earth-tones. Each gate
+// also has a darker variant used for shadows and dark text.
+export const GATE_COLOR = ['', '#F97316', '#3B82F6', '#10B981', '#8B5CF6']
+export const GATE_DARK  = ['', '#9A3412', '#1E3A8A', '#064E3B', '#5B21B6']
 export const GATE_LABEL = ['', 'Proof of Impact', 'Proof of Fit', 'Proof of Anchoring', 'Proof of Sustainability']
 export const GATE_Q     = ['', 'Does it create value here?', 'Can it work here?', 'Can it take root here?', 'Can it endure here?']
 export const GATE_DESC  = [
@@ -19,12 +22,12 @@ export const GATE_SHORT = ['', 'Impact', 'Fit', 'Anchoring', 'Sustain.']
 // Dimensions (6 design / decision lenses)
 // ──────────────────────────────────────────
 export const DIMENSIONS = [
-  { id: 'spatial',       label: 'Spatial',       short: 'SP', icon: '🗺',  color: '#1E40AF', desc: 'Site, morphology, flows, street furniture, ambiences.' },
-  { id: 'heritage',      label: 'Heritage',      short: 'HE', icon: '🏛',  color: '#92400E', desc: 'Memory, heritage, narratives, attachments, long-term trajectories.' },
-  { id: 'social',        label: 'Social / User', short: 'SO', icon: '👥',  color: '#9D174D', desc: 'Practices, vulnerabilities, inclusions, use conflicts, capabilities.' },
-  { id: 'environmental', label: 'Environmental', short: 'EN', icon: '🌿',  color: '#065F46', desc: 'Living systems, climate, resources, soils, urban metabolism.' },
-  { id: 'economic',      label: 'Economic',      short: 'EC', icon: '💰',  color: '#7C2D12', desc: 'Business model, funding, shared value, externalities, avoided costs.' },
-  { id: 'regulation',    label: 'Regulation',    short: 'RE', icon: '⚖',  color: '#334155', desc: 'Law, standards, governance, accountability, room for manoeuvre.' },
+  { id: 'spatial',       label: 'Spatial',       short: 'SP', icon: '🗺',  color: '#2563EB', desc: 'Site, morphology, flows, street furniture, ambiences.' },
+  { id: 'heritage',      label: 'Heritage',      short: 'HE', icon: '🏛',  color: '#B45309', desc: 'Memory, heritage, narratives, attachments, long-term trajectories.' },
+  { id: 'social',        label: 'Social / User', short: 'SO', icon: '👥',  color: '#EC4899', desc: 'Practices, vulnerabilities, inclusions, use conflicts, capabilities.' },
+  { id: 'environmental', label: 'Environmental', short: 'EN', icon: '🌿',  color: '#16A34A', desc: 'Living systems, climate, resources, soils, urban metabolism.' },
+  { id: 'economic',      label: 'Economic',      short: 'EC', icon: '💰',  color: '#EAB308', desc: 'Business model, funding, shared value, externalities, avoided costs.' },
+  { id: 'regulation',    label: 'Regulation',    short: 'RE', icon: '⚖',  color: '#6366F1', desc: 'Law, standards, governance, accountability, room for manoeuvre.' },
 ]
 
 export const DIM_BY_ID = Object.fromEntries(DIMENSIONS.map(d => [d.id, d]))

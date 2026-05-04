@@ -3,14 +3,14 @@ import { useStore } from '../store/useStore'
 import { getLevel, LEVELS } from '../data/tools'
 
 const INK = '#1C2530'
-const YELLOW = '#F5C84A'
+const YELLOW = '#FFC83D'
 
 // One emoji-style achievement badge per level
 const LEVEL_BADGE = {
   Apprentice: { icon: '🌱', col: '#A8D080' },
-  Planner:    { icon: '⚒',  col: '#6FCBC9' },
-  Architect:  { icon: '🏛',  col: '#F5C84A' },
-  Mayor:      { icon: '🏛',  col: '#E57E72' },
+  Planner:    { icon: '⚒',  col: '#14B8A6' },
+  Architect:  { icon: '🏛',  col: '#FFC83D' },
+  Mayor:      { icon: '🏛',  col: '#FB7185' },
 }
 
 export function Navbar() {

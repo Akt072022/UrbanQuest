@@ -7,7 +7,7 @@
 import { TOOLS, DIMENSIONS, GATE_LABEL } from './tools'
 import { DIM_ICON } from './dimIcons'
 
-const GATE_COL = ['', '#C17B2A', '#1B3A6B', '#1F6B3A', '#5C2B8E']
+const GATE_COL = ['', '#F97316', '#3B82F6', '#10B981', '#8B5CF6']
 
 // ── Predicates over store state ───────────────────────────────
 function gateCleared(gate, practiced, skipped) {
@@ -56,15 +56,15 @@ export const BADGES = [
     cat: 'progression',
     desc: 'Evaluate your first method.',
     pred: ({ practiced }) => Object.keys(practiced).length >= 1 },
-  { id: 'pathfinder_10', name: 'Pathfinder',    icon: '🧭', col: '#1B3A6B',
+  { id: 'pathfinder_10', name: 'Pathfinder',    icon: '🧭', col: '#3B82F6',
     cat: 'progression',
     desc: 'Evaluate 10 methods.',
     pred: ({ practiced }) => Object.keys(practiced).length >= 10 },
-  { id: 'veteran_30',    name: 'Veteran',       icon: '🎖', col: '#7C2D12',
+  { id: 'veteran_30',    name: 'Veteran',       icon: '🎖', col: '#FB7185',
     cat: 'progression',
     desc: 'Evaluate 30 methods.',
     pred: ({ practiced }) => Object.keys(practiced).length >= 30 },
-  { id: 'completionist', name: 'Completionist', icon: '🏆', col: '#C17B2A',
+  { id: 'completionist', name: 'Completionist', icon: '🏆', col: '#F97316',
     cat: 'progression',
     desc: 'Touch every one of the 133 methods.',
     pred: ({ practiced, skipped }) => {
@@ -126,11 +126,11 @@ export const BADGES = [
     cat: 'depth',
     desc: 'Mark 5+ methods as theoretical knowledge.',
     pred: ({ practiced }) => countByLevel(practiced, 'theory') >= 5 },
-  { id: 'practitioner', name: 'Practitioner', icon: '🛠', col: '#2A6B45',
+  { id: 'practitioner', name: 'Practitioner', icon: '🛠', col: '#10B981',
     cat: 'depth',
     desc: 'Mark 10+ methods as routine practice.',
     pred: ({ practiced }) => countByLevel(practiced, 'regular') >= 10 },
-  { id: 'all_rounder',  name: 'All-Rounder',  icon: '🌐', col: '#1B5FA0',
+  { id: 'all_rounder',  name: 'All-Rounder',  icon: '🌐', col: '#3B82F6',
     cat: 'depth',
     desc: 'Practice at least one method in every dimension.',
     pred: ({ practiced }) => allDimsTouched(practiced) },

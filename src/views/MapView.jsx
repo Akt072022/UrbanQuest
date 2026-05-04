@@ -15,10 +15,10 @@ import { DIM_ICON } from '../data/dimIcons'
 
 // ── Visual constants ─────────────────────────────────────────
 const INK     = '#1C2530'
-const YELLOW  = '#F5C84A'
-const TEAL    = '#6FCBC9'
-const CORAL   = '#E57E72'
-const GATE_COL = ['', '#C17B2A', '#1B5FA0', '#2A6B45', '#7A3A8E']
+const YELLOW  = '#FFC83D'
+const TEAL    = '#14B8A6'
+const CORAL   = '#FB7185'
+const GATE_COL = ['', '#F97316', '#3B82F6', '#10B981', '#8B5CF6']
 
 // ── Layout — each gate is a ROSETTE, not a path segment ─────
 // • Each gate sits centered on the page width.
