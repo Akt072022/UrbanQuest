@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Source artwork / local scratch — the served canvases live in
+# public/canvas/ (.pptx files). The repo-root Canvas/ folder holds
+# 44 MB of PDF working copies and shouldn't ship to git.
+Canvas/
