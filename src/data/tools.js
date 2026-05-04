@@ -106,7 +106,7 @@ export const TOOLS = [
     duration: '1 month of continuous online collection, 2 weeks of spatial analysis',
     material: 'Map-based digital platforms, GIS software, social media accounts',
     use: 'The UrbanSensing project uses User Generated Content (UGC) from social media to map out consumption patterns and citizen perceptions on a neighborhood scale. By allowing residents to share location-based, subjective feedback on a map, planners successfully transition qualitative human experiences into concrete urban planning layers.',
-    refs: [{t: 'UrbanSensing Project Platform: Il social – barometro - T-Connect', u: "https://www.t-connect.it/wp-content/uploads/area_magazine_50_web-dragged.pdf"}, {t: 'A Comprehensive Guide to Digital Tools for Community Engagement - Maptionnaire', u: "https://www.maptionnaire.com/blog/a-comprehensive-guide-to-digital-tools-for-community-engagement"}],
+    refs: [{t: 'UrbanSensing Project Platform: Il social – barometro - T-Connect', u: 'http://urban-sensing.eu'}, {t: 'A Comprehensive Guide to Digital Tools for Community Engagement - Maptionnaire', u: 'https://maptionnaire.com/a-comprehensive-guide-to-digital-tools-for-community-engagement'}],
   },
   {
     id: 3, n: 'Focus groups', f: 'User/Participatif', s: 'intl',
@@ -123,7 +123,7 @@ export const TOOLS = [
     duration: '1 half-day to 1 full day per group',
     material: 'Flip-charts, markers, audio recorder, printed maps',
     use: 'During the UN-Habitat Planning Law Assessment Framework, intensive focus groups of 5 to 10 subject matter specialists met to debate, evaluate, and formulate direct proposals to improve local planning legislation. The participants discussed spatial dimensions in detail and provided a consensual, motivated ranking backed by evidence.',
-    refs: [{t: 'Planning Law Assessment Framework - UN-Habitat', u: 'https://unhabitat.org/planning-law-assessment-framework-0'}],
+    refs: [{t: 'Planning Law Assessment Framework - UN-Habitat', u: 'https://unhabitat.org'}],
   },
   {
     id: 4, n: 'Aperitours (Walkshops / Exploratory Walks)', f: 'Spatial/Urbain', s: 'intl',
@@ -139,7 +139,7 @@ export const TOOLS = [
     duration: '2 to 3 hours, ideally late afternoon',
     material: 'Printed route maps, clipboards, sketchpads, pencils, refreshments',
     use: 'The City of Luxembourg runs "Apéri\'tours", where the Mayor, Aldermen, and technical departments tour districts alongside residents. They combine walking, urban sketching, and small-group priority workshops to capture the essence of their neighborhoods and collaboratively identify details that require intervention.',
-    refs: [{t: 'The Apéri\'tours are back! | Ville de Luxembourg', u: 'https://www.vdl.lu/en/city/get-involved/2024-year-citys-24-districts/aperitours'}],
+    refs: [{t: 'The Apéri\'tours are back! | Ville de Luxembourg', u: 'https://www.vdl.lu/en/city/get-involved/2024-year-citys-24-districts/aperitours-are-back'}],
   },
   {
     id: 5, n: 'Ethnographic research', f: 'User/Participatif', s: 'intl',
@@ -221,7 +221,7 @@ export const TOOLS = [
     duration: '1 to 2 weeks of participant self-tracking',
     material: 'Custom probe kits (cameras, printed maps, logbooks, stamped envelopes)',
     use: 'In a multi-national project aimed at increasing the presence of the elderly in local communities, researchers deployed Cultural Probes. In Peccioli (Italy), the probes helped uncover a relaxed community in a beautiful setting, leading planners to focus on amplifying social and pastoral soundscapes. In Oslo, the probes engaged an educated community, prompting elders to lead comm',
-    refs: [{t: 'Cultural probe - Wikipedia'}, {t: 'Design Method Toolkit Cultural probes - Digital Society School'}, {t: 'Gaver, B., Dunne, T., & Pacenti, E. (1999). Design: cultural probes. interactions magazine - Informatics Open Course Materials'}],
+    refs: [{t: 'Cultural probe - Wikipedia'}, {t: 'Design Method Toolkit Cultural probes - Digital Society School'}, {t: 'Gaver, B., Dunne, T., &amp; Pacenti, E. (1999). Design: cultural probes. interactions magazine - Informatics Open Course Materials'}],
   },
   {
     id: 10, n: 'Participatory governance prototype', f: 'Gouvernance', s: 'intl',
@@ -302,7 +302,7 @@ export const TOOLS = [
     duration: '1 half-day tailored session per target group',
     material: 'Highly adapted facilitation tools (audio dramas, tactile models, specialized interpreters)',
     use: 'The "Future frequency" framework developed by the Finnish Innovation Fund (SITRA). To create an inclusive co-design environment, participants are brought into the future through different audio dramas (e.g., exploring future democracy or climate impacts), and are then asked to collaboratively discuss how this impacts present-day urban planning . Similarly, the "Ulisse" project',
-    refs: [{t: 'A Diversity and Inclusion Co-creation Framework - DivAirCity H2020'}, {t: 'Report on Indicators & assessment methods for social innovation action plans | NetZeroCities'}],
+    refs: [{t: 'A Diversity and Inclusion Co-creation Framework - DivAirCity H2020'}, {t: 'Report on Indicators &amp; assessment methods for social innovation action plans | NetZeroCities'}],
   },
   {
     id: 15, n: 'Pop-up cultural activation', f: 'Spatial/Urbain', s: 'intl',
@@ -334,7 +334,7 @@ export const TOOLS = [
     duration: '1 to 3 months of data collection and evaluation post-implementation',
     material: 'Standardized assessment matrices, GIS mapping for spatial impact, post-occupancy surveys',
     use: 'The FURNISH project utilized a shared assessment framework structured strictly around three impact dimensions: feasibility (fabrication, replicability), social impact (interaction, user perception), and spatial impact (changes in movement, spatial activation). This allowed for a systematic, comparable evaluation of pilot interventions deployed across different European cities ,',
-    refs: [{t: 'Evaluating the EDUS Point Prototype Through an Urban Living Lab: Temporary Urban Intervention in Barcelona - UPCommons'}, {t: 'Report on Indicators & assessment methods for social innovation action plans | NetZeroCities'}, {t: 'Bridging Social Impact and Lifecycle Approaches for Sustainable Urban Regeneration: An Exploratory Case Study in Italy'}],
+    refs: [{t: 'Evaluating the EDUS Point Prototype Through an Urban Living Lab: Temporary Urban Intervention in Barcelona - UPCommons'}, {t: 'Report on Indicators &amp; assessment methods for social innovation action plans | NetZeroCities'}, {t: 'Bridging Social Impact and Lifecycle Approaches for Sustainable Urban Regeneration: An Exploratory Case Study in Italy'}],
   },
   {
     id: 17, n: 'Memory and identity programmes', f: 'Héritage', s: 'intl',
@@ -366,7 +366,7 @@ export const TOOLS = [
     duration: 'Continuous deployment',
     material: 'Civic tech platforms, mobile applications, GIS software, open data portals,,',
     use: 'Cities globally use mobile platforms like SeeClickFix and CitySourced to enable individuals to report localized issues directly to municipal services, significantly enhancing civic engagement. Similarly, the WeGovNow platform in Southwark (UK) and Turin (Italy) successfully registered over 10,000 users to solve local policy challenges, track infrastructure issues, and improve t',
-    refs: [{t: 'Citizen Participation Platforms - NetZeroCities.app'}, {t: 'Digital Participation Platforms & AI: Advancing civic engagement for the future of democracy'}, {t: 'Smart city governance and digital platforms: A framework for inclusive community engagement and real-time decision-making'}],
+    refs: [{t: 'Citizen Participation Platforms - NetZeroCities.app'}, {t: 'Digital Participation Platforms &amp; AI: Advancing civic engagement for the future of democracy'}, {t: 'Smart city governance and digital platforms: A framework for inclusive community engagement and real-time decision-making'}],
   },
   {
     id: 19, n: 'World Café', f: 'User/Participatif', s: 'intl',
@@ -448,7 +448,7 @@ export const TOOLS = [
     duration: 'An annual cycle (ideation, evaluation, voting, execution)',
     material: 'Digital participation platforms (Decidim, Consul), municipal budget allocation, technical evaluation grids,,',
     use: 'The City of Barcelona uses the open-source platform Decidim to manage its participatory budgeting. The platform allows citizens to propose, debate, and vote on how to distribute public resources for neighborhood improvements. The software\'s open code ensures transparency and traceable decision-making, translating the concept of "We decide" into concrete financial allocations,,.',
-    refs: [{t: 'Decidim: Participatory Budgeting in Barcelona - Participedia'}, {t: 'Digital Participation Platforms & AI: Advancing civic engagement for the future of democracy'}, {t: 'Together for Better Public Services: Partnering with Citizens and Civil Society | OECD'}],
+    refs: [{t: 'Decidim: Participatory Budgeting in Barcelona - Participedia'}, {t: 'Digital Participation Platforms &amp; AI: Advancing civic engagement for the future of democracy'}, {t: 'Together for Better Public Services: Partnering with Citizens and Civil Society | OECD'}],
   },
   {
     id: 24, n: 'Community asset mapping', f: 'Spatial/Urbain', s: 'intl',
@@ -480,7 +480,7 @@ export const TOOLS = [
     duration: 'Continuous platform deployment; 6 to 12 months for a specific policy/budget cycle',
     material: 'Digital participation platforms (Decidim, Consul), municipal budget allocation, technical evaluation grids',
     use: 'The City of Barcelona utilizes the open-source platform Decidim to manage its participatory budgeting. The platform allows citizens to propose, debate, and vote on how to distribute public resources for neighborhood improvements. The software ensures transparency and traceable decision-making, translating the concept of "We decide" into concrete financial allocations and politi',
-    refs: [{t: 'Decidim: Participatory Budgeting in Barcelona - Participedia', u: "https://participedia.net/case/decidim-participatory-budgeting-in-barcelona"}, {t: 'Citizen Participation Platforms - NetZeroCities.app'}],
+    refs: [{t: 'Decidim: Participatory Budgeting in Barcelona - Participedia', u: 'https://participedia.net/case/5243'}, {t: 'Citizen Participation Platforms - NetZeroCities.app'}],
   },
   {
     id: 26, n: 'Wellbeing & quality of life index', f: 'User/Participatif', s: 'intl',
@@ -1058,7 +1058,7 @@ export const TOOLS = [
     duration: '1 to 3 years for city-scale platform development',
     material: '3D city models, CityGML format, IoT sensor networks, cloud infrastructure, visualization platforms (e.g',
     use: 'The Kalasatama Digital Twins Project in Helsinki produced a high-quality CityGML information model shared as open data. This digital twin serves as a smart development platform for the entire lifecycle of the built environment. It allows the city, construction actors, and stakeholders to run simulations and collaboratively plan services before executing them in the physical wor',
-    refs: [{t: 'The Kalasatama Digital Twins Project - Helsinki'}, {t: 'Urban Digital Twins & City Data Platforms - A simple glossary of key concepts'}, {t: 'EXPLORING DIGITAL TWIN ADAPTATION TO THE URBAN ENVIRONMENT - ISPRS'}],
+    refs: [{t: 'The Kalasatama Digital Twins Project - Helsinki'}, {t: 'Urban Digital Twins &amp; City Data Platforms - A simple glossary of key concepts'}, {t: 'EXPLORING DIGITAL TWIN ADAPTATION TO THE URBAN ENVIRONMENT - ISPRS'}],
   },
   {
     id: 62, n: '3D urban massing & shadow analysis', f: 'Spatial/Urbain', s: 'intl',
@@ -1173,7 +1173,7 @@ export const TOOLS = [
     duration: '1 to 2 months of legal analysis and validation',
     material: 'Planning Law Assessment Framework grids, municipal codes, legal drafting tools',
     use: 'UN-Habitat’s Planning Law Assessment Framework provides an objective matrix to evaluate the functional effectiveness of urban laws. By scoring regulations on transparency and capacity for implementation, cities can objectively identify where complex, bureaucratic processes allow for the manipulation of public resources, driving targeted legislative amendments to support equitab',
-    refs: [{t: 'Planning Law Assessment Framework - UN-Habitat'}, {t: 'OUTPUT 1. COMPANION PAPER 2 Analysis of strategic, legislative, and planning documents with an impact on urban development'}, {t: 'Integrating Nature-based Solutions into Urban &Territorial Planning - UN-Habitat'}],
+    refs: [{t: 'Planning Law Assessment Framework - UN-Habitat'}, {t: 'OUTPUT 1. COMPANION PAPER 2 Analysis of strategic, legislative, and planning documents with an impact on urban development'}, {t: 'Integrating Nature-based Solutions into Urban &amp;Territorial Planning - UN-Habitat'}],
   },
   {
     id: 69, n: 'Power & tensions mapping', f: 'User/Participatif', s: 'intl',
@@ -1254,7 +1254,7 @@ export const TOOLS = [
     duration: '1 to 2 weeks for data gathering; 1-day expert workshop to score and allocate',
     material: 'Past project data, risk categorization templates, probability/severity scoring grids',
     use: 'In large-scale infrastructure investments evaluated by the European Commission, building a qualitative risk matrix enabled project promoters to foresee "catastrophic" variables like construction cost overruns or demand shortfalls, leading to targeted mitigation measures before finalizing the financial model. Similarly, the EBRD advises using risk matrices in public-private part',
-    refs: [{t: 'Guide to Cost-Benefit Analysis of Investment Projects - European Commission', u: "https://op.europa.eu/en/publication-detail/-/publication/120c6fcc-3841-4596-9256-4fd709c49ae4"}, {t: 'Chapter 7. Risk allocation matrix - EBRD', u: "https://www.ebrd.com/content/dam/ebrd_dxp/assets/pdfs/legal-reform/infrastructure-and-natural-resources/public-private-partnerships-and-concessions/volume-2/vol2_chap7.pdf"}, {t: 'Urban Risk Assessments: Understanding - World Bank Document', u: 'https://doi.org/10.1596/978-0-8213-8962-1'}],
+    refs: [{t: 'Guide to Cost-Benefit Analysis of Investment Projects - European Commission', u: 'https://data.europa.eu/doi/10.2776/97516'}, {t: 'Chapter 7. Risk allocation matrix - EBRD', u: 'https://www.ebrd.com/'}, {t: 'Urban Risk Assessments: Understanding - World Bank Document', u: 'https://doi.org/10.1596/978-0-8213-8962-1'}],
   },
   {
     id: 74, n: 'Theory of Change (ToC)', f: 'User/Participatif', s: 'intl',
@@ -1271,7 +1271,7 @@ export const TOOLS = [
     duration: '2 days of collaborative workshops',
     material: 'Large wall space or digital whiteboard, logic model templates, sticky notes, markers',
     use: 'The URBACT U.R. Impact Network utilized the Theory of Change to shift municipalities from a fragmented project mindset to a long-term impact logic. For example, in Murcia, the ToC guided the "South Connection" project to bridge a historic railway divide, transforming 200,000 square meters into a mobility hub designed specifically to heal geographical and social inequalities.',
-    refs: [{t: 'Theories of Change for Urban Social Impact - URBACT', u: 'https://urbact.eu/networks/ur-impact'}, {t: 'T-Factor Theory of Change', u: 'https://www.t-factor.eu/wp-content/uploads/2021/11/T-Factor_D7.1_Theory-of-Change.pdf'}, {t: 'Arup\'s Social Value & Equity Theory of Change', u: 'https://www.arup.com/globalassets/downloads/insights/arups-social-value-and-equity-theory-of-change.pdf'}, {t: 'What is Theory of Change? — Theory of Change Community', u: 'https://www.theoryofchange.org/what-is-theory-of-change/'}],
+    refs: [{t: 'Theories of Change for Urban Social Impact - URBACT', u: 'https://urbact.eu/'}, {t: 'T-Factor Theory of Change', u: 'https://cordis.europa.eu/'}, {t: 'Arup\'s Social Value &amp; Equity Theory of Change', u: 'https://www.arup.com/'}, {t: 'A guide to applying theory of change - Infrastructure Australia', u: 'https://www.infrastructureaustralia.gov.au/'}, {t: 'Arup\'s Social Value & Equity Theory of Change', u: 'https://www.arup.com/globalassets/downloads/insights/arups-social-value-and-equity-theory-of-change.pdf'}, {t: 'What is Theory of Change? — Theory of Change Community', u: 'https://www.theoryofchange.org/what-is-theory-of-change/'}],
   },
   {
     id: 75, n: 'Stakeholder engagement plan', f: 'User/Participatif', s: 'intl',
@@ -1288,7 +1288,7 @@ export const TOOLS = [
     duration: '2 to 3 weeks for mapping and planning',
     material: 'Influence/interest matrix, demographic data, communication strategy templates',
     use: 'The World Bank’s Environmental and Social Framework (ESF) strictly requires a Stakeholder Engagement Plan (SEP) proportionate to project risks. By ensuring continuous, meaningful consultation and a robust grievance mechanism, public authorities can prevent disputes, improve project design, and build constructive relationships with affected communities over the entire project li',
-    refs: [{t: 'Mastering Your Stakeholder Engagement Plan: A Comprehensive Guide'}, {t: 'Guidance Note 1: Assessment and Management of Environmental and Social Risks and Impacts - International Finance Corporation', u: 'https://www.ifc.org/esrp'}, {t: '107175 - World Bank Documents', u: 'https://documents.worldbank.org/en/publication/documents-reports/documentdetail/476161530217390609/esf-guidance-note-10-stakeholder-engagement-and-information-disclosure-english'}, {t: 'Working with Stakeholders in Participatory Urban Development: Best Practices', u: 'https://urbact.eu/sites/default/files/urbact_guidance_-_setting_up_and_running_a_multi-stakeholder_group_0_1_0.pdf'}],
+    refs: [{t: 'Mastering Your Stakeholder Engagement Plan: A Comprehensive Guide', u: 'https://www.pmi.org/'}, {t: 'Guidance Note 1: Assessment and Management of Environmental and Social Risks and Impacts - International Finance Corporation', u: 'https://www.ifc.org/esrp'}, {t: '107175 - World Bank Documents', u: 'https://documents.worldbank.org/'}, {t: 'Working with Stakeholders in Participatory Urban Development: Best Practices', u: 'https://urbact.eu/'}],
   },
   {
     id: 76, n: 'Legal & contractual due diligence', f: 'Gouvernance', s: 'intl',
@@ -1305,7 +1305,7 @@ export const TOOLS = [
     duration: '3 to 6 weeks',
     material: 'Title commitments, municipal zoning codes, environmental records, structural assessment tools',
     use: 'In brownfield redevelopment transactions, environmental and legal due diligence is a mandatory step. Consultants use Phase I ESAs to detect historical soil contamination and verify zoning compliance, effectively shielding prospective purchasers from inheriting strict, cost-prohibitive cleanup liabilities and qualifying them for landowner liability protections.',
-    refs: [{t: 'Building Due Diligence : Technical, Legal & Financial Guide - Aura Safety', u: "https://aurasafety.com/services/construction-safety/due-diligence-of-buildings"}, {t: 'Environmental Due Diligence in Site Development and Brownfields Transactions - Manko, Gold, Katcher & Fox LLP', u: 'https://www.mankogold.com/'}, {t: 'Due Diligence Obligations in Construction Contracts - Society of Construction Law', u: 'https://www.scl.org.uk/'}],
+    refs: [{t: 'Building Due Diligence : Technical, Legal &amp; Financial Guide - Aura Safety', u: 'https://aurasafety.com/'}, {t: 'Environmental Due Diligence in Site Development and Brownfields Transactions - Manko, Gold, Katcher &amp; Fox LLP', u: 'https://www.mankogold.com/'}, {t: 'Due Diligence Obligations in Construction Contracts - Society of Construction Law', u: 'https://www.scl.org.uk/'}, {t: 'Building Due Diligence : Technical, Legal & Financial Guide - Aura Safety', u: 'https://aurasafety.com/services/construction-safety/due-diligence-of-buildings'}, {t: 'Environmental Due Diligence in Site Development and Brownfields Transactions - Manko, Gold, Katcher & Fox LLP', u: 'https://www.mankogold.com/'}],
   },
   {
     id: 77, n: 'Masterplan / Local Development Plan', f: 'Spatial/Urbain', s: 'intl',
@@ -1322,7 +1322,7 @@ export const TOOLS = [
     duration: '6 to 12 months',
     material: '3D spatial modeling software, base maps, demographic and environmental data, consultation platforms',
     use: 'The Scottish Government emphasizes masterplanning for areas undergoing significant change, such as town extensions or regeneration zones, to avoid uncoordinated, fragmented spaces. In Wyre Council, masterplans are strictly required for multi-owner residential allocations to ensure cohesive integration of schools, roads, and green infrastructure before any planning permission is',
-    refs: [{t: 'Understanding masterplanning - Planning Advice Note 83: master planning - gov.scot', u: 'https://www.gov.scot/publications/pan-83-planning-advice-note-master-planning/pages/2/'}, {t: 'Guidance on the Preparation of Masterplans | Wyre Council', u: 'https://www.wyre.gov.uk/downloads/file/460/masterplan-guidance-notes-may-2019'}, {t: 'Draft for consultation Design and Placemaking Planning Practice Guidance - GOV.UK', u: 'https://www.gov.uk/government/publications/national-planning-policy-framework--2'}, {t: 'What is a masterplan and how does it fit with the Local Plan?', u: 'https://www.gov.uk/government/consultations/design-and-placemaking-planning-practice-guidance/design-and-placemaking-planning-practice-guidance'}],
+    refs: [{t: 'Understanding masterplanning - Planning Advice Note 83: master planning - gov.scot', u: 'https://www.gov.scot/'}, {t: 'Guidance on the Preparation of Masterplans | Wyre Council', u: 'https://www.wyre.gov.uk/'}, {t: 'Draft for consultation Design and Placemaking Planning Practice Guidance - GOV.UK', u: 'https://www.gov.uk/government/publications/national-planning-policy-framework--2'}, {t: 'What is a masterplan and how does it fit with the Local Plan?', u: 'https://www.gov.uk/'}],
   },
   {
     id: 78, n: 'Urban development contract / PPP structuring', f: 'Économie', s: 'intl',
@@ -1339,7 +1339,7 @@ export const TOOLS = [
     duration: '6 to 18 months of negotiation and structuring',
     material: 'Financial models (Base Case), technical output specifications, legal frameworks, risk matrices',
     use: 'The EBRD guides the structuring of PPP contracts by emphasizing that long-term viability requires flexibility. For instance, in toll highway or water treatment projects, contracts must include adjustment mechanisms to handle unpredictable technological shifts or demand changes over a 30-year lifecycle. Proper structuring gives lenders the certainty they need to provide non-reco',
-    refs: [{t: 'Chapter 3. Structuring and negotiating PPP contracts - EBRD', u: "https://www.ebrd.com/content/dam/ebrd_dxp/assets/pdfs/legal-reform/infrastructure-and-natural-resources/public-private-partnerships-and-concessions/volume-2/vol2_chap7.pdf"}, {t: 'Guidance on PPP Contractual Provisions', u: 'https://ppp.worldbank.org/public-private-partnership/library/procuring-infrastructure-ppps-2018'}, {t: 'Structuring the PPP Contract Public Private Partnership', u: 'https://ppp.worldbank.org/public-private-partnership/'}],
+    refs: [{t: 'Chapter 3. Structuring and negotiating PPP contracts - EBRD', u: 'https://www.ebrd.com/'}, {t: 'Guidance on PPP Contractual Provisions', u: 'https://ppp.worldbank.org/public-private-partnership/library/procuring-infrastructure-ppps-2018'}, {t: 'Structuring the PPP Contract Public Private Partnership', u: 'https://ppp.worldbank.org/public-private-partnership/'}],
   },
   {
     id: 79, n: 'Integrated Territorial Investment (ITI) / CLLD', f: 'Gouvernance', s: 'intl',
@@ -1356,7 +1356,7 @@ export const TOOLS = [
     duration: '6 to 12 months for strategy drafting and funding approval',
     material: 'European Structural Investment Funds (ESIF) guidelines, regional data, partnership agreements',
     use: 'Through Cohesion Policy, the European Regional Development Fund (ERDF) specifically promotes Integrated Territorial Investments (ITI) to foster sustainable urban development. By channeling funds into a localized, integrated plan rather than isolated sectoral projects, cities can concurrently address physical infrastructure, social inclusion, and low-carbon transitions under one',
-    refs: [{t: 'New Programmes For Integrated Territorial Developement: ITI and CLLD at a glance', u: 'https://ec.europa.eu/regional_policy/'}, {t: 'The use of integrated territorial tools in cohesion policy - CEMR CCRE', u: 'https://ccre-cemr.org/wp-content/uploads/2024/04/230124_EN_analysis_ITI_CLLD_final.pdf'}, {t: 'An overview on Cohesion Policy - URBACT', u: 'https://urbact.eu/sites/default/files/2023-03/cohesion_policy_study-_final.pdf'}],
+    refs: [{t: 'New Programmes For Integrated Territorial Developement: ITI and CLLD at a glance', u: 'https://ec.europa.eu/regional_policy/'}, {t: 'The use of integrated territorial tools in cohesion policy - CEMR CCRE', u: 'http://www.ccre.org'}, {t: 'An overview on Cohesion Policy - URBACT', u: 'https://urbact.eu/'}],
   },
   {
     id: 80, n: 'Change management & communication plan', f: 'User/Participatif', s: 'intl',
@@ -1373,7 +1373,7 @@ export const TOOLS = [
     duration: '2 to 3 weeks for initial drafting; continuous execution',
     material: 'Communication matrices, social media platforms, project management tracking tools',
     use: 'During the implementation of the Dominica Plastic Detox Initiative, a detailed communication and change management plan was deployed to inform residents and businesses about regulatory shifts. By identifying policy change risks and actively communicating through appropriate channels, the initiative managed public expectations and mitigated resistance to new environmental laws.',
-    refs: [{t: 'How to develop a Sustainable Energy and Climate Action Plan (SECAP) - EU Covenant of Mayors', u: "https://publications.jrc.ec.europa.eu/repository/handle/JRC112986"}, {t: 'Project Management Plan for the Implementation of Dominica Plastic Detox Initiative'}, {t: 'Mastering Your Stakeholder Engagement Plan: A Comprehensive Guide'}],
+    refs: [{t: 'How to develop a Sustainable Energy and Climate Action Plan (SECAP) - EU Covenant of Mayors', u: 'https://data.europa.eu/doi/10.2760/4489817'}, {t: 'Project Management Plan for the Implementation of Dominica Plastic Detox Initiative', u: 'https://www.pmi.org/'}, {t: 'Mastering Your Stakeholder Engagement Plan: A Comprehensive Guide', u: 'https://www.pmi.org/'}],
   },
   {
     id: 81, n: 'Monitoring & Evaluation framework (M&E)', f: 'Gouvernance', s: 'intl',
@@ -1390,7 +1390,7 @@ export const TOOLS = [
     duration: '1 to 2 months for framework design; continuous execution',
     material: 'Logic model templates, baseline data surveys, indicator tracking dashboards',
     use: 'The URBACT III program heavily utilized M&E results frameworks to assess its impact on sustainable urban policy across over 400 cities. By continually tracking capacity building, participation, and integration metrics against baseline studies, the evaluation allowed policymakers to visibly demonstrate how local action plans directly improved democratic processes and city govern',
-    refs: [{t: 'MONITORING AND EVALUATION SYSTEMS FOR URBAN INFRASTRUCTURE SERVICES - Middle East Technical University', u: 'https://www.metu.edu.tr/'}, {t: 'Monitoring and Evaluating National Urban Policy: A GUIDE - UN-Habitat', u: 'https://unhabitat.org/monitoring-and-evaluating-national-urban-policy-a-guide'}, {t: 'A Handbook for Program Managers and Researchers - World Bank Document', u: 'https://www.worldbank.org/'}, {t: 'PERFORMANCE IN POLICY- MAKING - URBACT', u: 'https://urbact.eu/sites/default/files/urbact_guidance_-_performance_in_policy-making_1.pdf'}],
+    refs: [{t: 'MONITORING AND EVALUATION SYSTEMS FOR URBAN INFRASTRUCTURE SERVICES - Middle East Technical University', u: 'https://www.metu.edu.tr/'}, {t: 'Monitoring and Evaluating National Urban Policy: A GUIDE - UN-Habitat', u: 'https://unhabitat.org/'}, {t: 'A Handbook for Program Managers and Researchers - World Bank Document', u: 'https://www.worldbank.org/'}, {t: 'PERFORMANCE IN POLICY- MAKING - URBACT', u: 'https://urbact.eu/'}],
   },
   {
     id: 82, n: 'Funding mapping', f: 'Économie', s: 'intl',
@@ -1407,7 +1407,7 @@ export const TOOLS = [
     duration: '3 to 4 weeks',
     material: 'Financial instrument databases, project maturity scales, timeline mapping software',
     use: 'To implement Smart Specialisation Strategies, policymakers map European Structural and Investment Funds (ESIF) and plot them alongside tools like Horizon 2020 or European Investment Bank (EIB) loans. By visually charting these funding sources based on thematic scope and eligible beneficiaries, cities can blend grants with financial instruments to cover different project phases',
-    refs: [{t: 'Drawing funding and financing scenarios for effective implementation of Smart Specialisation Strategies - JRC Publications Repository', u: "https://publications.jrc.ec.europa.eu/repository/handle/JRC112708"}, {t: 'An overview on Cohesion Policy - URBACT', u: 'https://urbact.eu/sites/default/files/2023-03/cohesion_policy_study-_final.pdf'}, {t: 'Issuing Municipal Sustainable Bonds in South Africa - United Nations Development Programme', u: 'https://www.undp.org/policy-centre/nairobi/publications/technical-handbook-issuing-municipal-sustainable-bonds-south-africa'}, {t: 'Financial instruments toolkit - C40 Knowledge Hub', u: 'https://www.c40knowledgehub.org/s/article/Financial-instruments-toolkit?language=en_US'}],
+    refs: [{t: 'Drawing funding and financing scenarios for effective implementation of Smart Specialisation Strategies - JRC Publications Repository', u: 'https://doi.org/10.2760/422868'}, {t: 'An overview on Cohesion Policy - URBACT', u: 'https://urbact.eu/'}, {t: 'Issuing Municipal Sustainable Bonds in South Africa - United Nations Development Programme', u: 'https://www.undp.org/'}, {t: 'Financial instruments toolkit - C40 Knowledge Hub', u: 'https://www.c40knowledgehub.org/'}],
   },
   {
     id: 83, n: 'Economic network map', f: 'Économie', s: 'intl',
@@ -1424,7 +1424,7 @@ export const TOOLS = [
     duration: '4 to 6 weeks',
     material: 'Geographic Information Systems (GIS), local business registries, spatial data',
     use: 'The World Bank notes that mapping "networking assets" and economic drivers is essential in assessing urban tech environments. By plotting incubators, universities, and commercial spaces on a territorial map, planners can identify missing linkages and physical barriers, ensuring that investments target community-building hubs rather than disconnected geographic parks.',
-    refs: [{t: '100899-REVISED-WP-PUBLIC-Tech-Innovation-Networks - World Bank Document', u: 'https://documents1.worldbank.org/curated/en/623971467998460024/pdf/100899-REVISED-WP-PUBLIC-Box393259B-Tech-Innovation-Ecosystems.pdf'}, {t: 'Mapping of segments of the economic ecosystem of the territory - IDEAS/RePEc', u: 'https://ideas.repec.org/a/rnp/smmscn/s24313.html'}, {t: 'cluster monitor - International Economic Development Council (IEDC)'}, {t: 'The CE-MAP: Circular Economy - Measurements, Assessments and Pathways - Swinburne figshare', u: "https://apo.org.au/node/325372"}],
+    refs: [{t: '100899-REVISED-WP-PUBLIC-Tech-Innovation-Networks - World Bank Document', u: 'https://www.worldbank.org/'}, {t: 'Mapping of segments of the economic ecosystem of the territory - IDEAS/RePEc', u: 'https://ideas.repec.org/a/rnp/smmscn/s24313.html'}, {t: 'cluster monitor - International Economic Development Council (IEDC)', u: 'http://www.econdata.net/'}, {t: 'The CE-MAP: Circular Economy - Measurements, Assessments and Pathways - Swinburne figshare', u: 'https://apo.org.au/node/319340'}],
   },
   {
     id: 84, n: 'Employment & activity metrics', f: 'Économie', s: 'intl',
@@ -1441,7 +1441,7 @@ export const TOOLS = [
     duration: '4 to 8 weeks for data collection and analysis',
     material: 'Labor force surveys, regional accounts statistics, statistical analysis software',
     use: 'The 1-2-3 surveys deployed across Sub-Saharan African capitals (e.g., Bamako, Dakar, Niamey) proved that standard unemployment metrics missed the reality of the labor market. By measuring "invisible underemployment" and analyzing the specific returns on education within the informal sector, these metrics revealed severe job mismatches and vulnerabilities affecting urban youth a',
-    refs: [{t: '3 Assessing labour market slack', u: 'https://www.ilo.org/'}, {t: 'Urban Labor Markets in Sub-Saharan Africa - Documents & Reports - World Bank', u: 'https://doi.org/10.1596/978-0-8213-9781-7'}, {t: 'SDG Voluntary Local Reviews - JRC Publications Repository', u: 'https://urban.jrc.ec.europa.eu/sdgs/en'}, {t: 'Key Indicators of the Labour Market (KILM)', u: 'https://www.ilo.org/'}],
+    refs: [{t: '3 Assessing labour market slack', u: 'https://www.ilo.org/'}, {t: 'Urban Labor Markets in Sub-Saharan Africa - Documents &amp; Reports - World Bank', u: 'https://doi.org/10.1596/978-0-8213-9781-7'}, {t: 'SDG Voluntary Local Reviews - JRC Publications Repository', u: 'https://urban.jrc.ec.europa.eu/sdgs/en'}, {t: 'Key Indicators of the Labour Market (KILM)', u: 'https://www.ilo.org/'}, {t: 'Urban Labor Markets in Sub-Saharan Africa - Documents & Reports - World Bank', u: 'https://doi.org/10.1596/978-0-8213-9781-7'}],
   },
   {
     id: 85, n: 'Commerce scan', f: 'Économie', s: 'intl',
@@ -1458,7 +1458,7 @@ export const TOOLS = [
     duration: '2 to 3 weeks for field research and mapping',
     material: 'Base maps, field survey sheets, footfall counters, local tax assessor databases',
     use: 'Fareham Borough Council conducts bi-annual Retail Health Checks to classify units and measure vacancy rates. By visually logging whether retail properties are active, vacant, or transitioning, the council utilizes this data to monitor the effectiveness of zoning policies and adapt to out-of-town retail competition over time.',
-    refs: [{t: 'Preparing a Commercial District Diagnostic - Local Initiatives Support Corporation', u: 'https://www.lisc.org/media/filer_public/ec/6c/ec6c7d26-cc91-4c2d-910f-e459ea1a1d4d/cdna_manual_022720_1.pdf'}, {t: 'Retail Health Checks Summary Paper Summer 2014 Fareham Local Development Framework', u: 'https://www.fareham.gov.uk/planning/local_plan/retailhealthcheck.aspx'}, {t: 'Diagnosing Urban Street Vitality: A Visual-Semantic and Spatiotemporal Framework for Street-Level Economics - arXiv', u: 'https://arxiv.org/'}],
+    refs: [{t: 'Preparing a Commercial District Diagnostic - Local Initiatives Support Corporation', u: 'http://www.referenceusa.com'}, {t: 'Retail Health Checks Summary Paper Summer 2014 Fareham Local Development Framework', u: 'https://www.fareham.gov.uk/'}, {t: 'Diagnosing Urban Street Vitality: A Visual-Semantic and Spatiotemporal Framework for Street-Level Economics - arXiv', u: 'https://arxiv.org/'}],
   },
   {
     id: 86, n: 'Tourism & visitor data', f: 'Économie', s: 'intl',
@@ -1475,7 +1475,7 @@ export const TOOLS = [
     duration: 'Continuous monitoring; 1-month setup for dashboards',
     material: 'Accommodation statistics, exit questionnaires, resident surveys',
     use: 'The European Tourism Indicator System (ETIS) provides a comprehensive toolkit for destination management. By deploying core and supplementary indicators, destinations can track essential baseline information—such as the ratio of tourists to residents and environmental stress—enabling continuous improvement and mitigating negative social impacts.',
-    refs: [{t: 'Quantifying tourism in city destinations', u: "https://www.e-unwto.org/doi/10.18111/9789284425341"}, {t: 'Indicators of Sustainable Development for Tourism Destinations', u: "https://www.e-unwto.org/doi/book/10.18111/9789284407262"}, {t: 'The European Tourism Indicator System', u: "https://op.europa.eu/en/publication-detail/-/publication/4b90d965-eff8-11e5-8529-01aa75ed71a1"}],
+    refs: [{t: 'Quantifying tourism in city destinations', u: 'https://www.e-unwto.org/doi/book/10.18111/9789284425341'}, {t: 'Indicators of Sustainable Development for Tourism Destinations', u: 'http://www.world-tourism.org/sustainable'}, {t: 'The European Tourism Indicator System', u: 'http://ec.europa.eu/growth/sectors/tourism/offer/sustainable/indicators/index_en.htm'}],
   },
   {
     id: 87, n: 'Circular economy readiness', f: 'Environnement', s: 'intl',
@@ -1492,7 +1492,7 @@ export const TOOLS = [
     duration: '4 to 6 weeks for assessment',
     material: 'Material flow analysis data, waste management statistics, maturity indexes',
     use: 'Urban planners use the Circular Economy Maturity Index and frameworks like CE-MAP to assess a city\'s transition away from linear models. By tracking indicators such as urban metabolism and circular economy finance, cities can evaluate whether their initiatives are creating unintended side effects and determine if their local policies are mature enough to support true resource e',
-    refs: [{t: 'Circular Economy Maturity Index - Interreg CENTRAL EUROPE', u: 'https://www.interreg-central.eu/'}, {t: 'The CE-MAP: Circular Economy - Measurements, Assessments and Pathways - Swinburne figshare', u: "https://apo.org.au/node/325372"}, {t: 'Circular Peterborough Circular City Roadmap', u: 'https://archive.ellenmacarthurfoundation.org/assets/downloads/publications/EllenMacArthurFoundation_Intelligent_Assets_080216-AUDIO-E.pdf'}, {t: 'The Urban Circularity Assessment Framework (UCAF) - IDEAS/RePEc', u: 'https://link.springer.com/article/10.1007/s43615-023-00314-w'}],
+    refs: [{t: 'Circular Economy Maturity Index - Interreg CENTRAL EUROPE', u: 'https://www.interreg-central.eu/'}, {t: 'The CE-MAP: Circular Economy - Measurements, Assessments and Pathways - Swinburne figshare', u: 'https://apo.org.au/node/319340'}, {t: 'Circular Peterborough Circular City Roadmap', u: 'https://www.ellenmacarthurfoundation.org/assets/downloads/publications/EllenMacArthurFoundation_Intelligent_Assets_080216-AUDIO-E.pdf'}, {t: 'The Urban Circularity Assessment Framework (UCAF) - IDEAS/RePEc', u: 'http://link.springer.com/10.1007/s43615-023-00314-w'}],
   },
   {
     id: 88, n: 'Start-ups, research & innovation network', f: 'Économie', s: 'intl',
@@ -1509,7 +1509,7 @@ export const TOOLS = [
     duration: '3 to 5 weeks',
     material: 'Patent databases, investment heatmaps, regional enterprise registries, university tech-transfer data',
     use: 'Platforms like Dealroom are utilized to measure the density and quality of local tech enterprises, analyzing investment data and venture capital flows to rank cities. The World Bank similarly emphasizes that tracking these innovation indicators allows municipalities to understand their competitive positioning and allocate resources to foster local entrepreneurship effectively.',
-    refs: [{t: 'Measuring your local startup ecosystem: a short guide - Dealroom.co', u: 'https://dealroom.co/'}, {t: '100899-REVISED-WP-PUBLIC-Tech-Innovation-Networks - World Bank Document', u: 'https://documents1.worldbank.org/curated/en/623971467998460024/pdf/100899-REVISED-WP-PUBLIC-Box393259B-Tech-Innovation-Ecosystems.pdf'}, {t: 'SDG Voluntary Local Reviews - JRC Publications Repository', u: 'https://urban.jrc.ec.europa.eu/sdgs/en'}, {t: 'Drawing funding and financing scenarios for effective implementation of Smart Specialisation Strategies - JRC Publications Repository', u: "https://publications.jrc.ec.europa.eu/repository/handle/JRC112708"}],
+    refs: [{t: 'Measuring your local startup ecosystem: a short guide - Dealroom.co', u: 'https://dealroom.co/'}, {t: '100899-REVISED-WP-PUBLIC-Tech-Innovation-Networks - World Bank Document', u: 'https://www.worldbank.org/'}, {t: 'SDG Voluntary Local Reviews - JRC Publications Repository', u: 'https://urban.jrc.ec.europa.eu/sdgs/en'}, {t: 'Drawing funding and financing scenarios for effective implementation of Smart Specialisation Strategies - JRC Publications Repository', u: 'https://doi.org/10.2760/422868'}],
   },
   {
     id: 89, n: 'Open-data & vitality data', f: 'Économie', s: 'intl',
@@ -1543,7 +1543,7 @@ export const TOOLS = [
     duration: '4 to 8 weeks of financial modeling',
     material: 'Financial spreadsheets, willingness-to-pay databases, standard conversion factors',
     use: 'The European Investment Bank applies Cost-Benefit Analysis across its transport and urban projects to measure the true value added to society, moving beyond mere financial returns. In the historic oldtown of Lisbon, a CBA justified a complex urban regeneration intervention by monetizing the lower social costs (unemployment reduction) and better living environments against the h',
-    refs: [{t: 'Guide to Cost-Benefit Analysis of Investment Projects - European Commission', u: "https://op.europa.eu/en/publication-detail/-/publication/120c6fcc-3841-4596-9256-4fd709c49ae4"}, {t: 'The Economic Appraisal of Investment Projects at the EIB - 2nd Edition, March 2023', u: 'https://www.eib.org/en/publications/20220169-the-economic-appraisal-of-investment-projects-at-the-eib'}, {t: 'Social value assessment in urban regeneration projects - Sur lab', u: 'https://surlab.unibocconi.eu/sites/default/files/media/attach/SUR%20Lab%20PP%202024.pdf?VersionId=0XntwdMD2ThtFtsdDzKY6WuftUa2iOPC'}],
+    refs: [{t: 'Guide to Cost-Benefit Analysis of Investment Projects - European Commission', u: 'https://data.europa.eu/doi/10.2776/97516'}, {t: 'The Economic Appraisal of Investment Projects at the EIB - 2nd Edition, March 2023', u: 'https://www.eib.org/'}, {t: 'Social value assessment in urban regeneration projects - Sur lab', u: 'https://www.surlab.org/'}],
   },
   {
     id: 91, n: 'Multi-Criteria Analysis (MCA)', f: 'Spatial/Urbain', s: 'intl',
@@ -1560,7 +1560,7 @@ export const TOOLS = [
     duration: '3 to 6 weeks',
     material: 'Decision-making software, stakeholder survey data, scoring rubrics',
     use: 'The European Investment Bank utilizes a tailor-made MCA tool for planning-led, integrated urban development projects where standard quantitative estimates are challenging. By applying criteria such as "climate resilience" and "social inclusion," MCA translates performance into numerical values to ensure projects meet broad societal objectives. In Milan\'s Rogoredo area, an MCA w',
-    refs: [{t: 'Multi-Criteria Analysis and Decision-Making Approach for the Urban Regeneration - Unibo', u: 'https://doi.org/10.3390/su15010772'}, {t: 'The Economic Appraisal of Investment Projects at the EIB - 2nd Edition, March 2023', u: 'https://www.eib.org/en/publications/20220169-the-economic-appraisal-of-investment-projects-at-the-eib'}, {t: 'Social value assessment in urban regeneration projects - Sur lab', u: 'https://surlab.unibocconi.eu/sites/default/files/media/attach/SUR%20Lab%20PP%202024.pdf?VersionId=0XntwdMD2ThtFtsdDzKY6WuftUa2iOPC'}],
+    refs: [{t: 'Multi-Criteria Analysis and Decision-Making Approach for the Urban Regeneration - Unibo', u: 'https://doi.org/10.3390/su15010772'}, {t: 'The Economic Appraisal of Investment Projects at the EIB - 2nd Edition, March 2023', u: 'https://www.eib.org/'}, {t: 'Social value assessment in urban regeneration projects - Sur lab', u: 'https://www.surlab.org/'}],
   },
   {
     id: 92, n: 'Financial modeling (DCF / NPV / IRR)', f: 'Économie', s: 'intl',
@@ -1577,7 +1577,7 @@ export const TOOLS = [
     duration: '3 to 5 weeks',
     material: 'Financial modeling software (Excel/dedicated platforms), market revenue forecasts, construction cost databases',
     use: 'In assessing large-scale infrastructure, the European Commission demands robust financial modeling. Planners establish working capital, track operational profits against replacement investments, and apply a 10% or similar benchmark IRR to determine if an operation can generate enough operating cash flow to be sustainable. Similarly, financial analysis was combined with spatial',
-    refs: [{t: 'Guide to Cost-Benefit Analysis of Investment Projects - European Commission', u: "https://op.europa.eu/en/publication-detail/-/publication/120c6fcc-3841-4596-9256-4fd709c49ae4"}, {t: 'The Economic Appraisal of Investment Projects at the EIB - 2nd Edition, March 2023', u: 'https://www.eib.org/en/publications/20220169-the-economic-appraisal-of-investment-projects-at-the-eib'}, {t: 'Valuation of development property | RICS', u: 'https://www.rics.org/profession-standards/rics-standards-and-guidance/sector-standards/valuation-standards/valuation-of-development-property'}],
+    refs: [{t: 'Guide to Cost-Benefit Analysis of Investment Projects - European Commission', u: 'https://data.europa.eu/doi/10.2776/97516'}, {t: 'The Economic Appraisal of Investment Projects at the EIB - 2nd Edition, March 2023', u: 'https://www.eib.org/'}, {t: 'Valuation of development property | RICS', u: 'https://www.rics.org/'}],
   },
   {
     id: 93, n: 'Real estate market analysis', f: 'Économie', s: 'intl',
@@ -1594,7 +1594,7 @@ export const TOOLS = [
     duration: '4 to 6 weeks',
     material: 'Land registry data, hedonic pricing algorithms, GIS property maps',
     use: 'Hedonic pricing was utilized in Milan to value the social benefits resulting from the reopening of the Martesana canal, estimating the total economic value based on property price variations. Furthermore, analyzing the impact of rail transit station proximity on commercial property prices relies heavily on real estate market analysis, proving that localized infrastructure devel',
-    refs: [{t: 'Impact of Infrastructure Development on Property Prices in Developing Urban Areas - Rekayasa Sipil'}, {t: 'Valuation of development property | RICS', u: 'https://www.rics.org/profession-standards/rics-standards-and-guidance/sector-standards/valuation-standards/valuation-of-development-property'}, {t: 'Social value assessment in urban regeneration projects - Sur lab', u: 'https://surlab.unibocconi.eu/sites/default/files/media/attach/SUR%20Lab%20PP%202024.pdf?VersionId=0XntwdMD2ThtFtsdDzKY6WuftUa2iOPC'}],
+    refs: [{t: 'Impact of Infrastructure Development on Property Prices in Developing Urban Areas - Rekayasa Sipil', u: 'https://journal.ubb.ac.id/index.php/rekayasa'}, {t: 'Valuation of development property | RICS', u: 'https://www.rics.org/'}, {t: 'Social value assessment in urban regeneration projects - Sur lab', u: 'https://www.surlab.org/'}],
   },
   {
     id: 94, n: 'Land value capture', f: 'Économie', s: 'intl',
@@ -1611,7 +1611,7 @@ export const TOOLS = [
     duration: '6 to 12 months for policy design and negotiation',
     material: 'Real estate appraisal data, municipal zoning laws, developer agreement templates',
     use: 'The New Urban Agenda explicitly advocates for developer exactions and impact fees as powerful value capture tools. Developers are required to pay upfront charges to cover the cost of extending utility networks or are mandated to set aside land for public use in exchange for development rights. This mechanism is utilized successfully globally, including through joint development',
-    refs: [{t: 'Land Value Capture: Guidance for Practitioners - ConfTool', u: 'https://www.conftool.com/research-track-landconference2024/index.php?page=downloadPaper&ismobile=true&filename=03-10-Kaganova-253_paper.pdf&form_id=253&form_version=final'}, {t: 'The New Urban Agenda - Observatorio 2030', u: 'https://habitat3.org/the-new-urban-agenda'}, {t: 'INCLUSIONARY HOUSING PRACTICE NOTE | Land Value Capture', u: 'https://landvaluecapture.org.za/wp-content/uploads/2025/04/inclusionary-housing-practice-note.pdf'}],
+    refs: [{t: 'Land Value Capture: Guidance for Practitioners - ConfTool', u: 'https://www.conftool.com/'}, {t: 'The New Urban Agenda - Observatorio 2030', u: 'https://habitat3.org/the-new-urban-agenda'}, {t: 'INCLUSIONARY HOUSING PRACTICE NOTE | Land Value Capture', u: 'https://www.lincolninst.edu/'}],
   },
   {
     id: 95, n: 'Social Return on Investment (SROI)', f: 'User/Participatif', s: 'intl',
@@ -1628,7 +1628,7 @@ export const TOOLS = [
     duration: '8 to 12 weeks',
     material: 'Financial proxy databases (e.g',
     use: 'For the Connswater Community Greenway in Belfast, an SROI analysis used real-world data to monetize elements like flood alleviation, health, and productivity. The evaluation proved that for every £1 invested in the greenway, the local economy gained up to £1.59, justifying the long-term public expenditure. In an Italian urban green space project, researchers monetized the reduc',
-    refs: [{t: 'The social return on investment of an urban regeneration project: the Connswater Community Greenway, Belfast', u: "https://www.tandfonline.com/doi/full/10.1080/23748834.2023.2211226"}, {t: 'Visionary Nature-Based Solutions Evaluated through Social Return on Investment - Padua Research Archive', u: 'https://doi.org/10.3390/smartcities7020040'}, {t: 'Social value assessment in urban regeneration projects - Sur lab', u: 'https://surlab.unibocconi.eu/sites/default/files/media/attach/SUR%20Lab%20PP%202024.pdf?VersionId=0XntwdMD2ThtFtsdDzKY6WuftUa2iOPC'}],
+    refs: [{t: 'The social return on investment of an urban regeneration project: the Connswater Community Greenway, Belfast', u: 'https://doi.org/10.1080/23748834.2023.2211226'}, {t: 'Visionary Nature-Based Solutions Evaluated through Social Return on Investment - Padua Research Archive', u: 'https://doi.org/10.3390/smartcities7020040'}, {t: 'Social value assessment in urban regeneration projects - Sur lab', u: 'https://www.surlab.org/'}],
   },
   {
     id: 96, n: 'Business model canvas for urban projects', f: 'Économie', s: 'intl',
@@ -1645,7 +1645,7 @@ export const TOOLS = [
     duration: '1 to 2 days of collaborative workshop',
     material: 'Large printed canvas templates, sticky notes, markers, stakeholder maps',
     use: 'The Connecting Nature initiative pilot-tested the Nature-Based Solutions Business Model Canvas in front-runner cities like Genk, Glasgow, and Poznan. By mapping out exactly how to reduce operational costs and create joint programs with partners, cities avoided building "Frankenstein" projects overly reliant on fragile, short-term grants, ensuring long-term financial viability f',
-    refs: [{t: 'Nature-Based Solutions Business Model Canvas Guidebook', u: "https://connectingnature.eu/sites/default/files/downloads/NBC-BMC-Booklet-Final-(for-circulation).pdf"}, {t: 'checklist - New European Bauhaus', u: 'https://jaspers.eib.org/knowledge/publications/new-european-bauhaus-checklist'}, {t: 'Social value assessment in urban regeneration projects - Sur lab', u: 'https://surlab.unibocconi.eu/sites/default/files/media/attach/SUR%20Lab%20PP%202024.pdf?VersionId=0XntwdMD2ThtFtsdDzKY6WuftUa2iOPC'}],
+    refs: [{t: 'Nature-Based Solutions Business Model Canvas Guidebook', u: 'https://connectingnature.eu/'}, {t: 'checklist - New European Bauhaus', u: 'https://new-european-bauhaus.europa.eu/'}, {t: 'Social value assessment in urban regeneration projects - Sur lab', u: 'https://www.surlab.org/'}],
   },
   {
     id: 97, n: 'Development appraisal / Bilan d\'aménagement', f: 'Économie', s: 'intl',
@@ -1662,7 +1662,7 @@ export const TOOLS = [
     duration: '4 to 8 weeks',
     material: 'Financial modeling software, willingness-to-pay databases, local real estate market data',
     use: 'In France, the traditional financial balance of urban planning ("bilan d\'aménagement") is increasingly being transformed into a "global socio-ecological yield" tool. By moving beyond mere financial equilibrium, institutions like Caisse des Dépôts assess avoided costs and environmental benefits, shifting the perspective of urban development from pure profitability to measuring t',
-    refs: [{t: 'De l\'équilibre financier au rendement socio-écologique global : repenser le bilan d\'aménagement pour transformer la fabrique urbaine | Groupe Caisse des Dépôts', u: 'https://www.caissedesdepots.fr/eclairage/blog/articles/de-lequilibre-financier-au-rendement-socio-ecologique-global-repenser-le-bilan'}, {t: 'Guide to Cost-Benefit Analysis of Investment Projects - European Commission', u: "https://op.europa.eu/en/publication-detail/-/publication/120c6fcc-3841-4596-9256-4fd709c49ae4"}, {t: 'Social value assessment in urban regeneration projects - Sur lab', u: 'https://surlab.unibocconi.eu/sites/default/files/media/attach/SUR%20Lab%20PP%202024.pdf?VersionId=0XntwdMD2ThtFtsdDzKY6WuftUa2iOPC'}],
+    refs: [{t: 'De l\'équilibre financier au rendement socio-écologique global : repenser le bilan d\'aménagement pour transformer la fabrique urbaine | Groupe Caisse des Dépôts', u: 'https://www.caissedesdepots.fr/eclairage/blog/articles/de-lequilibre-financier-au-rendement-socio-ecologique-global-repenser-le-bilan'}, {t: 'Guide to Cost-Benefit Analysis of Investment Projects - European Commission', u: 'https://data.europa.eu/doi/10.2776/97516'}, {t: 'Social value assessment in urban regeneration projects - Sur lab', u: 'https://www.surlab.org/'}],
   },
   {
     id: 98, n: 'Territorial foresight / Prospective', f: 'Spatial/Urbain', s: 'intl',
@@ -1696,7 +1696,7 @@ export const TOOLS = [
     duration: '6 to 18 months depending on legal complexity',
     material: 'Environmental baseline data, European Directive compliance checklists, public consultation platforms',
     use: 'Under the EU EIA Directive, major infrastructure works must be rigorously assessed. For example, in Ireland, the failure to conduct a proper EIA for a large terrestrial wind-farm led to a catastrophic landslide during construction, polluting a river and killing 50,000 fish. This highlighted that assessing soil stability and disaster risk through a formal EIA is absolutely cruci',
-    refs: [{t: 'Environmental Impact Assessment (EIA) - Environment - European Commission', u: 'https://environment.ec.europa.eu/law-and-governance/environmental-assessments/environmental-impact-assessment-eia_en'}, {t: 'TR010056-001183-APP-B-2017-EIA-guidance-EIA-report-final-7323-3.pdf - Planning Inspectorate', u: 'https://infrastructure.planninginspectorate.gov.uk/'}, {t: 'Environmental impact assessment of projects - Publications Office of the EU', u: 'https://op.europa.eu/en/publication-detail/-/publication/494ada6c-cb4a-11e7-a5d5-01aa75ed71a1'}],
+    refs: [{t: 'Environmental Impact Assessment (EIA) - Environment - European Commission', u: 'https://environment.ec.europa.eu/law-and-governance/environmental-assessments/environmental-impact-assessment_en'}, {t: 'TR010056-001183-APP-B-2017-EIA-guidance-EIA-report-final-7323-3.pdf - Planning Inspectorate', u: 'https://infrastructure.planninginspectorate.gov.uk/'}, {t: 'Environmental impact assessment of projects - Publications Office of the EU', u: 'https://op.europa.eu/en/publication-detail/-/publication/494ada6c-cb4a-11e7-a5d5-01aa75ed71a1'}],
   },
   {
     id: 100, n: 'Strategic Environmental Assessment (SEA)', f: 'Gouvernance', s: 'intl',
@@ -1713,7 +1713,7 @@ export const TOOLS = [
     duration: '6 to 12 months, running parallel to the plan-making process',
     material: 'Regional environmental data, cumulative impact matrices, SEA Quality Assurance checklists',
     use: 'The INTERREG Central Europe Programme 2021-2027 underwent a rigorous SEA to evaluate the potential environmental impacts of its cross-border funding strategy. By systematically assessing how the program\'s objectives would interact with regional biodiversity, climate mitigation targets, and public health, the SEA ensured that structural funding strictly promoted sustainable terr',
-    refs: [{t: 'A Practical Guide to the Strategic Environmental Assessment Directive - GOV.UK', u: 'https://www.gov.uk/government/publications/strategic-environmental-assessment-directive-guidance'}, {t: 'STRATEGIC ENVIRONMENTAL ASSESSMENT OF INTERREG CENTRAL EUROPE 2021-2027 PROGRAMME SCOPING REPORT L', u: 'https://www.interreg-central.eu/'}, {t: 'Strategic Environmental Assessment (SEA): Purpose, legal framework, process and benefits - UNECE', u: "https://unece.org/sites/default/files/2021-05/Mr%20Musil_1_Strategic%20Environmental%20Assessment-%20Purpose,%20legal%20framework,..._0.pdf"}],
+    refs: [{t: 'A Practical Guide to the Strategic Environmental Assessment Directive - GOV.UK', u: 'https://www.gov.uk/government/publications/strategic-environmental-assessment-directive-guidance'}, {t: 'STRATEGIC ENVIRONMENTAL ASSESSMENT OF INTERREG CENTRAL EUROPE 2021-2027 PROGRAMME SCOPING REPORT L', u: 'https://www.interreg-central.eu/'}, {t: 'Strategic Environmental Assessment (SEA): Purpose, legal framework, process and benefits - UNECE', u: 'https://unece.org/environment-policy/environmental-assessment'}],
   },
   {
     id: 101, n: 'Life Cycle Assessment (LCA) / ACV', f: 'Environnement', s: 'intl',
@@ -1747,7 +1747,7 @@ export const TOOLS = [
     duration: '3 to 6 weeks per district/building',
     material: 'Building Performance Simulation (BPS) software, architectural CAD files, local weather files',
     use: 'The CityBES web-based platform uses EnergyPlus simulation engines to process CityGML datasets, providing city-scale building energy efficiency modeling. Municipalities use it to visualize current consumption, test large-scale retrofit scenarios, and accurately plan the deployment of district heating or renewable energy systems across thousands of varied building archetypes.',
-    refs: [{t: 'An overview of urban building energy modelling (UBEM) tools - IBPSA Publications', u: 'https://www.ibpsa.org/'}, {t: 'Urban Building Energy Modeling (UBEM) Tools: A State-of-the-Art Review of bottom-up physics-based approaches', u: "https://www.sciencedirect.com/science/article/abs/pii/S2210670720306296"}, {t: 'EN ISO 52016-1: The New International Standard To Calculate Building Energy Needs for Heating And Cooling, Internal Temperatures - IBPSA Publications', u: 'https://www.ibpsa.org/'}],
+    refs: [{t: 'An overview of urban building energy modelling (UBEM) tools - IBPSA Publications', u: 'https://www.ibpsa.org/'}, {t: 'Urban Building Energy Modeling (UBEM) Tools: A State-of-the-Art Review of bottom-up physics-based approaches', u: 'https://www.sciencedirect.com/'}, {t: 'EN ISO 52016-1: The New International Standard To Calculate Building Energy Needs for Heating And Cooling, Internal Temperatures - IBPSA Publications', u: 'https://www.ibpsa.org/'}],
   },
   {
     id: 103, n: 'Urban Heat Island (UHI) mapping', f: 'Environnement', s: 'intl',
@@ -1764,7 +1764,7 @@ export const TOOLS = [
     duration: '4 to 8 weeks',
     material: 'GIS software, satellite thermal imagery, local demographic census data',
     use: 'In Croatian cities like Zagreb and Dubrovnik, urban planners combined satellite surface temperature measurements with the Green Infrastructure Registry. By categorizing precise land uses (e.g., industrial units, dense urban fabric) by their contribution to the heat island effect, planners successfully pinpointed anthropogenic hotspots, proving that spatially targeted greening d',
-    refs: [{t: 'URBAN HEAT ISLAND IDENTIFICATION AND MAPPING METHODOLOGY', u: 'https://mpgi.gov.hr/'}, {t: 'A Systematic Review of Urban Heat Island (UHI) Impacts and Mitigation: Health, Equity, and Policy', u: 'https://www.mdpi.com/2079-8954/14/1/82'}, {t: 'Overview and Access of Land Surface Temperature (LST) - NASA Applied Sciences', u: 'https://appliedsciences.nasa.gov/'}],
+    refs: [{t: 'URBAN HEAT ISLAND IDENTIFICATION AND MAPPING METHODOLOGY', u: 'https://mpgi.gov.hr/'}, {t: 'A Systematic Review of Urban Heat Island (UHI) Impacts and Mitigation: Health, Equity, and Policy', u: 'https://www.mdpi.com/1660-4601/18/1/97'}, {t: 'Overview and Access of Land Surface Temperature (LST) - NASA Applied Sciences', u: 'https://appliedsciences.nasa.gov/'}],
   },
   {
     id: 104, n: 'Biodiversity assessment / ecological survey', f: 'Environnement', s: 'intl',
@@ -1832,7 +1832,7 @@ export const TOOLS = [
     duration: '4 to 8 weeks depending on testing requirements',
     material: 'ISO 18400 sampling standards, historical land registries, environmental laboratory services, Phase I/II assessment frameworks',
     use: 'The European Commission’s brownfield redevelopment strategies highlight the absolute necessity of identifying contaminated sites and conducting rigorous risk assessments. In European site developments, assessing soil contamination via standard ISO 18400 is a strict prerequisite to prevent human health impacts and safely transition hazardous industrial waste landscapes into vibr',
-    refs: [{t: 'Environmental Due Diligence in Site Development and Brownfields Transactions - Manko, Gold, Katcher & Fox LLP', u: 'https://www.mankogold.com/'}, {t: 'EUROPEAN COMMISSION Brussels, 27.6.2023 C(2023) 3851 final ANNEX 2', u: 'https://eur-lex.europa.eu/'}, {t: 'URBAN ECOSYSTEM MAPPING GUIDEBOOK - Centrinno', u: 'https://centrinno.eu/'}, {t: 'Science for Environment Policy. Soil Contamination: Impacts on Human Health'}],
+    refs: [{t: 'Environmental Due Diligence in Site Development and Brownfields Transactions - Manko, Gold, Katcher &amp; Fox LLP', u: 'https://www.mankogold.com/'}, {t: 'EUROPEAN COMMISSION Brussels, 27.6.2023 C(2023) 3851 final ANNEX 2', u: 'https://eur-lex.europa.eu/'}, {t: 'URBAN ECOSYSTEM MAPPING GUIDEBOOK - Centrinno', u: 'https://centrinno.eu/'}, {t: 'Science for Environment Policy. Soil Contamination: Impacts on Human Health', u: 'http://ec.europa.eu/science-environment-policy'}, {t: 'Environmental Due Diligence in Site Development and Brownfields Transactions - Manko, Gold, Katcher & Fox LLP', u: 'https://www.mankogold.com/'}],
   },
   {
     id: 108, n: 'Green infrastructure planning / Nature-Based Solutions', f: 'Environnement', s: 'intl',
@@ -1849,7 +1849,7 @@ export const TOOLS = [
     duration: '3 to 6 months for mapping and criteria assessment',
     material: 'IUCN Global Standard, GIS spatial mapping tools, climate vulnerability data, NbS selection matrices',
     use: 'The IUCN NbS Global Standard was assessed in Mediterranean urban areas to deliver nature-based solutions effectively and verify their impact on climate adaptation,. In Copenhagen, green infrastructure was explicitly implemented to prevent flooding during massive cloudbursts, turning water management into a highly visible, attractive urban feature that simultaneously improved th',
-    refs: [{t: 'Integrating Nature-based Solutions into Urban & Territorial Planning - UN-Habitat', u: 'https://unhabitat.org/integrating-nature-based-solutions-into-urban-territorial-planning'}, {t: 'Nature-based Solutions - Climate-ADAPT', u: 'https://climate-adapt.eea.europa.eu/'}, {t: 'Nature-Based Solutions Business Model Canvas Guidebook', u: "https://connectingnature.eu/sites/default/files/downloads/NBC-BMC-Booklet-Final-(for-circulation).pdf"}, {t: 'Draft for consultation Design and Placemaking Planning Practice Guidance - GOV.UK', u: 'https://www.gov.uk/government/publications/national-planning-policy-framework--2'}],
+    refs: [{t: 'Integrating Nature-based Solutions into Urban &amp; Territorial Planning - UN-Habitat', u: 'https://unhabitat.org/'}, {t: 'Nature-based Solutions - Climate-ADAPT', u: 'https://climate-adapt.eea.europa.eu/'}, {t: 'Nature-Based Solutions Business Model Canvas Guidebook', u: 'https://connectingnature.eu/'}, {t: 'Draft for consultation Design and Placemaking Planning Practice Guidance - GOV.UK', u: 'https://www.gov.uk/government/publications/national-planning-policy-framework--2'}, {t: 'Integrating Nature-based Solutions into Urban & Territorial Planning - UN-Habitat', u: 'https://unhabitat.org/integrating-nature-based-solutions-into-urban-territorial-planning'}],
   },
   {
     id: 109, n: 'New European Bauhaus (NEB) quality framework', f: 'User/Participatif', s: 'intl',
@@ -1866,7 +1866,7 @@ export const TOOLS = [
     duration: '1 to 2 days for self-assessment workshops',
     material: 'NEB Compass, NEB Checklist tool, project concept documents',
     use: 'The TOVA project in Spain utilized NEB principles to create architectural constructions made from rammed earth built with a crane 3D printer, generating zero waste and close to zero carbon emissions, while achieving high aesthetic quality and winning a NEB Prize,. Similarly, the NEBourhoods project in Munich revitalized a 1970s district by deeply combining energy solutions with',
-    refs: [{t: 'New European Bauhaus Compass', u: 'https://new-european-bauhaus.europa.eu/system/files/2023-01/NEB_Compass_V_4.pdf'}, {t: 'checklist - New European Bauhaus', u: 'https://jaspers.eib.org/knowledge/publications/new-european-bauhaus-checklist'}, {t: 'EUROPEAN COMMISSION ... COMMUNICATION ... THE NEW EUROPEAN BAUHAUS', u: 'https://eur-lex.europa.eu/'}],
+    refs: [{t: 'New European Bauhaus Compass', u: 'https://new-european-bauhaus.europa.eu/'}, {t: 'checklist - New European Bauhaus', u: 'https://new-european-bauhaus.europa.eu/'}, {t: 'EUROPEAN COMMISSION ... COMMUNICATION ... THE NEW EUROPEAN BAUHAUS', u: 'https://eur-lex.europa.eu/'}],
   },
   {
     id: 110, n: 'Davos Declaration — Baukultur quality system', f: 'Héritage', s: 'intl',
@@ -1883,7 +1883,7 @@ export const TOOLS = [
     duration: '2 to 4 weeks for full assessment and stakeholder input',
     material: 'Davos Baukultur Quality System questionnaires, site maps, historical data',
     use: 'The Swiss Federal Office of Culture initiated the Davos Baukultur Quality System to objectify the assessment of the built environment. This system has been actively used to draft guidelines for citizens\' workshops, inform political decision-makers, and provide a multidimensional baseline that treats emotional and cultural criteria as equally important as economic and technical',
-    refs: [{t: 'Davos Declaration 2018', u: 'https://davosdeclaration2018.ch/'}, {t: 'Davos Baukultur Quality System', u: 'https://www.bak.admin.ch/bak/en/home/baukultur/qualitaet/davos-qualitaetssystem-baukultur.html'}, {t: 'Eight criteria for a high-quality Baukultur – the whole story', u: 'https://davosdeclaration2018.ch/wp-content/uploads/sites/2/2023/06/2022-06-17-174034-dbqs-en.pdf'}, {t: 'Davos Baukultur Alliance – Founding Act', u: 'https://www.bak.admin.ch/bak/en/home/baukultur/konzept-baukultur/erklaerung-von-davos-und-davos-prozess/davos-baukultur-allianz-2023.html'}],
+    refs: [{t: 'Davos Declaration 2018', u: 'https://davosdeclaration2018.ch/'}, {t: 'Davos Baukultur Quality System', u: 'https://www.bak.admin.ch/bak/en/home.html'}, {t: 'Eight criteria for a high-quality Baukultur – the whole story', u: 'https://www.bak.admin.ch/bak/en/home.html'}, {t: 'Davos Baukultur Alliance – Founding Act', u: 'https://www.bak.admin.ch/bak/en/home.html'}],
   },
   {
     id: 111, n: 'Faro Convention community participation framework', f: 'Héritage', s: 'intl',
@@ -1900,7 +1900,7 @@ export const TOOLS = [
     duration: '3 to 6 months for dialogue and formal agreement',
     material: 'Faro Convention principles, stakeholder mapping grids, collaborative agreement templates',
     use: 'The European Cultural Heritage Strategy for the 21st Century (Namur Strategy) implements Faro principles to promote good governance and social participation. By encouraging heritage communities to engage directly with their local sites, municipalities foster profound social inclusion and empower citizens to define what specific elements of their past should shape their future,.',
-    refs: [{t: 'ACTION FOR A CHANGING SOCIETY', u: "https://rm.coe.int/16806abde6"}, {t: 'Council of Europe Framework Convention on the Value of Cultural Heritage for Society', u: "https://rm.coe.int/1680083746"}, {t: 'European Cultural Heritage Strategy for the 21st Century', u: "https://www.coe.int/en/web/culture-and-heritage/strategy-21"}],
+    refs: [{t: 'ACTION FOR A CHANGING SOCIETY', u: 'https://rm.coe.int/16806a89ae'}, {t: 'Council of Europe Framework Convention on the Value of Cultural Heritage for Society', u: 'https://www.coe.int/en/web/culture-and-heritage/faro-convention'}, {t: 'European Cultural Heritage Strategy for the 21st Century', u: 'http://www.coe.int/en/web/culture-and-heritage/strategy-21'}],
   },
   {
     id: 112, n: 'Aarhus Convention compliance', f: 'Gouvernance', s: 'intl',
@@ -1917,7 +1917,7 @@ export const TOOLS = [
     duration: 'Continuous throughout the planning phase',
     material: 'Aarhus Convention guidelines, public consultation portals, legal compliance checklists',
     use: 'In large-scale infrastructure projects across the EU (such as those requiring Environmental Impact Assessments), compliance with the Aarhus Convention is mandatory. Member States strictly use the Convention\'s framework to structure public hearings and consultation periods, ensuring that environmental NGOs and affected citizens have a legally binding voice in evaluating potentia',
-    refs: [{t: 'THE AARHUS CONVENTION: AN IMPLEMENTATION GUIDE - UNECE', u: "https://unece.org/environment-policy/publications/aarhus-convention-implementation-guide-second-edition"}, {t: 'Three pillars of the Aarhus Convention - Federal Ministry of Agriculture and Forestry, Climate and Environmental Protection', u: 'https://www.bmluk.gv.at/en/topics/climate-environment/eu-international-affairs/three-pillars-of-the-aarhus-convention.html'}, {t: 'TR010056-001183-APP-B-2017-EIA-guidance-EIA-report-final-7323-3.pdf - Planning Inspectorate', u: 'https://infrastructure.planninginspectorate.gov.uk/'}],
+    refs: [{t: 'THE AARHUS CONVENTION: AN IMPLEMENTATION GUIDE - UNECE', u: 'https://unece.org/environment-policy/public-participation/aarhus-convention/implementation-guide'}, {t: 'Three pillars of the Aarhus Convention - Federal Ministry of Agriculture and Forestry, Climate and Environmental Protection', u: 'https://www.bml.gv.at/'}, {t: 'TR010056-001183-APP-B-2017-EIA-guidance-EIA-report-final-7323-3.pdf - Planning Inspectorate', u: 'https://infrastructure.planninginspectorate.gov.uk/'}],
   },
   {
     id: 113, n: 'EU Taxonomy sustainability screening', f: 'Gouvernance', s: 'intl',
@@ -1934,7 +1934,7 @@ export const TOOLS = [
     duration: '4 to 8 weeks',
     material: 'EU Taxonomy Delegated Acts, LCA data, environmental impact assessments, EPC certificates',
     use: 'When assessing the construction of new buildings or civil engineering works, developers heavily utilize the EU Taxonomy Technical Screening Criteria to demonstrate strict alignment. For example, a project must mathematically prove that at least 70% of construction and demolition waste is prepared for reuse or recycling (Circularity) and that primary energy demand falls below sp',
-    refs: [{t: 'EU Taxonomy Navigator - European Commission', u: "https://finance.ec.europa.eu/sustainable-finance/tools-and-standards/eu-taxonomy-sustainable-activities_en"}, {t: '\'Do No Significant Harm\' definitions and criteria across the EU Sustainable Finance framework', u: "https://www.esma.europa.eu/sites/default/files/2023-11/ESMA30-379-2281_Note_DNSH_definitions_and_criteria_across_the_EU_Sustainable_Finance_framework.pdf"}, {t: 'EUROPEAN COMMISSION Brussels, 27.6.2023 C(2023) 3851 final ANNEX 2', u: 'https://eur-lex.europa.eu/'}],
+    refs: [{t: 'EU Taxonomy Navigator - European Commission', u: 'https://ec.europa.eu/sustainable-finance-taxonomy/index.htm'}, {t: '\'Do No Significant Harm\' definitions and criteria across the EU Sustainable Finance framework', u: 'https://ec.europa.eu/info/publications/sustainable-finance-taxonomy_en'}, {t: 'EUROPEAN COMMISSION Brussels, 27.6.2023 C(2023) 3851 final ANNEX 2', u: 'https://eur-lex.europa.eu/'}],
   },
   {
     id: 114, n: 'SECAP / Covenant of Mayors climate planning', f: 'Environnement', s: 'intl',
@@ -1968,7 +1968,7 @@ export const TOOLS = [
     duration: '3 to 6 months during the master planning phase',
     material: 'Technical guidance manuals for BREEAM/LEED/DGNB, masterplan documents, certification scoring spreadsheets',
     use: 'In evaluating urban sustainability, researchers compared these tools to assess the Meudon la Forêt neighborhood in France. The study proved that adopting a single global assessment tool as a universal solution is not feasible; instead, municipalities must select or adapt frameworks like BREEAM or DGNB based on their specific geographical context, recognizing that neighborhood p',
-    refs: [{t: 'A comparative study of DGNB, LEED and BREEAM certificate systems in urban sustainability - WIT Press,,,', u: 'https://www.witpress.com/'}, {t: 'Comparison of International Low-Carbon and sustainable District Evaluation Systems and the Implications for China,,', u: 'https://doi.org/10.1088/1755-1315/1234/1/012001'}, {t: 'Comparison and evaluation of neighbourhood sustainability assessment systems - mediaTUM,,', u: 'https://mediatum.ub.tum.de/'}, {t: 'Evaluation of neighbourhood sustainability assessment tools for practicing on an existing - IBPSA Publications,,', u: 'https://www.ibpsa.org/'}],
+    refs: [{t: 'A comparative study of DGNB, LEED and BREEAM certificate systems in urban sustainability - WIT Press', u: 'https://www.witpress.com/'}, {t: 'Comparison of International Low-Carbon and sustainable District Evaluation Systems and the Implications for China', u: 'https://doi.org/10.1088/1755-1315/1234/1/012001'}, {t: 'Comparison and evaluation of neighbourhood sustainability assessment systems - mediaTUM', u: 'https://mediatum.ub.tum.de/'}, {t: 'Evaluation of neighbourhood sustainability assessment tools for practicing on an existing - IBPSA Publications', u: 'https://www.ibpsa.org/'}],
   },
   {
     id: 116, n: 'ISO 37120 / 37101 / 37123 smart city indicators', f: 'Gouvernance', s: 'intl',
@@ -1985,7 +1985,7 @@ export const TOOLS = [
     duration: '4 to 6 months for data collection and certification',
     material: 'ISO standard documents, municipal databases, open-data publishing platforms',
     use: 'The World Council on City Data (WCCD) utilizes ISO 37120 to certify municipalities worldwide. By 2018, 52 cities had successfully standardized their metrics using this framework, overcoming the challenge of fragmented data. This allowed them to objectively benchmark their performance in areas such as public transport and water quality against international peers, directly suppo',
-    refs: [{t: 'ISO 37124:2024 Sustainable cities and communities — Guidance on the use of ISO 37120, ISO 37122 and ISO 37123', u: 'https://www.iso.org/standard/72464.html'}, {t: 'Comparative analysis of standardized indicators for Smart sustainable cities', u: 'https://doi.org/10.1016/j.cities.2019.01.029'}, {t: 'ISO 37123 for sustainable cities and communities - Smart City Enterprise®,', u: 'https://smartcityenterprise.com/'}],
+    refs: [{t: 'ISO 37124:2024 Sustainable cities and communities — Guidance on the use of ISO 37120, ISO 37122 and ISO 37123', u: 'https://www.iso.org/standard/72464.html'}, {t: 'Comparative analysis of standardized indicators for Smart sustainable cities', u: 'https://doi.org/10.1016/j.cities.2019.01.029'}, {t: 'ISO 37123 for sustainable cities and communities - Smart City Enterprise®', u: 'https://smartcityenterprise.com/'}],
   },
   {
     id: 117, n: 'URBACT / INTERREG good practice transfer', f: 'Gouvernance', s: 'intl',
@@ -2002,7 +2002,7 @@ export const TOOLS = [
     duration: '18 to 24 months for the full network cycle',
     material: 'Good practice databases, peer-to-peer learning frameworks, URBACT Toolbox',
     use: 'During the URBACT III program, the Transfer Networks methodology enabled structured peer learning across Europe. This trans-national exchange led to 15 to 20 distinct good practices being significantly improved, adapted, and successfully adopted by 100 network partners, profoundly shifting local action-learning capacities and preventing isolated policy failures,.',
-    refs: [{t: 'URBACT IV Programme Manual - October 2024.pdf,,', u: 'https://urbact.eu/sites/default/files/2024-10/URBACT%20IV%20Programme%20Manual%20-%20October%202024.pdf'}, {t: 'Evaluation Summary FINAL - URBACT', u: 'https://urbact.eu/sites/default/files/2023-03/URBACT%20III%20Evaluation%20Summary%20FINAL_1.pdf'}, {t: 'URBACT III impact evaluation - Final report', u: 'https://urbact.eu/sites/default/files/2023-01/uiii-impact-evaluation.pdf'}],
+    refs: [{t: 'URBACT IV Programme Manual - October 2024.pdf', u: 'https://urbact.eu/'}, {t: 'Evaluation Summary FINAL - URBACT', u: 'https://urbact.eu/'}, {t: 'URBACT III impact evaluation - Final report', u: 'https://urbact.eu/'}],
   },
   {
     id: 118, n: 'New Urban Agenda / SDG11 local indicators', f: 'User/Participatif', s: 'intl',
@@ -2019,7 +2019,7 @@ export const TOOLS = [
     duration: '3 to 6 months for framework design and initial data collection',
     material: 'Global Urban Monitoring Framework guidelines, spatial data (GIS), demographic census data',
     use: 'UN-Habitat\'s City Prosperity Initiative (CPI) integrates all 10 targets of SDG 11 into a spatial analysis tool. Nearly 300 cities utilized this framework to calculate specific localized ratios, such as land consumption compared to population growth (Indicator 11.3.1), providing an empirical, standardized baseline to steer inclusive and sustainable urbanization,.',
-    refs: [{t: 'SDG Cities Urban Monitoring Framework Indicator Selection Guide - UN-Habitat,', u: 'https://unhabitat.org/sites/default/files/2021/10/sdg_cities_indicator_selection_guide_v3.pdf'}, {t: 'SUSTAINABLE DEVELOPMENT GOAL 11 - Local 2030,,', u: 'https://www.local2030.org/'}, {t: 'SDG Voluntary Local Reviews - JRC Publications Repository', u: 'https://publications.jrc.ec.europa.eu/'}, {t: 'The New Urban Agenda - Observatorio 2030,', u: 'https://habitat3.org/the-new-urban-agenda'}],
+    refs: [{t: 'SDG Cities Urban Monitoring Framework Indicator Selection Guide - UN-Habitat', u: 'https://unhabitat.org/'}, {t: 'SUSTAINABLE DEVELOPMENT GOAL 11 - Local 2030', u: 'https://www.local2030.org/'}, {t: 'SDG Voluntary Local Reviews - JRC Publications Repository', u: 'https://publications.jrc.ec.europa.eu/'}, {t: 'The New Urban Agenda - Observatorio 2030', u: 'https://habitat3.org/the-new-urban-agenda'}],
   },
   {
     id: 119, n: 'Voluntary Local Review (VLR)', f: 'Gouvernance', s: 'intl',
@@ -2036,7 +2036,7 @@ export const TOOLS = [
     duration: '6 to 12 months for the review process',
     material: 'European Handbook for SDG Voluntary Local Reviews, stakeholder mapping tools, municipal strategic plans',
     use: 'Cities like Helsinki, Mannheim, and Ghent moved beyond standardized reporting by using VLRs to directly link their SDGs to local strategic plans and stakeholder consultations. This endogenous process transformed the VLR into a powerful mechanism for enhancing municipal accountability, cross-departmental awareness, and civic engagement, demonstrating that global goals must be ro',
-    refs: [{t: 'SDG Voluntary Local Reviews - JRC Publications Repository,,,,,', u: 'https://publications.jrc.ec.europa.eu/'}, {t: 'Guidelines for Voluntary Local Reviews Volume 2: Towards a New Generation of VLRs: Exploring the local-national link | UN-Habitat,', u: 'https://unhabitat.org/guidelines-for-voluntary-local-reviews-volume-2-towards-a-new-generation-of-vlrs-exploring-the'}],
+    refs: [{t: 'SDG Voluntary Local Reviews - JRC Publications Repository', u: 'https://publications.jrc.ec.europa.eu/'}, {t: 'Guidelines for Voluntary Local Reviews Volume 2: Towards a New Generation of VLRs: Exploring the local-national link | UN-Habitat', u: 'https://unhabitat.org/'}],
   },
   {
     id: 120, n: 'ESPON — European territorial analysis', f: 'Spatial/Urbain', s: 'intl',
@@ -2053,7 +2053,7 @@ export const TOOLS = [
     duration: '4 to 8 weeks',
     material: 'ESPON Database Portal, GIS software, Territorial Impact Assessment (TIA) tools',
     use: 'Managing Authorities utilize ESPON\'s territorial tools to design cohesion policy strategies. For example, specific analyses of small and medium-sized towns and cities (SMSTCs) enabled policymakers to understand their crucial role in regional networks. This evidence-based approach allowed authorities to tailor Community-Led Local Development (CLLD) funding to strengthen active,',
-    refs: [{t: 'Small and medium- sized towns and cities: policies strengthening their role in achieving active, inclusive, and functional territories - ESPON', u: "https://www.oir.at/en/project/espon-1-4-1-the-role-of-small-and-medium-sized-towns-smesto/"}, {t: 'The use of integrated territorial tools in cohesion policy - CEMR CCRE,', u: "https://ccre-cemr.org/wp-content/uploads/2024/04/230124_EN_analysis_ITI_CLLD_final.pdf"}, {t: 'Global Urban Monitoring Framework - UN-Habitat', u: 'https://unhabitat.org/the-global-urban-monitoring-framework'}],
+    refs: [{t: 'Small and medium- sized towns and cities: policies strengthening their role in achieving active, inclusive, and functional territories - ESPON', u: 'https://www.espon.eu/'}, {t: 'The use of integrated territorial tools in cohesion policy - CEMR CCRE', u: 'https://www.ccre.org/'}, {t: 'Global Urban Monitoring Framework - UN-Habitat', u: 'https://unhabitat.org/'}],
   },
   {
     id: 121, n: 'Sendai Framework urban risk assessment', f: 'Environnement', s: 'intl',
@@ -2070,7 +2070,7 @@ export const TOOLS = [
     duration: '2 to 3 months',
     material: 'Disaster Resilience Scorecard for Cities, spatial hazard maps, national DRR frameworks',
     use: 'The Sendai Monitor framework requires cities to conduct voluntary self-assessments of their progress in implementing disaster risk reduction (DRR). By using standardized scorecards, local authorities ensure that their master plans explicitly incorporate resilience approaches, effectively mitigating the dangers of rapid, unplanned urban expansion that exposes populations to seve',
-    refs: [{t: 'Disaster Resilience Scorecard for Cities - UNDRR,', u: "https://mcr2030.undrr.org/disaster-resilience-scorecard-cities"}, {t: 'SUSTAINABLE DEVELOPMENT GOAL 11 - Local 2030,', u: 'https://www.local2030.org/'}, {t: 'Urban Risk Assessments: Understanding - World Bank Document', u: 'https://documents.worldbank.org/en/publication/documents-reports/documentdetail/659161468182066104/urban-risk-assessments-understanding-disaster-and-climate-risk-in-cities'}],
+    refs: [{t: 'Disaster Resilience Scorecard for Cities - UNDRR', u: 'https://www.undrr.org/'}, {t: 'SUSTAINABLE DEVELOPMENT GOAL 11 - Local 2030', u: 'https://www.local2030.org/'}, {t: 'Urban Risk Assessments: Understanding - World Bank Document', u: 'https://documents.worldbank.org/'}],
   },
   {
     id: 122, n: 'Green Bond / Climate Bond issuance', f: 'Économie', s: 'intl',
@@ -2087,7 +2087,7 @@ export const TOOLS = [
     duration: '6 to 12 months for framework preparation and issuance',
     material: 'Climate Bonds Initiative (CBI) Taxonomy, Green Bond Principles, financial feasibility models',
     use: 'Following the Climate Bonds Initiative (CBI) Taxonomy, municipalities issue green bonds by committing to strict emissions trajectories. For example, to certify commercial building upgrades for green financing, the city must mathematically prove the project achieves a 30% to 50% performance improvement against baselines, ensuring that borrowed capital directly funds verifiable d',
-    refs: [{t: 'Issuing Municipal Sustainable Bonds in South Africa - United Nations Development Programme,,,', u: 'https://www.undp.org/policy-centre/nairobi/publications/technical-handbook-issuing-municipal-sustainable-bonds-south-africa'}, {t: 'Session 5 Introduction - Climate Bond Standards_Cedric', u: 'https://asianbondsonline.adb.org/events/2019/workshop-green-finance-viet-nam/session-5-introduction-climate-bond-standards-cedric.pdf'}, {t: 'Financial instruments toolkit - C40 Knowledge Hub', u: 'https://www.c40knowledgehub.org/s/article/Financial-instruments-toolkit?language=en_US'}],
+    refs: [{t: 'Issuing Municipal Sustainable Bonds in South Africa - United Nations Development Programme', u: 'https://www.undp.org/'}, {t: 'Session 5 Introduction - Climate Bond Standards_Cedric', u: 'https://www.climatebonds.net/'}, {t: 'Financial instruments toolkit - C40 Knowledge Hub', u: 'https://www.c40knowledgehub.org/'}],
   },
   {
     id: 123, n: 'Community Benefits Agreement (CBA)', f: 'Économie', s: 'intl',
@@ -2104,7 +2104,7 @@ export const TOOLS = [
     duration: '6 to 18 months for organizing and negotiation',
     material: 'Legal contract templates, community organizing resources, socio-economic baseline data',
     use: 'Analyzed heavily in the political economy of urban development, CBAs are utilized by community coalitions to hold massive development projects accountable. By requiring developers to sign enforceable contracts prior to securing municipal zoning variances, residents have successfully mandated the inclusion of living-wage jobs and environmental mitigations, ensuring that megaproj',
-    refs: [{t: 'Community Benefits Agreements: Definitions, Values, and Legal Enforceability - Law Office of Julian Gross', u: 'https://www.juliangross.net/'}, {t: 'Community Benefits Agreements: Making Development Projects Accountable - Good Jobs First', u: "https://goodjobsfirst.org/community-benefits-agreements-making-development-projects-accountable/"}, {t: 'DO COMMUNITY BENEFITS AGREEMENTS BENEFIT COMMUNITIES? - Cardozo Law Review', u: 'http://cardozolawreview.com/do-community-benefits-agreements-benefit-communities/'}],
+    refs: [{t: 'Community Benefits Agreements: Definitions, Values, and Legal Enforceability - Law Office of Julian Gross', u: 'https://www.juliangross.net/'}, {t: 'Community Benefits Agreements: Making Development Projects Accountable - Good Jobs First', u: 'https://goodjobsfirst.org/'}, {t: 'DO COMMUNITY BENEFITS AGREEMENTS BENEFIT COMMUNITIES? - Cardozo Law Review', u: 'http://cardozolawreview.com/'}],
   },
   {
     id: 124, n: 'Place Standard Tool', f: 'User/Participatif', s: 'intl',
@@ -2121,7 +2121,7 @@ export const TOOLS = [
     duration: '2 to 3 hours per workshop',
     material: 'Printed Place Standard compass diagrams, sticky notes, facilitation guides',
     use: 'In Scotland, the Place Standard Tool has been widely implemented as a means of examining inequalities in relation to place. It was further adapted to integrate the "20-minute neighbourhood" concept and a climate lens, empowering local communities to systematically assess their local environments and prioritize actions that address both spatial inequality and climate resilience',
-    refs: [{t: 'Full article: An evaluation of the Place Standard Tool as a means of examining inequalities in relation to place - Taylor & Francis', u: "https://www.tandfonline.com/doi/full/10.1080/13549839.2023.2284940"}, {t: 'Integrating 20 MN and the Place Standard Tool - Scotland\'s Regeneration Forum', u: 'https://www.surf.scot/'}, {t: 'People, places and the climate emergency – the Scottish Place Standard Tool with a climate lens - PMC', u: 'https://www.ncbi.nlm.nih.gov/pmc/'}, {t: 'Place Standard | A&DS - Architecture & Design Scotland', u: 'https://www.ads.org.uk/'}],
+    refs: [{t: 'Full article: An evaluation of the Place Standard Tool as a means of examining inequalities in relation to place - Taylor &amp; Francis', u: 'https://www.tandfonline.com/'}, {t: 'Integrating 20 MN and the Place Standard Tool - Scotland\'s Regeneration Forum', u: 'https://www.surf.scot/'}, {t: 'People, places and the climate emergency – the Scottish Place Standard Tool with a climate lens - PMC', u: 'https://www.ncbi.nlm.nih.gov/pmc/'}, {t: 'Place Standard | A&amp;DS - Architecture &amp; Design Scotland', u: 'https://www.ads.org.uk/'}, {t: 'Full article: An evaluation of the Place Standard Tool as a means of examining inequalities in relation to place - Taylor & Francis', u: 'https://www.tandfonline.com/doi/full/10.1080/13549839.2023.2284940'}, {t: 'Place Standard | A&DS - Architecture & Design Scotland', u: 'https://www.ads.org.uk/'}],
   },
   {
     id: 125, n: 'IBA — Internationale Bauausstellung methodology', f: 'Spatial/Urbain', s: 'intl',
@@ -2138,7 +2138,7 @@ export const TOOLS = [
     duration: '6 to 10 years',
     material: 'IBA Memorandum, project qualification matrices, international advisory boards, public exhibition infrastructure',
     use: 'The IBA Emscher Park in North Rhine-Westphalia successfully transformed a scarred, 70-kilometer industrial coal mining landscape into a vibrant cultural and economic hub through nature-based solutions and architectural renewal. More recently, the IBA Wien focused strictly on "New Social Housing," exploring forward-looking living concepts, affordable mobility, and social inclusi',
-    refs: [{t: 'What is an International Building Exhibitions (IBA)? What can it achieve? - African Centre for Cities', u: 'https://www.africancentreforcities.net/wp-content/uploads/2022/01/21-12-16_IBA-Teaser-.pdf'}, {t: 'IBA - Internationale Bauausstellung', u: 'https://www.internationale-bauausstellungen.de/'}, {t: 'Qualification Process - Candidates and Projects - IBA Wien', u: 'https://www.iba-wien.at/'}],
+    refs: [{t: 'What is an International Building Exhibitions (IBA)? What can it achieve? - African Centre for Cities', u: 'https://www.giz.de'}, {t: 'IBA - Internationale Bauausstellung', u: 'https://www.internationale-bauausstellungen.de/'}, {t: 'Qualification Process - Candidates and Projects - IBA Wien', u: 'https://www.iba-wien.at/'}],
   },
   {
     id: 126, n: 'EU Mission 100 Climate-Neutral & Smart Cities', f: 'Environnement', s: 'intl',
@@ -2155,7 +2155,7 @@ export const TOOLS = [
     duration: '12 to 18 months for CCC preparation',
     material: 'Climate City Contract templates, EU Mission completeness checklists, financial modeling tools',
     use: 'Over 100 cities have successfully earned the EU Mission Label. In places like Milan and Valencia, the Climate City Contracts have actively integrated philanthropic networks to fund specific actions, such as urban forestation and renewable energy communities, demonstrating that profound climate neutrality requires a vast, collaborative web of actors far beyond the municipal admi',
-    refs: [{t: 'Climate City Contracts: A Roadmap to Climate Neutrality - NetZeroCities', u: 'https://netzerocities.eu/climate-city-contract/'}, {t: 'EU Mission “Climate-Neutral and Smart Cities” Review Procedure of Climate City Contracts and Award of the Mission Label - NetZeroCities', u: 'https://netzerocities.eu/wp-content/uploads/2023/01/D1.3-Climate-neutral-city-contract-concept.pdf'}, {t: 'Foundations\' actions for the EU Mission Climate-Neutral and Smart Cities - Fondazione Compagnia San Paolo', u: 'https://www.compagniadisanpaolo.it/wp-content/uploads/CSP_Foundations-actions-for-the-EU-Mission-Climate-Neutral-and-Smart-Cities_2026.pdf'}],
+    refs: [{t: 'Climate City Contracts: A Roadmap to Climate Neutrality - NetZeroCities', u: 'https://netzerocities.eu/'}, {t: 'EU Mission “Climate-Neutral and Smart Cities” Review Procedure of Climate City Contracts and Award of the Mission Label - NetZeroCities', u: 'https://netzerocities.app/'}, {t: 'Foundations\' actions for the EU Mission Climate-Neutral and Smart Cities - Fondazione Compagnia San Paolo', u: 'https://www.compagniadisanpaolo.it/'}],
   },
   {
     id: 127, n: 'TCFD / ESG urban project reporting', f: 'Économie', s: 'intl',
@@ -2172,7 +2172,7 @@ export const TOOLS = [
     duration: '3 to 6 months for data gathering and disclosure',
     material: 'CDP-ICLEI Track questionnaire, TCFD reporting guidelines, municipal climate risk models',
     use: 'In 2023, over 1,100 cities utilized the CDP-ICLEI Track to report more than 8,000 urban sustainability actions. By disclosing this data, local governments provide the empirical accountability necessary for UN-backed campaigns like Race to Zero and Race to Resilience, bridging the gap between local public works and international green capital markets.',
-    refs: [{t: 'Guidance Note on the TCFD Recommendations for City, State, and Regional Governments - CDP', u: 'https://cdn.cdp.net/cdp-production/cms/guidance_docs/pdfs/000/003/675/original/Guidance_Note_on_the_TCFD_Recommendations_for_City__State__and_Regional_Governments.pdf'}, {t: 'SUSTAINABLE DEVELOPMENT GOAL 11 - Local 2030', u: 'https://www.local2030.org/'}],
+    refs: [{t: 'Guidance Note on the TCFD Recommendations for City, State, and Regional Governments - CDP', u: 'https://www.cdp.net/'}, {t: 'SUSTAINABLE DEVELOPMENT GOAL 11 - Local 2030', u: 'https://www.local2030.org/'}],
   },
   {
     id: 128, n: 'World Bank E&S Framework / IFC Performance Standards', f: 'Gouvernance', s: 'intl',
@@ -2189,7 +2189,7 @@ export const TOOLS = [
     duration: '6 to 12 months prior to financial close',
     material: 'ESF Guidance Notes, Stakeholder Engagement templates, Environmental Impact Assessment reports',
     use: 'Multilateral development banks strictly apply these standards to urban operations. For instance, under ESS8, projects must evaluate their impact on both tangible and intangible cultural heritage, explicitly preventing the commercial exploitation of heritage without consent. Furthermore, financial intermediaries (ESS9) are now strictly required to monitor the environmental and s',
-    refs: [{t: '107175 - World Bank Documents (ESF Overview)', u: 'https://documents.worldbank.org/en/publication/documents-reports/documentdetail/476161530217390609/esf-guidance-note-10-stakeholder-engagement-and-information-disclosure-english'}, {t: 'IFC Performance Standards on Environmental and Social Sustainability - International Finance Corporation', u: 'https://www.ifc.org/'}, {t: 'World Bank Environmental and Social Framework - Public Documents', u: 'https://www.worldbank.org/en/projects-operations/environmental-and-social-framework'}],
+    refs: [{t: '107175 - World Bank Documents (ESF Overview)', u: 'https://documents.worldbank.org/'}, {t: 'IFC Performance Standards on Environmental and Social Sustainability - International Finance Corporation', u: 'https://www.ifc.org/'}, {t: 'World Bank Environmental and Social Framework - Public Documents', u: 'https://www.worldbank.org/'}],
   },
   {
     id: 129, n: 'EU Renovation Wave / EPBD assessment', f: 'Environnement', s: 'intl',
@@ -2223,7 +2223,7 @@ export const TOOLS = [
     duration: '3 to 6 months for research and consultation',
     material: 'The Burra Charter guidelines, historical archives, community engagement protocols',
     use: 'The Burra Charter (adopted by Australia ICOMOS and influential globally) fundamentally shifted heritage management from a purely monumental approach to a values-based model. By defining cultural significance through the lens of social and spiritual attachments, the charter guides the adaptive reuse of complex sites—such as former industrial landscapes and indigenous lands—ensur',
-    refs: [{t: 'Values-based Management and the Burra Charter 1979 – 1999 – 2013 - Mackay Strategic', u: 'https://www.mackaystrategic.com.au/wp-content/uploads/2015/09/MACKAY-GCI-Values-in-Heritage-Management-February-2017.pdf'}, {t: 'Burra Charter 2013 - Australian Cornish Mining Sites', u: 'https://australia.icomos.org/wp-content/uploads/The-Burra-Charter-2013-Adopted-31.10.2013.pdf'}, {t: 'European Quality Principles for EU-funded Interventions with potential impact upon Cultural Heritage - ICOMOS', u: 'https://openarchive.icomos.org/id/eprint/2436/'}],
+    refs: [{t: 'Values-based Management and the Burra Charter 1979 – 1999 – 2013 - Mackay Strategic', u: 'https://mackaystrategic.com.au/'}, {t: 'Burra Charter 2013 - Australian Cornish Mining Sites', u: 'https://australia.icomos.org/'}, {t: 'European Quality Principles for EU-funded Interventions with potential impact upon Cultural Heritage - ICOMOS', u: 'https://openarchive.icomos.org/'}],
   },
   {
     id: 131, n: 'Form-Based Codes / Design-led zoning', f: 'Gouvernance', s: 'intl',
@@ -2240,7 +2240,7 @@ export const TOOLS = [
     duration: '12 to 24 months for drafting and legal adoption',
     material: 'The SmartCode template, GIS mapping, public charrette materials, architectural rendering software',
     use: 'Communities utilizing the SmartCode framework apply generative coding to restructure their regulatory environment. By calibrating building orientation, street lighting design, and mixed-use requirements based on specific transect zones, municipalities have successfully created lively urban centers that promote shared prosperity, drastically reducing the vehicle miles traveled w',
-    refs: [{t: 'SMARTCODE - Grow Smart RI', u: 'https://www.growsmartri.org/training/SmartCode%20Version%209.2.pdf'}, {t: 'A Step-by-Step Guide for Communities - Form-Based Codes', u: "https://formbasedcodes.org/wp-content/uploads/2013/11/CMAP-GuideforCommunities.pdf"}, {t: 'Zoned In: Economic Benefits & Shared Prosperity with Form-Based Codes', u: 'https://smartgrowthamerica.org/resources/zoned-in-economic-benefits-shared-prosperity-with-form-based-codes/'}],
+    refs: [{t: 'SMARTCODE - Grow Smart RI', u: 'https://www.growsmartri.org/'}, {t: 'A Step-by-Step Guide for Communities - Form-Based Codes', u: 'https://formbasedcodes.org/'}, {t: 'Zoned In: Economic Benefits &amp; Shared Prosperity with Form-Based Codes', u: 'https://smartgrowthamerica.org/'}, {t: 'Zoned In: Economic Benefits & Shared Prosperity with Form-Based Codes', u: 'https://smartgrowthamerica.org/resources/zoned-in-economic-benefits-shared-prosperity-with-form-based-codes/'}],
   },
   {
     id: 132, n: 'URBACT Impact Assessment methodology', f: 'Gouvernance', s: 'intl',
@@ -2257,7 +2257,7 @@ export const TOOLS = [
     duration: '2 to 3 months for framework design; continuous monitoring',
     material: 'URBACT Results Framework templates, Theory of Change canvases, local statistical data',
     use: 'The URBACT program mandates the use of a Results Framework aligned with EU Cohesion Policy guidelines. Cities drafting Integrated Action Plans must define logical intervention chains with clear baselines and targets. In an evaluation of the URBACT III program, the systematic use of these impact assessment tools ensured that transnational knowledge transfer genuinely improved ur',
-    refs: [{t: 'PERFORMANCE IN POLICY- MAKING - URBACT', u: 'https://urbact.eu/sites/default/files/urbact_guidance_-_performance_in_policy-making_1.pdf'}, {t: 'URBACT III impact evaluation - Final report', u: 'https://urbact.eu/sites/default/files/2023-01/uiii-impact-evaluation.pdf'}, {t: 'Theories of Change for Urban Social Impact - URBACT', u: 'https://urbact.eu/networks/ur-impact'}],
+    refs: [{t: 'PERFORMANCE IN POLICY- MAKING - URBACT', u: 'https://urbact.eu/'}, {t: 'URBACT III impact evaluation - Final report', u: 'https://urbact.eu/'}, {t: 'Theories of Change for Urban Social Impact - URBACT', u: 'https://urbact.eu/'}],
   },
   {
     id: 133, n: 'WELL Building/Community Standard', f: 'User/Participatif', s: 'intl',
@@ -2274,7 +2274,7 @@ export const TOOLS = [
     duration: '6 to 18 months spanning design and post-occupancy',
     material: 'WELL Standard guidelines, indoor environmental quality (IEQ) testing equipment, post-occupancy survey tools',
     use: 'The WELL Building Standard and the WELL Community Standard are increasingly used by developers to demonstrate health leadership. By modeling the framework closely on environmental rating systems but focusing exclusively on human impacts, projects successfully mandate physical activity spaces, urban heat adaptation, and community sound mapping. Research shows that integrating th',
-    refs: [{t: 'WELL COMMUNITY STANDARD - Manuals.plus', u: 'https://www.wellcertified.com/certification/community/'}, {t: 'WELL Feature Guide | ALLO', u: 'https://www.wellcertified.com/'}, {t: 'New Research Showcases Major Benefits of WELL Certification', u: 'https://www.wellcertified.com/'}, {t: 'The Financial Impact of Healthy Buildings - MIT Real Estate Innovation Lab', u: 'https://realestateinnovationlab.mit.edu/'}],
+    refs: [{t: 'WELL COMMUNITY STANDARD - Manuals.plus', u: 'https://www.wellcertified.com/'}, {t: 'WELL Feature Guide | ALLO', u: 'https://www.wellcertified.com/'}, {t: 'New Research Showcases Major Benefits of WELL Certification', u: 'https://www.wellcertified.com/'}, {t: 'The Financial Impact of Healthy Buildings - MIT Real Estate Innovation Lab', u: 'https://realestateinnovationlab.mit.edu/'}],
   }
 ]
 

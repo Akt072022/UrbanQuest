@@ -129,8 +129,8 @@ export function WelcomeView() {
             marginTop: 14, lineHeight: 1.4,
             maxWidth: 320, margin: '14px auto 0',
           }}>
-            Self-diagnose your urban planning methods —
-            <br/>map your team's strengths and blind spots.
+            Self-diagnose your urban planning methods.
+            <br/>Map your team's strengths and blind spots.
           </div>
         </div>
 
