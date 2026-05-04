@@ -6,6 +6,9 @@ import { makeRoomId, openChannel, sendMsg, subscribe, participantUrl, onStatus }
 import { TOOLS, GATE_LABEL, GATE_DESC, DIMENSIONS, DIM_BY_ID } from '../data/tools'
 import { ScrappyButton, ScrappyChip } from '../components/ScrappyButton'
 import { suggestMethods, hasMistral } from '../lib/mistral'
+import { TriageHeatmap } from '../components/TriageHeatmap'
+import { MethodfitMatrix } from '../components/MethodfitMatrix'
+import { createSession, recordResponse, endSession } from '../lib/sessionStore'
 
 const INK    = '#1C2530'
 const YELLOW = '#F5C84A'
@@ -69,79 +72,6 @@ function ResponseBar({ label, value, max, col }) {
           transition: 'width .4s',
         }} />
       </div>
-    </div>
-  )
-}
-
-// ── Triage live heatmap — same INK card language ──────────────
-function TriageHeatmap({ trageResponses, toolList, participantCount }) {
-  const stats = toolList.map(t => {
-    const rs = trageResponses.filter(r => r.tool === t.n)
-    const practiced = rs.filter(r => r.status === 'practiced').length
-    const known     = rs.filter(r => r.status === 'known').length
-    const unknown   = rs.filter(r => r.status === 'unknown').length
-    const practSet  = rs.filter(r => r.status === 'practiced')
-    const avgLevel  = practSet.length > 0 && practSet.some(r => r.level > 0)
-      ? (practSet.reduce((a, r) => a + (r.level || 0), 0) / practSet.length).toFixed(1)
-      : null
-    const divergence = practiced > 0 && unknown > 0
-    return { name: t.n, practiced, known, unknown, avgLevel, divergence }
-  })
-  const top = [...stats].sort((a, b) => b.practiced - a.practiced)
-
-  return (
-    <div>
-      <Eyebrow color="#2A6B45">
-        ● {trageResponses.length} responses · {participantCount} participants
-      </Eyebrow>
-      {top.map(s => {
-        const total = s.practiced + s.known + s.unknown
-        const pctP = total > 0 ? Math.round(s.practiced / total * 100) : 0
-        const pctK = total > 0 ? Math.round(s.known     / total * 100) : 0
-        const pctU = total > 0 ? Math.round(s.unknown   / total * 100) : 0
-        return (
-          <div key={s.name} style={{
-            marginBottom: 10, padding: '10px 12px',
-            background: s.divergence ? '#FFF4D8' : PAGE,
-            border: `2px solid ${s.divergence ? '#C17B2A' : INK + '33'}`,
-            borderRadius: 12,
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, gap: 8 }}>
-              <span style={{
-                fontFamily: '-apple-system, Helvetica Neue, sans-serif',
-                fontWeight: 800, fontSize: 13, color: INK,
-                flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              }}>
-                {s.divergence && <span style={{ marginRight: 4 }}>⚡</span>}{s.name}
-              </span>
-              {s.avgLevel && (
-                <span style={{
-                  flexShrink: 0,
-                  fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
-                  color: '#2A6B45', letterSpacing: '.04em',
-                }}>avg {s.avgLevel}/5</span>
-              )}
-            </div>
-            {/* Stacked bar */}
-            <div style={{
-              display: 'flex', height: 8, borderRadius: 999, overflow: 'hidden',
-              background: PAGE, border: `1.5px solid ${INK}`,
-            }}>
-              <div style={{ width: pctP + '%', background: '#2A6B45' }} />
-              <div style={{ width: pctK + '%', background: '#C17B2A' }} />
-              <div style={{ width: pctU + '%', background: '#9C958A' }} />
-            </div>
-            <div style={{
-              display: 'flex', gap: 14, marginTop: 6,
-              fontSize: 10, fontWeight: 700,
-            }}>
-              <span style={{ color: '#2A6B45' }}>● Practiced {s.practiced}</span>
-              <span style={{ color: '#C17B2A' }}>● Known {s.known}</span>
-              <span style={{ color: '#9C958A' }}>● Unknown {s.unknown}</span>
-            </div>
-          </div>
-        )
-      })}
     </div>
   )
 }
@@ -279,10 +209,15 @@ function TileButton({ active, color, label, glyph, onClick }) {
 // Main view
 // ──────────────────────────────────────────────────────────────
 export function FacilitatorView() {
-  const { goMap, setSession, sessionId: savedRoomId } = useStore(useShallow(s => ({
-    goMap:      s.goMap,
-    setSession: s.setSession,
-    sessionId:  s.sessionId,
+  const {
+    goMap, setSession, sessionId: savedRoomId,
+    currentTeamId, userId,
+  } = useStore(useShallow(s => ({
+    goMap:         s.goMap,
+    setSession:    s.setSession,
+    sessionId:     s.sessionId,
+    currentTeamId: s.currentTeamId,
+    userId:        s.userId,
   })))
 
   const [roomId] = useState(savedRoomId || makeRoomId())
@@ -333,6 +268,15 @@ export function FacilitatorView() {
   const [customType, setCustomType] = useState('word') // 'word' | 'slider' | 'vote'
 
   const channelRef = useRef(null)
+  // ID of the persisted workshop_sessions row for whichever mode is
+  // currently active. recordResponse calls are no-ops while this is
+  // null, so unsigned facilitators still get a working live UI
+  // without persistence.
+  const sessionDbIdRef = useRef(null)
+  // All persisted sessions created during this view's lifetime —
+  // collected so endSession can stamp `ended_at` on each when the
+  // facilitator leaves.
+  const allSessionIdsRef = useRef([])
   // Latest broadcastable state — read by the resync helpers below
   // without relying on stale closures inside subscribe().
   const stateRef = useRef({
@@ -416,6 +360,16 @@ export function FacilitatorView() {
       }
       if (msg.type === 'triage_card') {
         setTriageResponses(prev => [...prev, msg.payload])
+        recordResponse(sessionDbIdRef.current, {
+          kind:              'triage',
+          participantAnonId: msg.payload.participantId,
+          toolName:          msg.payload.tool,
+          payload: {
+            status:     msg.payload.status,
+            level:      msg.payload.level,
+            skillLevel: msg.payload.skillLevel,
+          },
+        })
       }
       if (msg.type === 'triage_done') {
         setTriageDone(prev => prev.includes(msg.payload.participantId)
@@ -423,9 +377,27 @@ export function FacilitatorView() {
       }
       if (msg.type === 'response') {
         setResponses(prev => [...prev, msg.payload])
+        recordResponse(sessionDbIdRef.current, {
+          kind:              'question',
+          participantAnonId: msg.payload.participantId,
+          toolName:          stateRef.current.question?.tool || null,
+          payload: {
+            questionId: msg.payload.questionId,
+            value:      msg.payload.value,
+          },
+        })
       }
       if (msg.type === 'methodfit_card') {
         setMethodfitResponses(prev => [...prev, msg.payload])
+        recordResponse(sessionDbIdRef.current, {
+          kind:              'methodfit',
+          participantAnonId: msg.payload.participantId,
+          toolName:          msg.payload.tool,
+          payload: {
+            fit:        msg.payload.fit,
+            capability: msg.payload.capability,
+          },
+        })
       }
       if (msg.type === 'methodfit_done') {
         setMethodfitDone(prev => prev.includes(msg.payload.participantId)
@@ -479,7 +451,16 @@ export function FacilitatorView() {
     }
   }
 
-  const launchTriage = () => {
+  // Wrap createSession so every successfully-created session id is
+  // recorded for cleanup. Returns the new id (or null on failure /
+  // when the user is signed out).
+  const trackedCreateSession = async (args) => {
+    const id = await createSession(args)
+    if (id) allSessionIdsRef.current.push(id)
+    return id
+  }
+
+  const launchTriage = async () => {
     if (!channelRef.current) return
     setTriageResponses([])
     setTriageDone([])
@@ -489,13 +470,23 @@ export function FacilitatorView() {
     stateRef.current.methodfitActive = false
     stateRef.current.gate = filterGate
     stateRef.current.dim  = filterDim
+    // Persist a new workshop_sessions row for the team dashboard.
+    // No-op when the facilitator is signed out (returns null).
+    sessionDbIdRef.current = await trackedCreateSession({
+      teamId:         currentTeamId,
+      facilitatorId:  userId,
+      roomId,
+      mode:           'triage',
+      gate:           filterGate,
+      dim:            filterDim,
+    })
     sendMsg(channelRef.current, {
       type: 'triage_start',
       payload: { gate: filterGate, dim: filterDim },
     })
   }
 
-  const launchMethodfit = () => {
+  const launchMethodfit = async () => {
     if (!channelRef.current) return
     if (!projectName.trim()) return
     setMethodfitResponses([])
@@ -514,13 +505,23 @@ export function FacilitatorView() {
     stateRef.current.dim     = filterDim
     stateRef.current.project = project
     stateRef.current.methodNames = methodNames
+    sessionDbIdRef.current = await trackedCreateSession({
+      teamId:         currentTeamId,
+      facilitatorId:  userId,
+      roomId,
+      mode:           'methodfit',
+      gate:           filterGate,
+      dim:            filterDim,
+      project,
+      methodNames,
+    })
     sendMsg(channelRef.current, {
       type: 'methodfit_start',
       payload: { gate: filterGate, dim: filterDim, project, methodNames },
     })
   }
 
-  const broadcast = (q) => {
+  const broadcast = async (q) => {
     if (!channelRef.current || !activeTool) return
     setCurrentQ(q)
     setResponses([])
@@ -531,6 +532,23 @@ export function FacilitatorView() {
     }
     stateRef.current.questionActive = true
     stateRef.current.question = payload
+    // First question of this Live Q workshop creates the persisted
+    // session row. Subsequent questions append to the same row so the
+    // session timeline holds them together.
+    if (!stateRef.current.questionSessionDbId) {
+      const dbId = await trackedCreateSession({
+        teamId:         currentTeamId,
+        facilitatorId:  userId,
+        roomId,
+        mode:           'question',
+        gate:           filterGate,
+        dim:            filterDim,
+      })
+      stateRef.current.questionSessionDbId = dbId
+      sessionDbIdRef.current = dbId
+    } else {
+      sessionDbIdRef.current = stateRef.current.questionSessionDbId
+    }
     sendMsg(channelRef.current, { type: 'question', payload })
   }
 
@@ -559,7 +577,12 @@ export function FacilitatorView() {
   })
   const topWords = Object.entries(wordFreq).sort((a, b) => b[1] - a[1]).slice(0, 8)
 
-  useEffect(() => () => channelRef.current?.close(), [])
+  useEffect(() => () => {
+    channelRef.current?.close()
+    // Stamp ended_at on every persisted session this view created.
+    // Fire-and-forget: cleanup shouldn't block unmount.
+    for (const id of allSessionIdsRef.current) endSession(id)
+  }, [])
 
   // ── Pre-start wizard ───────────────────────────────────────────
   if (!started) {
@@ -1236,7 +1259,7 @@ export function FacilitatorView() {
               </div>
               <SectionCard>
                 <TriageHeatmap
-                  trageResponses={triageResponses}
+                  responses={triageResponses}
                   toolList={toolList}
                   participantCount={participants.length}
                 />
@@ -1626,129 +1649,5 @@ export function FacilitatorView() {
   )
 }
 
-// ── Method-fit results matrix — 2×2 of project priority × team
-//   capability, with a per-tool list under each quadrant. The "high
-//   priority + low capability" quadrant is the gold signal: methods
-//   the team needs to deliver but cannot currently run. ──────────
-function MethodfitMatrix({ responses, toolList, participantCount, doneCount }) {
-  // FIT score: essential 3, helpful 2, optional 1, skip 0
-  // CAP score: regular 3, occasional 2, theory 1, none/unknown 0
-  const FIT_W = { essential: 3, helpful: 2, optional: 1, skip: 0 }
-  const CAP_W = { regular: 3, occasional: 2, theory: 1 }
-
-  const stats = toolList.map(t => {
-    const rs = responses.filter(r => r.tool === t.n)
-    if (rs.length === 0) return { name: t.n, n: 0 }
-    const fitAvg = rs.reduce((a, r) => a + (FIT_W[r.fit] ?? 0), 0) / rs.length
-    const caps = rs.map(r => CAP_W[r.capability]).filter(v => v !== undefined)
-    const capAvg = caps.length > 0
-      ? caps.reduce((a, v) => a + v, 0) / caps.length
-      : null
-    return { name: t.n, n: rs.length, fitAvg, capAvg }
-  }).filter(s => s.n > 0)
-
-  // Bucket: priority high/low (>=1.5), capability high/low (>=1.5)
-  const buckets = {
-    run:    [],   // high prio + high cap
-    train:  [],   // high prio + low cap (gold!)
-    bench:  [],   // low prio  + high cap
-    skip:   [],   // low prio  + low cap
-    nocap:  [],   // capability unknown
-  }
-  for (const s of stats) {
-    if (s.capAvg == null) { buckets.nocap.push(s); continue }
-    const hiP = s.fitAvg >= 1.5
-    const hiC = s.capAvg >= 1.5
-    if      ( hiP &&  hiC) buckets.run.push(s)
-    else if ( hiP && !hiC) buckets.train.push(s)
-    else if (!hiP &&  hiC) buckets.bench.push(s)
-    else                    buckets.skip.push(s)
-  }
-
-  return (
-    <div>
-      <Eyebrow color="#2A6B45">
-        ● {responses.length} responses · {doneCount}/{participantCount} done
-      </Eyebrow>
-
-      {/* 2×2 grid */}
-      <div style={{
-        display: 'grid', gridTemplateColumns: '1fr 1fr',
-        gap: 10, marginTop: 8,
-      }}>
-        <Quadrant title="TRAIN / HIRE" hint="Priority for the project · gap on the team"
-          tone="gold" tools={buckets.train} highlight />
-        <Quadrant title="RUN IT" hint="Priority · the team can deliver"
-          tone="ok" tools={buckets.run} />
-        <Quadrant title="SKIP" hint="Low priority for this project"
-          tone="muted" tools={buckets.skip} />
-        <Quadrant title="BENCH" hint="Team can run it · low priority here"
-          tone="bench" tools={buckets.bench} />
-      </div>
-
-      {buckets.nocap.length > 0 && (
-        <div style={{
-          marginTop: 10, padding: '8px 10px',
-          background: '#FFF4D8',
-          border: `1.5px dashed #C17B2A`, borderRadius: 10,
-          fontSize: 11, color: '#7B4A12', lineHeight: 1.4,
-        }}>
-          <b>{buckets.nocap.length}</b> method{buckets.nocap.length > 1 ? 's' : ''}{' '}
-          {buckets.nocap.length > 1 ? 'have' : 'has'} no capability data yet —
-          run a Triage round in this session to populate the Y axis.
-        </div>
-      )}
-    </div>
-  )
-}
-
-function Quadrant({ title, hint, tone, tools, highlight = false }) {
-  const tones = {
-    gold:   { bg: '#FFF4D8', border: '#C17B2A', label: '#7B4A12' },
-    ok:     { bg: '#E6F4EC', border: '#2A6B45', label: '#1F4E32' },
-    bench:  { bg: '#E6EEF8', border: '#1B5FA0', label: '#0F3A66' },
-    muted:  { bg: '#F2EDE4', border: '#9C958A', label: '#5A5550' },
-  }
-  const t = tones[tone] || tones.muted
-  return (
-    <div style={{
-      background: t.bg,
-      border: `${highlight ? 3 : 2}px solid ${t.border}`,
-      borderRadius: 12,
-      padding: '10px 10px 8px',
-      boxShadow: highlight ? '3px 3px 0 ' + t.border : 'none',
-      minHeight: 110,
-    }}>
-      <div style={{
-        fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
-        color: t.label, letterSpacing: '.06em',
-      }}>{title}</div>
-      <div style={{
-        fontSize: 10, color: t.label, opacity: 0.85,
-        marginTop: 2, marginBottom: 6, lineHeight: 1.3,
-      }}>{hint}</div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-        {tools.length === 0 && (
-          <span style={{
-            fontSize: 10, color: t.label, opacity: 0.5, fontStyle: 'italic',
-          }}>—</span>
-        )}
-        {tools.slice(0, 6).map(s => (
-          <span key={s.name} style={{
-            padding: '2px 6px',
-            background: '#FFFFFF',
-            border: `1.5px solid ${t.border}`, borderRadius: 6,
-            fontSize: 10, color: t.label, fontWeight: 700,
-            maxWidth: '100%',
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          }}>{s.name}</span>
-        ))}
-        {tools.length > 6 && (
-          <span style={{
-            fontSize: 10, color: t.label, opacity: 0.7,
-          }}>+{tools.length - 6}</span>
-        )}
-      </div>
-    </div>
-  )
-}
+// (TriageHeatmap, MethodfitMatrix, and Quadrant moved to
+//  src/components/ for reuse on the Team Dashboard.)

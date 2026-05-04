@@ -193,3 +193,91 @@ $$;
 
 revoke all on function public.lookup_team_by_invite(text) from public;
 grant execute on function public.lookup_team_by_invite(text) to authenticated;
+
+-- ── Workshop sessions (Phase 2) ────────────────────────────────
+-- Persists the live triage / live-Q / project-method-fit results
+-- so the team dashboard can show history + evolution over time.
+-- Each launched workshop is a `workshop_sessions` row; every card
+-- the participants rate becomes a `session_responses` row.
+
+create table if not exists public.workshop_sessions (
+  id              uuid primary key default gen_random_uuid(),
+  team_id         uuid references public.teams(id) on delete cascade,
+  facilitator_id  uuid references auth.users(id)  on delete set null,
+  room_id         text not null,
+  mode            text not null
+                    check (mode in ('triage','methodfit','question')),
+  gate            int,
+  dim             text,
+  project_name    text,
+  project_desc    text,
+  method_names    text[],
+  started_at      timestamptz not null default now(),
+  ended_at        timestamptz
+);
+
+create table if not exists public.session_responses (
+  id                    uuid primary key default gen_random_uuid(),
+  session_id            uuid not null
+                          references public.workshop_sessions(id) on delete cascade,
+  participant_anon_id   text not null,
+  participant_user_id   uuid references auth.users(id) on delete set null,
+  kind                  text not null
+                          check (kind in ('triage','methodfit','question')),
+  tool_name             text,
+  payload               jsonb not null default '{}'::jsonb,
+  created_at            timestamptz not null default now()
+);
+
+create index if not exists session_responses_session_idx
+  on public.session_responses (session_id);
+create index if not exists workshop_sessions_team_idx
+  on public.workshop_sessions (team_id, started_at desc);
+
+alter table public.workshop_sessions enable row level security;
+alter table public.session_responses enable row level security;
+
+-- workshop_sessions: facilitator and team members can read; only
+-- the facilitator can create/update their own sessions.
+drop policy if exists workshop_sessions_read on public.workshop_sessions;
+create policy workshop_sessions_read on public.workshop_sessions
+  for select using (
+    (team_id is null and facilitator_id = auth.uid())
+    or exists (
+      select 1 from public.team_members tm
+       where tm.team_id = workshop_sessions.team_id
+         and tm.user_id = auth.uid()
+    )
+  );
+
+drop policy if exists workshop_sessions_facilitator_insert on public.workshop_sessions;
+create policy workshop_sessions_facilitator_insert on public.workshop_sessions
+  for insert with check (auth.uid() = facilitator_id);
+
+drop policy if exists workshop_sessions_facilitator_update on public.workshop_sessions;
+create policy workshop_sessions_facilitator_update on public.workshop_sessions
+  for update using (auth.uid() = facilitator_id);
+
+-- session_responses: anyone can insert (workshop participants are
+-- typically anonymous via the room link). Reads are gated to the
+-- session's facilitator + team members.
+drop policy if exists session_responses_anyone_insert on public.session_responses;
+create policy session_responses_anyone_insert on public.session_responses
+  for insert with check (true);
+
+drop policy if exists session_responses_team_read on public.session_responses;
+create policy session_responses_team_read on public.session_responses
+  for select using (
+    exists (
+      select 1 from public.workshop_sessions s
+       where s.id = session_responses.session_id
+         and (
+           (s.team_id is null and s.facilitator_id = auth.uid())
+           or exists (
+             select 1 from public.team_members tm
+              where tm.team_id = s.team_id
+                and tm.user_id = auth.uid()
+           )
+         )
+    )
+  );

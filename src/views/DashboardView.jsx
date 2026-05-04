@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore } from '../store/useStore'
 import {
@@ -6,6 +6,10 @@ import {
   toolsForGate, toolsForGateDim,
   scoreForGate, scoreForGateDim,
 } from '../data/tools'
+import { supabase, hasSupabase } from '../lib/supabase'
+import { listSessionsForTeam, loadSessionFull } from '../lib/sessionStore'
+import { TriageHeatmap } from '../components/TriageHeatmap'
+import { MethodfitMatrix } from '../components/MethodfitMatrix'
 
 const INK      = '#1C2530'
 const GATE_COL = ['','#C17B2A','#1B5FA0','#2A6B45','#7A3A8E']
@@ -695,16 +699,24 @@ function OverallView({ practiced, scores, gates, suggestions, xp }) {
 // Main view
 // ──────────────────────────────────────────────────────────────
 export function DashboardView() {
-  const { practiced, dashboardGate, xp, goMap, goFacilitator, goExplore, goExploreDim } =
-    useStore(useShallow(s => ({
-      practiced:     s.practiced,
-      dashboardGate: s.dashboardGate,
-      xp: s.xp,
-      goMap:         s.goMap,
-      goFacilitator: s.goFacilitator,
-      goExplore:     s.goExplore,
-      goExploreDim:  s.goExploreDim,
-    })))
+  const {
+    practiced, dashboardGate, xp,
+    goMap, goFacilitator, goExplore, goExploreDim,
+    currentTeamId, teams, userId,
+  } = useStore(useShallow(s => ({
+    practiced:     s.practiced,
+    dashboardGate: s.dashboardGate,
+    xp:            s.xp,
+    goMap:         s.goMap,
+    goFacilitator: s.goFacilitator,
+    goExplore:     s.goExplore,
+    goExploreDim:  s.goExploreDim,
+    currentTeamId: s.currentTeamId,
+    teams:         s.teams,
+    userId:        s.userId,
+  })))
+
+  const currentTeam = teams.find(t => t.id === currentTeamId) || null
 
   // Always land on Overall first — gives context before drilling down.
   // The per-gate tabs are one tap away.
@@ -716,6 +728,10 @@ export function DashboardView() {
 
   const tabs = [
     { id: 'overall', label: 'Overall', color: INK },
+    // Team tab only shows when the user is signed in *and* part of a
+    // team. Hide it entirely otherwise — the overall tab already
+    // covers personal progress.
+    ...(currentTeam ? [{ id: 'team', label: 'Team', color: '#2A6B45' }] : []),
     ...[1,2,3,4].map(g => ({
       id: `gate-${g}`,
       label: GATE_LABEL[g],
@@ -755,14 +771,407 @@ export function DashboardView() {
       <TabStrip tabs={tabs} activeId={tab} onPick={setTab} />
 
       {/* Tab content */}
-      {tab === 'overall'
-        ? <OverallView practiced={practiced} scores={scores} gates={gates}
-            suggestions={suggestions} xp={xp} />
-        : <GateDetail
-            gate={parseInt(tab.replace('gate-', ''), 10)}
-            practiced={practiced}
-            goExplore={goExplore}
-            goExploreDim={goExploreDim} />}
+      {tab === 'overall' ? (
+        <OverallView practiced={practiced} scores={scores} gates={gates}
+          suggestions={suggestions} xp={xp} />
+      ) : tab === 'team' ? (
+        <TeamView team={currentTeam} userId={userId} />
+      ) : (
+        <GateDetail
+          gate={parseInt(tab.replace('gate-', ''), 10)}
+          practiced={practiced}
+          goExplore={goExplore}
+          goExploreDim={goExploreDim} />
+      )}
+    </div>
+  )
+}
+
+// ──────────────────────────────────────────────────────────────
+// Team view — aggregate Capability Map + session history + evolution
+// ──────────────────────────────────────────────────────────────
+function TeamView({ team, userId }) {
+  const [aggPracticed, setAggPracticed] = useState({})
+  const [memberCount,  setMemberCount]  = useState(0)
+  const [sessions,     setSessions]     = useState([])
+  const [openSession,  setOpenSession]  = useState(null)  // { session, responses }
+  const [loading,      setLoading]      = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    if (!hasSupabase || !team?.id) { setLoading(false); return }
+    setLoading(true)
+    Promise.all([
+      // Team-aggregate evaluations: every member's row tagged with
+      // this team_id. We collapse to one level per tool by taking
+      // the *highest* (regular > occasional > theory) so the team
+      // capability reflects the strongest available skill on each
+      // method.
+      supabase.from('evaluations')
+        .select('tool_name, level, user_id')
+        .eq('team_id', team.id),
+      supabase.from('team_members')
+        .select('user_id')
+        .eq('team_id', team.id),
+      listSessionsForTeam(team.id, { limit: 30 }),
+    ]).then(([evalRes, memRes, sessionList]) => {
+      if (cancelled) return
+      const RANK = { regular: 3, occasional: 2, theory: 1 }
+      const RANK_INV = ['', 'theory', 'occasional', 'regular']
+      const best = {}  // toolName → highest rank seen
+      for (const r of (evalRes.data || [])) {
+        const cur = best[r.tool_name] || 0
+        const nxt = RANK[r.level] || 0
+        if (nxt > cur) best[r.tool_name] = nxt
+      }
+      const agg = Object.fromEntries(
+        Object.entries(best).map(([t, rank]) => [t, RANK_INV[rank]])
+      )
+      setAggPracticed(agg)
+      setMemberCount((memRes.data || []).length)
+      setSessions(sessionList)
+      setLoading(false)
+    }).catch(err => {
+      console.warn('[TeamView] load failed:', err?.message || err)
+      if (!cancelled) setLoading(false)
+    })
+    return () => { cancelled = true }
+  }, [team?.id, userId])
+
+  if (!team) {
+    return (
+      <div style={{
+        background: '#FFFFFF', border: '1px solid #E0DAD2',
+        borderRadius: 14, padding: 24, textAlign: 'center',
+        color: '#6B6460', fontSize: 13, lineHeight: 1.5,
+      }}>
+        No team selected. Open your <b>Profile</b> to create or join one.
+      </div>
+    )
+  }
+
+  return (
+    <>
+      {/* Team header */}
+      <div style={{
+        background: '#FFFFFF', borderRadius: 14,
+        border: '1px solid #E0DAD2', padding: 14, marginBottom: 16,
+        display: 'flex', alignItems: 'center', gap: 12,
+      }}>
+        <div style={{
+          flexShrink: 0, width: 40, height: 40, borderRadius: '50%',
+          background: '#E6F4EC', border: '2.5px solid #2A6B45',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontFamily: 'Barlow Condensed, Impact, sans-serif',
+          fontWeight: 900, fontSize: 18, color: '#2A6B45',
+        }}>{(team.name?.[0] || 'T').toUpperCase()}</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{
+            fontFamily: 'Barlow Condensed, Impact, sans-serif',
+            fontWeight: 900, fontSize: 18, color: INK,
+            letterSpacing: '.02em', textTransform: 'uppercase', lineHeight: 1.1,
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>{team.name}</div>
+          <div style={{ fontSize: 11, color: '#5A5550', marginTop: 2 }}>
+            {team.city ? `${team.city} · ` : ''}
+            {memberCount} member{memberCount !== 1 ? 's' : ''} ·
+            {' '}{Object.keys(aggPracticed).length} method{Object.keys(aggPracticed).length === 1 ? '' : 's'} mapped
+          </div>
+        </div>
+      </div>
+
+      {loading ? (
+        <div style={{
+          padding: 24, textAlign: 'center',
+          color: '#9C958A', fontSize: 12, fontStyle: 'italic',
+        }}>Loading team data…</div>
+      ) : (
+        <>
+          {/* Team Capability Map — reuses CapabilityMap with the
+              team-aggregate practiced object. Only renders when there
+              IS data (CapabilityMap returns null on empty input). */}
+          <CapabilityMap practiced={aggPracticed} />
+
+          {/* Evolution chart — counts of completed sessions per week
+              over the last ~3 months. */}
+          {sessions.length > 1 && (
+            <SessionEvolutionChart sessions={sessions} />
+          )}
+
+          {/* Session history */}
+          <div style={{
+            borderRadius: 14, background: '#FFFFFF',
+            border: '1px solid #E0DAD2', padding: 16, marginBottom: 16,
+          }}>
+            <div style={{
+              fontSize: 11, fontWeight: 800, color: '#6B6460',
+              textTransform: 'uppercase', letterSpacing: '.06em',
+              marginBottom: 14,
+            }}>Session history</div>
+            {sessions.length === 0 && (
+              <div style={{
+                fontSize: 12, color: '#9C958A', fontStyle: 'italic',
+                lineHeight: 1.5, padding: '8px 0',
+              }}>
+                No workshops yet. Launch one from the Live Workshop
+                screen — it'll appear here once you start collecting
+                responses.
+              </div>
+            )}
+            {sessions.map(s => (
+              <SessionRow key={s.id}
+                session={s}
+                expanded={openSession?.session?.id === s.id}
+                detail={openSession?.session?.id === s.id ? openSession : null}
+                onToggle={async () => {
+                  if (openSession?.session?.id === s.id) {
+                    setOpenSession(null)
+                  } else {
+                    setOpenSession({ session: s, responses: null })
+                    const full = await loadSessionFull(s.id)
+                    if (full) setOpenSession(full)
+                  }
+                }} />
+            ))}
+          </div>
+        </>
+      )}
+    </>
+  )
+}
+
+// ── Session row + expansion ────────────────────────────────────
+const MODE_META = {
+  triage:    { label: 'Collective triage',    col: '#1B5FA0' },
+  methodfit: { label: 'Project method-fit',   col: '#C17B2A' },
+  question:  { label: 'Live question',        col: '#7A3A8E' },
+}
+
+function SessionRow({ session, expanded, detail, onToggle }) {
+  const meta = MODE_META[session.mode] || { label: session.mode, col: INK }
+  const date = new Date(session.started_at)
+  const dateLabel = date.toLocaleDateString(undefined, {
+    month: 'short', day: 'numeric', year: 'numeric',
+  })
+  const responses = detail?.responses
+  const participantCount = responses
+    ? new Set(responses.map(r => r.participant_anon_id)).size
+    : null
+
+  return (
+    <div style={{
+      borderTop: '1px solid #F0EBE4',
+      padding: '10px 0',
+    }}>
+      <button onClick={onToggle}
+        style={{
+          width: '100%', textAlign: 'left',
+          background: 'transparent', border: 'none', cursor: 'pointer',
+          padding: 0,
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+        <div style={{
+          flexShrink: 0,
+          width: 8, height: 8, borderRadius: '50%',
+          background: meta.col,
+        }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{
+            fontFamily: 'Barlow Condensed, Impact, sans-serif',
+            fontWeight: 900, fontSize: 13, color: INK,
+            letterSpacing: '.04em', textTransform: 'uppercase',
+            lineHeight: 1.1,
+          }}>
+            {meta.label}
+            {session.project_name && (
+              <span style={{ color: meta.col }}> · {session.project_name}</span>
+            )}
+          </div>
+          <div style={{
+            fontSize: 10, color: '#9C958A', marginTop: 2,
+          }}>
+            {dateLabel}
+            {session.gate ? ` · ${GATE_LABEL[session.gate]}` : ''}
+            {session.dim && session.dim !== 'all'
+              ? ` · ${DIM_BY_ID[session.dim]?.label || session.dim}` : ''}
+            {session.ended_at ? '' : ' · in progress'}
+          </div>
+        </div>
+        <div style={{
+          fontFamily: 'Barlow Condensed, Impact, sans-serif',
+          fontWeight: 900, fontSize: 16, color: '#9C958A',
+          flexShrink: 0,
+          transition: 'transform .15s',
+          transform: expanded ? 'rotate(90deg)' : 'rotate(0)',
+        }}>›</div>
+      </button>
+      {expanded && (
+        <div style={{ marginTop: 10 }}>
+          {!responses ? (
+            <div style={{
+              fontSize: 11, color: '#9C958A', fontStyle: 'italic',
+            }}>Loading responses…</div>
+          ) : responses.length === 0 ? (
+            <div style={{
+              fontSize: 11, color: '#9C958A', fontStyle: 'italic',
+            }}>No responses recorded.</div>
+          ) : session.mode === 'triage' ? (
+            <TriageHeatmap
+              responses={responses.map(r => ({
+                tool: r.tool_name,
+                status: r.payload?.status,
+                level: r.payload?.level,
+                participantId: r.participant_anon_id,
+              }))}
+              toolList={triageDeckFromSession(session, responses)}
+              participantCount={participantCount} />
+          ) : session.mode === 'methodfit' ? (
+            <MethodfitMatrix
+              responses={responses.map(r => ({
+                tool: r.tool_name,
+                fit: r.payload?.fit,
+                capability: r.payload?.capability,
+                participantId: r.participant_anon_id,
+              }))}
+              toolList={methodfitDeckFromSession(session, responses)}
+              participantCount={participantCount}
+              doneCount={participantCount} />
+          ) : (
+            <QuestionResponsesList responses={responses} />
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Recover a deck for the session — prefer the explicit method_names
+// (AI-curated decks), fall back to gate/dim filters, and finally to
+// the union of tools that actually appear in the responses.
+function triageDeckFromSession(session, responses) {
+  const fromResponses = unionToolsFromResponses(responses)
+  if (session.method_names?.length > 0) {
+    return TOOLS.filter(t => session.method_names.includes(t.n))
+  }
+  if (session.gate) {
+    if (session.dim && session.dim !== 'all') return toolsForGateDim(session.gate, session.dim)
+    return toolsForGate(session.gate)
+  }
+  return fromResponses
+}
+
+function methodfitDeckFromSession(session, responses) {
+  return triageDeckFromSession(session, responses)
+}
+
+function unionToolsFromResponses(responses) {
+  const names = new Set(responses.map(r => r.tool_name).filter(Boolean))
+  return TOOLS.filter(t => names.has(t.n))
+}
+
+// ── Live-Q responses (minimal aggregation list) ────────────────
+function QuestionResponsesList({ responses }) {
+  // Group by questionId; show count per question + sample answers.
+  const byQ = {}
+  for (const r of responses) {
+    const id = r.payload?.questionId || 'unknown'
+    if (!byQ[id]) byQ[id] = { id, values: [] }
+    byQ[id].values.push(r.payload?.value)
+  }
+  const groups = Object.values(byQ)
+  return (
+    <div>
+      {groups.map(g => (
+        <div key={g.id} style={{
+          padding: '8px 10px', marginBottom: 6,
+          background: '#FAF7F2', borderRadius: 8,
+          border: '1px solid #E0DAD2',
+        }}>
+          <div style={{
+            fontFamily: 'Barlow Condensed, Impact, sans-serif',
+            fontWeight: 900, fontSize: 11, color: INK,
+            letterSpacing: '.04em', textTransform: 'uppercase',
+            marginBottom: 4,
+          }}>{g.id} · {g.values.length} responses</div>
+          <div style={{ fontSize: 11, color: '#3F3A36', lineHeight: 1.4 }}>
+            {g.values.slice(0, 8).map((v, i) =>
+              <span key={i} style={{
+                display: 'inline-block', marginRight: 6,
+              }}>{String(v).slice(0, 32)}{i < g.values.length - 1 ? ' ·' : ''}</span>
+            )}
+            {g.values.length > 8 && <span> +{g.values.length - 8} more</span>}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── Evolution chart — sessions per week, simple SVG sparkline ──
+function SessionEvolutionChart({ sessions }) {
+  // Bucket sessions into ISO weeks for the last 12 weeks.
+  const weeks = []
+  const now = new Date()
+  const startOfWeek = (d) => {
+    const x = new Date(d)
+    const day = x.getDay() || 7
+    x.setHours(0, 0, 0, 0)
+    x.setDate(x.getDate() - day + 1)
+    return x
+  }
+  const here = startOfWeek(now)
+  for (let i = 11; i >= 0; i--) {
+    const w = new Date(here)
+    w.setDate(w.getDate() - i * 7)
+    weeks.push({ start: w, n: 0 })
+  }
+  for (const s of sessions) {
+    const ws = startOfWeek(new Date(s.started_at))
+    const idx = weeks.findIndex(w => w.start.getTime() === ws.getTime())
+    if (idx >= 0) weeks[idx].n += 1
+  }
+  const maxN = Math.max(1, ...weeks.map(w => w.n))
+  const W = 240, H = 60, PAD = 4
+  const xStep = (W - PAD * 2) / (weeks.length - 1)
+  const yFor = (n) => H - PAD - (n / maxN) * (H - PAD * 2)
+  const points = weeks.map((w, i) => `${(PAD + i * xStep).toFixed(1)},${yFor(w.n).toFixed(1)}`)
+  const polyline = points.join(' ')
+  const totalLast = weeks.reduce((s, w) => s + w.n, 0)
+
+  return (
+    <div style={{
+      borderRadius: 14, background: '#FFFFFF',
+      border: '1px solid #E0DAD2', padding: 16, marginBottom: 16,
+    }}>
+      <div style={{
+        display: 'flex', justifyContent: 'space-between',
+        alignItems: 'baseline', marginBottom: 8,
+      }}>
+        <div style={{
+          fontSize: 11, fontWeight: 800, color: '#6B6460',
+          textTransform: 'uppercase', letterSpacing: '.06em',
+        }}>Workshop activity</div>
+        <div style={{
+          fontFamily: 'Barlow Condensed, Impact, sans-serif',
+          fontWeight: 900, fontSize: 13, color: '#2A6B45',
+        }}>{totalLast} session{totalLast === 1 ? '' : 's'} · 12w</div>
+      </div>
+      <svg width="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none"
+        style={{ display: 'block' }}>
+        {/* baseline */}
+        <line x1={PAD} y1={H - PAD} x2={W - PAD} y2={H - PAD}
+          stroke={INK} strokeWidth="1" opacity="0.18" />
+        <polyline points={polyline}
+          fill="none" stroke={INK} strokeWidth="2"
+          strokeLinejoin="round" strokeLinecap="round" />
+        {weeks.map((w, i) => (
+          w.n > 0 && (
+            <circle key={i}
+              cx={PAD + i * xStep} cy={yFor(w.n)} r="3"
+              fill="#2A6B45" stroke="#FFFFFF" strokeWidth="1.5" />
+          )
+        ))}
+      </svg>
     </div>
   )
 }
