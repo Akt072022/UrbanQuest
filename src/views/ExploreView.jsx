@@ -448,62 +448,6 @@ export function ImageLightbox({ src, alt, onClose }) {
   ), document.body)
 }
 
-// ── PDF lightbox — embeds the source PDF in an iframe so the
-//   browser's native PDF viewer handles zoom, panning and download.
-//   Renders much sharper than a rasterised PNG at any zoom level
-//   because PDFs are vector. The PNG thumbnail stays as the small
-//   preview on the card (light to load); the full-quality view is
-//   served straight from public/canvas/. ─────────────────────────
-export function PdfLightbox({ pdfUrl, fallbackImg, alt, onClose }) {
-  // Esc to close
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
-
-  // If the PDF URL isn't available (older snapshots, missing file),
-  // fall back to the PNG so the user still sees something. This
-  // also covers the rare case where a tool has no canvas at all.
-  if (!pdfUrl && !fallbackImg) return null
-  if (!pdfUrl) {
-    return <ImageLightbox src={fallbackImg} alt={alt} onClose={onClose} />
-  }
-
-  return createPortal((
-    <div onClick={onClose}
-      role="dialog" aria-modal="true" aria-label="Canvas viewer"
-      style={{
-        position: 'fixed', inset: 0, zIndex: 9998,
-        background: 'rgba(0,0,0,0.92)',
-        display: 'flex', flexDirection: 'column',
-        animation: 'lb-fade .15s ease',
-      }}>
-      <button onClick={onClose}
-        aria-label="Close"
-        style={{
-          position: 'absolute', top: 14, right: 14,
-          width: 40, height: 40, borderRadius: '50%',
-          background: '#FFFFFF', color: INK,
-          border: `2.5px solid ${INK}`,
-          fontFamily: 'Barlow Condensed, Impact, sans-serif',
-          fontWeight: 900, fontSize: 22, lineHeight: 1,
-          cursor: 'pointer', zIndex: 2,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '2px 2px 0 ' + INK,
-        }}>×</button>
-      <iframe src={`${pdfUrl}#toolbar=1&navpanes=0&zoom=page-fit`}
-        title={alt || 'Canvas viewer'}
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          flex: 1, width: '100vw', height: '100vh',
-          border: 'none', background: '#FFFFFF',
-        }} />
-      <style>{`@keyframes lb-fade { from { opacity:0 } to { opacity:1 } }`}</style>
-    </div>
-  ), document.body)
-}
-
 // ── Cover (face A) ────────────────────────────────────────────
 export function CardCover({ tool, gate }) {
   const col = GATE_COL[gate]
@@ -609,20 +553,15 @@ export function CardSynthesis({ tool, gate, onDive, alreadyLevel = null, already
       boxShadow: 'none',
       display: 'flex', flexDirection: 'column',
     }}>
-      {/* Slide-3 preview banner — keeps the lightweight PNG thumb on
-          the card itself, but click opens a fullscreen PDF lightbox
-          (vector zoom, native PDF controls) instead of zooming the
-          PNG. The thumb is cropped tight (16:6.5 ratio) and shifted
-          downward via object-position so the canvas title at the top
-          of the slide is hidden, giving more room to the actual
-          drawing area. */}
+      {/* Slide-3 preview banner — click opens a fullscreen image
+          lightbox so the canvas can be read in full. */}
       {thumbSrc && thumbOk && (
         <button onClick={() => setZoom(true)}
           aria-label="View canvas full screen"
-          title="Click to open the canvas"
+          title="Click to zoom"
           style={{
             width: '100%', flexShrink: 0,
-            aspectRatio: '16 / 6.5',
+            aspectRatio: '16 / 9',
             borderBottom: `2px solid ${INK}`,
             background: '#F2EDE4',
             overflow: 'hidden',
@@ -635,9 +574,7 @@ export function CardSynthesis({ tool, gate, onDive, alreadyLevel = null, already
             onError={() => setThumbOk(false)}
             draggable={false}
             style={{
-              width: '100%', height: '100%',
-              objectFit: 'cover',
-              objectPosition: '50% 75%',
+              width: '100%', height: '100%', objectFit: 'cover',
               userSelect: 'none', pointerEvents: 'none',
             }} />
           {/* Zoom-hint icon, top-right corner */}
@@ -657,11 +594,8 @@ export function CardSynthesis({ tool, gate, onDive, alreadyLevel = null, already
           </div>
         </button>
       )}
-      {zoom && (
-        <PdfLightbox
-          pdfUrl={canvasUrl(toolNum)}
-          fallbackImg={thumbSrc}
-          alt={`${tool.n} canvas`}
+      {zoom && thumbSrc && (
+        <ImageLightbox src={thumbSrc} alt={`${tool.n} canvas`}
           onClose={() => setZoom(false)} />
       )}
       {/* Already-evaluated banner — visible when the user revisits a
@@ -776,8 +710,8 @@ export function CardSynthesis({ tool, gate, onDive, alreadyLevel = null, already
         {/* Definition — full text; the parent panel scrolls when long. */}
         <p style={{
           fontFamily: '-apple-system, Helvetica Neue, sans-serif', fontWeight: 700,
-          fontSize: 14, color: '#3F3A36', lineHeight: 1.4,
-          margin: '0 0 10px',
+          fontSize: 14, color: '#3F3A36', lineHeight: 1.5,
+          margin: '0 0 20px',
         }}>
           {tool.def}
         </p>
@@ -785,7 +719,7 @@ export function CardSynthesis({ tool, gate, onDive, alreadyLevel = null, already
         {tool.t && (
           <div style={{
             background: YELLOW + '40',
-            borderRadius: 12, padding: '12px 12px 10px', marginBottom: 10,
+            borderRadius: 12, padding: '14px 12px 12px', marginBottom: 14,
             position: 'relative',
           }}>
             <div style={{
@@ -891,7 +825,7 @@ export function CardDeep({ tool, gate, onBack }) {
           <Section label="MECHANICS" emoji="🛠">
             {tool.steps.map((step, i) => (
               <div key={i} style={{
-                display: 'flex', gap: 10, marginBottom: 8,
+                display: 'flex', gap: 10, marginBottom: 14,
                 alignItems: 'flex-start',
               }}>
                 <div style={{
@@ -904,7 +838,7 @@ export function CardDeep({ tool, gate, onBack }) {
                 <p style={{
                   fontFamily: '-apple-system, Helvetica Neue, sans-serif', fontWeight: 700,
                   fontSize: 13, color: '#3F3A36',
-                  lineHeight: 1.35, margin: 0, flex: 1,
+                  lineHeight: 1.5, margin: 0, flex: 1,
                 }}>{step}</p>
               </div>
             ))}
@@ -917,7 +851,7 @@ export function CardDeep({ tool, gate, onBack }) {
             {tool.duration && (
               <p style={{
                 fontFamily: '-apple-system, Helvetica Neue, sans-serif', fontWeight: 700,
-                fontSize: 13, color: '#3F3A36', lineHeight: 1.35, margin: '0 0 4px',
+                fontSize: 13, color: '#3F3A36', lineHeight: 1.5, margin: '0 0 10px',
               }}>
                 <span style={{ color: col, fontFamily: 'Barlow Condensed, Impact, sans-serif', fontSize: 9, letterSpacing: '.04em' }}>DURATION · </span>
                 {tool.duration}
@@ -926,7 +860,7 @@ export function CardDeep({ tool, gate, onBack }) {
             {tool.material && (
               <p style={{
                 fontFamily: '-apple-system, Helvetica Neue, sans-serif', fontWeight: 700,
-                fontSize: 13, color: '#3F3A36', lineHeight: 1.35, margin: 0,
+                fontSize: 13, color: '#3F3A36', lineHeight: 1.5, margin: 0,
               }}>
                 <span style={{ color: col, fontFamily: 'Barlow Condensed, Impact, sans-serif', fontSize: 9, letterSpacing: '.04em' }}>MATERIAL · </span>
                 {tool.material}
@@ -940,7 +874,7 @@ export function CardDeep({ tool, gate, onBack }) {
           <Section label="PRODUCED EVIDENCE" emoji="📋">
             <p style={{
               fontFamily: '-apple-system, Helvetica Neue, sans-serif', fontWeight: 700,
-              fontSize: 13, color: '#3F3A36', lineHeight: 1.4, margin: 0,
+              fontSize: 13, color: '#3F3A36', lineHeight: 1.5, margin: 0,
             }}>{tool.evidence}</p>
           </Section>
         )}
@@ -950,7 +884,7 @@ export function CardDeep({ tool, gate, onBack }) {
           <Section label="USE CASE" emoji="🌍">
             <p style={{
               fontFamily: '-apple-system, Helvetica Neue, sans-serif', fontWeight: 700,
-              fontSize: 13, color: '#3F3A36', lineHeight: 1.4, margin: 0,
+              fontSize: 13, color: '#3F3A36', lineHeight: 1.5, margin: 0,
             }}>{tool.use}</p>
           </Section>
         )}
@@ -1025,11 +959,11 @@ export function CardDeep({ tool, gate, onBack }) {
 
 function Section({ label, emoji, children }) {
   return (
-    <div style={{ marginBottom: 14 }}>
+    <div style={{ marginBottom: 22 }}>
       <div style={{
         fontFamily: 'Barlow Condensed, Impact, sans-serif',
         fontSize: 10, color: INK, letterSpacing: '.05em',
-        marginBottom: 6,
+        marginBottom: 10,
         display: 'flex', alignItems: 'center', gap: 5,
       }}>
         <span>{emoji}</span> {label}
