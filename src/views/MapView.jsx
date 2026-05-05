@@ -455,12 +455,21 @@ function PathMilestone({ stop, onClick }) {
 // Main Map view
 // ──────────────────────────────────────────────────────────────
 export function MapView() {
-  const { team, practiced, xp, goExplore, goExploreDim, goFacilitator, goDashboard } =
-    useStore(useShallow(s => ({
-      team: s.team, practiced: s.practiced, xp: s.xp,
-      goExplore: s.goExplore, goExploreDim: s.goExploreDim,
-      goFacilitator: s.goFacilitator, goDashboard: s.goDashboard,
-    })))
+  const {
+    practiced, xp,
+    projectContext,
+    goExplore, goExploreDim, goFacilitator, goDashboard, goProjectFit, goWelcome,
+  } = useStore(useShallow(s => ({
+    practiced:      s.practiced,
+    xp:             s.xp,
+    projectContext: s.projectContext,
+    goExplore:      s.goExplore,
+    goExploreDim:   s.goExploreDim,
+    goFacilitator:  s.goFacilitator,
+    goDashboard:    s.goDashboard,
+    goProjectFit:   s.goProjectFit,
+    goWelcome:      s.goWelcome,
+  })))
 
   const tp = Object.keys(practiced).length
   const total = TOOLS.length
@@ -543,17 +552,19 @@ export function MapView() {
 
   return (
     <div className="anim-fadein" style={{ position: 'relative' }}>
-      {/* ── City title ─────────────────────────────── */}
+      {/* ── Title — kept lean post-Phase 1; the legacy team blob
+              ("MY CITY · My team · mixed") was meaningless after the
+              project-first welcome shipped, so it's gone. ────────── */}
       <div style={{ marginBottom: 10 }}>
         <div style={{
           fontFamily: 'Barlow Condensed, Impact, sans-serif',
           fontWeight: 900,
           fontSize: 'clamp(28px,8vw,42px)', color: INK, lineHeight: .95,
         }}>
-          {team?.city?.toUpperCase() || 'MY CITY'}
+          BROWSE METHODS
         </div>
         <div style={{ fontSize: 12, color: '#5A5550', marginTop: 2 }}>
-          {team?.name} · {team?.proj}
+          All 133 methods grouped by phase and dimension. Tap any rosette to dive in.
         </div>
       </div>
 
@@ -596,37 +607,32 @@ export function MapView() {
         </div>
       </div>
 
-      {/* ── Dashboard + Live Workshop — moved up, just under the
-              progress bar so they're reachable without scrolling. ─── */}
-      <div style={{ display: 'flex', gap: 12, marginTop: 14 }}>
-        <ScrappyButton onClick={goDashboard} color={YELLOW} full>
-          DASHBOARD
-        </ScrappyButton>
-        <ScrappyButton onClick={goFacilitator} color={TEAL} full>
-          LIVE WORKSHOP
-        </ScrappyButton>
-      </div>
-
-      {/* ── Centered CONTINUE / START — resumes the active gate at
-              the first un-evaluated tool. Says "START" when the team
-              hasn't begun anything yet, "CONTINUE" once they have. ── */}
-      {activeStop && activeStop.kind === 'node'
-        && !activeStop.complete && !activeStop.locked && !activeStop.empty && (
+      {/* ── Primary CTA — single, focused. Resumes at the first un-rated
+              tool of the active gate; falls back to a generic "BROWSE
+              METHODS" jump when nothing is mid-flight. Dashboard +
+              Workshop entries are demoted to the bottom of the page. ── */}
+      <div style={{
+        display: 'flex', justifyContent: 'center',
+        margin: '20px 0 28px',
+      }}>
         <div style={{
-          display: 'flex', justifyContent: 'center',
-          margin: '28px 0 32px',
+          width: 240,
+          animation: 'bob-cta 1.8s ease-in-out infinite',
         }}>
-          <div style={{
-            width: 220,
-            animation: 'bob-cta 1.8s ease-in-out infinite',
-          }}>
+          {activeStop && activeStop.kind === 'node'
+            && !activeStop.complete && !activeStop.locked && !activeStop.empty ? (
             <ScrappyButton onClick={() => goExplore(activeGate)}
               color={YELLOW} size="md" full>
-              ▼ {tp === 0 ? 'START' : 'CONTINUE'}
+              ▼ {tp === 0 ? 'START RATING' : 'CONTINUE RATING'}
             </ScrappyButton>
-          </div>
+          ) : (
+            <ScrappyButton onClick={() => goExplore(1)}
+              color={YELLOW} size="md" full>
+              ▼ OPEN THE FIRST PHASE
+            </ScrappyButton>
+          )}
         </div>
-      )}
+      </div>
 
       {/* ── The path + rosettes on it ────────────────────────────── */}
       <div ref={pathRef}
@@ -673,6 +679,33 @@ export function MapView() {
         </div>
       </div>
 
+      {/* ── Demoted secondary doors — quiet text-link strip at the
+              bottom of the page. Phase 2b: one CTA per screen, the
+              rest are reachable but not competing. ───────────────── */}
+      <div style={{
+        marginTop: 24, paddingTop: 16,
+        borderTop: `1px dashed ${INK}33`,
+        display: 'flex', flexDirection: 'column', gap: 4,
+      }}>
+        <div style={{
+          fontFamily: 'Barlow Condensed, Impact, sans-serif',
+          fontWeight: 900, fontSize: 10,
+          color: '#9C958A', letterSpacing: '.08em',
+          textTransform: 'uppercase', marginBottom: 4,
+        }}>Or do something different</div>
+        {projectContext ? (
+          <SecondaryLink onClick={goProjectFit}
+            label="Back to my project shortlist" />
+        ) : (
+          <SecondaryLink onClick={goWelcome}
+            label="✨ Analyse a new project" />
+        )}
+        <SecondaryLink onClick={goDashboard}
+          label="See my capability map" />
+        <SecondaryLink onClick={goFacilitator}
+          label="Run a live workshop" />
+      </div>
+
       <style>{`
         @keyframes bob-cta {
           0%, 100% { transform: translateY(0); }
@@ -680,5 +713,24 @@ export function MapView() {
         }
       `}</style>
     </div>
+  )
+}
+
+// ── Secondary link — quiet, low-emphasis nav under the path ────
+function SecondaryLink({ onClick, label }) {
+  return (
+    <button onClick={onClick}
+      style={{
+        textAlign: 'left', padding: '8px 0',
+        background: 'transparent', border: 'none', cursor: 'pointer',
+        fontFamily: 'Barlow Condensed, Impact, sans-serif',
+        fontWeight: 900, fontSize: 13,
+        color: INK, letterSpacing: '.04em',
+        textTransform: 'uppercase',
+        display: 'flex', alignItems: 'center', gap: 8,
+      }}>
+      <span style={{ color: TEAL }}>›</span>
+      {label}
+    </button>
   )
 }

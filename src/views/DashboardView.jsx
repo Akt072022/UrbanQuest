@@ -1141,20 +1141,28 @@ function AiActionRow({ action, onClick }) {
 export function DashboardView() {
   const {
     practiced, dashboardGate, xp,
+    projectContext, aiSuggestions,
     goMap, goFacilitator, goExplore, goExploreDim,
+    goWelcome, goProjectFit,
     currentTeamId, teams, userId,
   } = useStore(useShallow(s => ({
-    practiced:     s.practiced,
-    dashboardGate: s.dashboardGate,
-    xp:            s.xp,
-    goMap:         s.goMap,
-    goFacilitator: s.goFacilitator,
-    goExplore:     s.goExplore,
-    goExploreDim:  s.goExploreDim,
-    currentTeamId: s.currentTeamId,
-    teams:         s.teams,
-    userId:        s.userId,
+    practiced:      s.practiced,
+    dashboardGate:  s.dashboardGate,
+    xp:             s.xp,
+    projectContext: s.projectContext,
+    aiSuggestions:  s.aiSuggestions,
+    goMap:          s.goMap,
+    goFacilitator:  s.goFacilitator,
+    goExplore:      s.goExplore,
+    goExploreDim:   s.goExploreDim,
+    goWelcome:      s.goWelcome,
+    goProjectFit:   s.goProjectFit,
+    currentTeamId:  s.currentTeamId,
+    teams:          s.teams,
+    userId:         s.userId,
   })))
+
+  const hasShortlist = !!(projectContext && aiSuggestions?.length > 0)
 
   const currentTeam = teams.find(t => t.id === currentTeamId) || null
 
@@ -1181,7 +1189,9 @@ export function DashboardView() {
 
   return (
     <div className="anim-fadein" style={{ paddingBottom: 32 }}>
-      {/* Nav row */}
+      {/* Nav row — quiet back-link only. The Live Workshop entry is
+          consolidated into the dashboard's primary CTA below
+          (Phase 2b: one CTA per screen). */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
         <button onClick={goMap}
           style={{
@@ -1189,22 +1199,41 @@ export function DashboardView() {
             background: '#FFFFFF', border: '1px solid #E0DAD2',
             color: '#6B6460', fontSize: 11, fontWeight: 800,
           }}>← MAP</button>
-        <button onClick={goFacilitator}
-          style={{
-            padding: '5px 12px', borderRadius: 8, cursor: 'pointer',
-            background: 'transparent', border: '1px solid #CCC5BA',
-            color: '#8B8074', fontSize: 11, fontWeight: 800,
-          }}>LIVE WORKSHOP →</button>
       </div>
 
-      {/* Title */}
-      <div style={{ marginBottom: 12 }}>
-        <div className="text-mega" style={{
-          fontSize: 28, color: INK, textTransform: 'uppercase',
-        }}>Dashboard</div>
-        <div style={{ fontSize: 11, color: '#8B8074', marginTop: 3 }}>
-          {Object.keys(practiced).length} method{Object.keys(practiced).length === 1 ? '' : 's'} evaluated out of {TOOLS.length}
+      {/* Title + primary CTA — the dashboard's job after Phase 1 is to
+          hand you back to a project (either the saved one, or a new
+          one). Don't let it feel like a dead-end status screen. */}
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end',
+        gap: 12, marginBottom: 12, flexWrap: 'wrap',
+      }}>
+        <div>
+          <div className="text-mega" style={{
+            fontSize: 28, color: INK, textTransform: 'uppercase',
+          }}>Dashboard</div>
+          <div style={{ fontSize: 11, color: '#8B8074', marginTop: 3 }}>
+            {Object.keys(practiced).length} method{Object.keys(practiced).length === 1 ? '' : 's'} evaluated out of {TOOLS.length}
+          </div>
         </div>
+        <button
+          onClick={hasShortlist ? goProjectFit : goWelcome}
+          style={{
+            position: 'relative',
+            padding: '10px 16px',
+            background: '#FFC83D',
+            color: INK,
+            border: `2.5px solid ${INK}`,
+            borderRadius: 12,
+            cursor: 'pointer',
+            boxShadow: '3px 3px 0 ' + INK,
+            fontFamily: 'Barlow Condensed, Impact, sans-serif',
+            fontWeight: 900, fontSize: 14,
+            letterSpacing: '.04em', textTransform: 'uppercase',
+            whiteSpace: 'nowrap',
+          }}>
+          ✨ {hasShortlist ? 'Open my shortlist' : 'Analyse a project'} →
+        </button>
       </div>
 
       {/* Tab strip */}
