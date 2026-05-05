@@ -14,9 +14,24 @@ const LEVEL_BADGE = {
 }
 
 export function Navbar() {
-  const { team, xp, goMap, goProfile, view } = useStore(useShallow(s => ({
-    team: s.team, xp: s.xp, goMap: s.goMap, goProfile: s.goProfile, view: s.view,
+  const {
+    team, xp, view,
+    projectContext, aiSuggestions,
+    goMap, goProfile, goProjectFit,
+  } = useStore(useShallow(s => ({
+    team:           s.team,
+    xp:             s.xp,
+    view:           s.view,
+    projectContext: s.projectContext,
+    aiSuggestions:  s.aiSuggestions,
+    goMap:          s.goMap,
+    goProfile:      s.goProfile,
+    goProjectFit:   s.goProjectFit,
   })))
+
+  const hasShortlist = !!(projectContext && aiSuggestions?.length > 0)
+  const onProjectFit = view === 'projectFit'
+  const projectLabel = (projectContext?.name || 'Your project').trim()
 
   const { min, max, label } = getLevel(xp)
   const pct = Math.min(100, Math.round(((xp - min) / (max - min)) * 100))
@@ -49,6 +64,47 @@ export function Navbar() {
           RECITY
         </span>
       </div>
+
+      {/* Project shortlist pill — only when an AI shortlist exists.
+          Always-on entry point back to ProjectFitView so the user can
+          leave the shortlist, browse / dashboard, and come back. */}
+      {hasShortlist && (
+        <button
+          onClick={goProjectFit}
+          aria-label={`Open project shortlist: ${projectLabel}`}
+          aria-current={onProjectFit ? 'page' : undefined}
+          style={{
+            position: 'relative',
+            padding: '6px 11px 6px 9px',
+            display: 'flex', alignItems: 'center', gap: 6,
+            minWidth: 0, maxWidth: 200,
+            background: 'transparent', border: 'none',
+            cursor: 'pointer',
+            fontFamily: 'Barlow Condensed, Impact, sans-serif',
+            fontWeight: 900, fontSize: 12,
+            color: INK, letterSpacing: '.04em',
+            textTransform: 'uppercase',
+          }}>
+          <span aria-hidden="true" style={{
+            position: 'absolute',
+            top: 3, left: 4, right: -2, bottom: -2,
+            background: onProjectFit ? YELLOW : '#FFFDF8',
+            borderRadius: 999,
+            zIndex: 0,
+          }} />
+          <span aria-hidden="true" style={{
+            position: 'absolute', inset: 0,
+            border: `2px solid ${INK}`,
+            borderRadius: 999,
+            zIndex: 1,
+          }} />
+          <span style={{ position: 'relative', zIndex: 2, fontSize: 13 }}>✨</span>
+          <span style={{
+            position: 'relative', zIndex: 2,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>{projectLabel}</span>
+        </button>
+      )}
 
       {/* Right side: badge + level pill — clickable, opens Profile */}
       {team && (

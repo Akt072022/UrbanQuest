@@ -227,132 +227,6 @@ function GateComplete({ gate }) {
   )
 }
 
-// ── Evaluation modal — opens after a swipe-right ("I know it") so
-// the user qualifies the depth of their knowledge. The chosen level
-// is stored on practiced[name] and drives the radar polygon depth
-// + the dashboard diagnostic.
-export function EvaluationModal({ tool, onPick, onCancel }) {
-  // Click options: regular > occasional > theory. Keyed colours mirror
-  // the radar fill so users learn the visual language.
-  const OPTIONS = [
-    { level: 'regular',    color: '#10B981', short: 'Regular',
-      hint: 'I use it routinely on real projects.' },
-    { level: 'occasional', color: '#F97316', short: 'Occasional',
-      hint: 'I have run it a handful of times.' },
-    { level: 'theory',     color: '#5A5550', short: 'Theoretical',
-      hint: 'I know how it works but have not run it.' },
-  ]
-  // Esc to cancel; lock body scroll while open.
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onCancel() }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onCancel])
-
-  // Close on direct backdrop tap only — never via bubbled clicks from
-  // the inner card. Avoids "click swallowed by closing modal" bugs on
-  // mobile where stopPropagation can be unreliable across event types.
-  const onBackdropClick = (e) => {
-    if (e.target === e.currentTarget) onCancel()
-  }
-
-  // Render via a portal directly under <body> so the modal sits above
-  // every transformed/overflow ancestor in the tree. Without this, on
-  // some mobile browsers the SwipeWrap's transform/touch-action
-  // settings could interfere with click delivery.
-  return createPortal((
-    <div onClick={onBackdropClick}
-      role="dialog" aria-modal="true" aria-label="How do you know this tool?"
-      style={{
-        position: 'fixed', inset: 0, zIndex: 9999,
-        background: 'rgba(28,37,48,0.78)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: 18, animation: 'lb-fade .15s ease',
-        touchAction: 'manipulation',
-      }}>
-      <div
-        style={{
-          width: '100%', maxWidth: 380,
-          background: '#FFFDF8',
-          border: `3px solid ${INK}`,
-          borderRadius: 18,
-          padding: '20px 18px 16px',
-          boxShadow: '4px 4px 0 ' + INK,
-        }}>
-        <div style={{
-          fontFamily: 'Barlow Condensed, Impact, sans-serif',
-          fontSize: 11, color: '#9C958A', letterSpacing: '.08em',
-          textTransform: 'uppercase', marginBottom: 4,
-        }}>How well do you know it?</div>
-        <div style={{
-          fontFamily: 'Barlow Condensed, Impact, sans-serif',
-          fontSize: 18, color: INK, lineHeight: 1.2, marginBottom: 14,
-        }}>{tool.n}</div>
-
-        {OPTIONS.map(opt => (
-          <button key={opt.level}
-            type="button"
-            onClick={() => onPick(opt.level)}
-            className="eval-opt"
-            style={{
-              display: 'block', width: '100%',
-              textAlign: 'left',
-              padding: '12px 14px',
-              marginBottom: 10,
-              background: '#FFFFFF',
-              border: `2.5px solid ${INK}`,
-              borderRadius: 14,
-              cursor: 'pointer',
-              boxShadow: '2px 2px 0 ' + INK,
-              transition: 'transform .08s, box-shadow .08s',
-            }}>
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              marginBottom: 2,
-              pointerEvents: 'none',  // children must never steal the click
-            }}>
-              <span style={{
-                width: 14, height: 14, borderRadius: '50%',
-                background: opt.color, border: `2px solid ${INK}`,
-                flexShrink: 0,
-              }} />
-              <span style={{
-                fontFamily: 'Barlow Condensed, Impact, sans-serif',
-                fontWeight: 900, fontSize: 16, color: INK,
-                letterSpacing: '.04em', textTransform: 'uppercase',
-              }}>{opt.short}</span>
-            </div>
-            <div style={{
-              fontFamily: '-apple-system, Helvetica Neue, sans-serif',
-              fontWeight: 600, fontSize: 12, color: '#5A5550',
-              paddingLeft: 24,
-              pointerEvents: 'none',
-            }}>{opt.hint}</div>
-          </button>
-        ))}
-        <style>{`
-          .eval-opt:active {
-            transform: translate(1px, 1px);
-            box-shadow: 1px 1px 0 ${INK};
-          }
-        `}</style>
-
-        <button onClick={onCancel}
-          style={{
-            display: 'block', width: '100%',
-            marginTop: 4,
-            padding: '8px',
-            background: 'transparent', border: 'none',
-            cursor: 'pointer',
-            fontFamily: 'Barlow Condensed, Impact, sans-serif',
-            fontWeight: 900, fontSize: 12, color: '#9C958A',
-            letterSpacing: '.06em', textTransform: 'uppercase',
-          }}>Cancel</button>
-      </div>
-    </div>
-  ), document.body)
-}
-
 // ── Image lightbox — fullscreen viewer with zoom toggle ──────
 //   • Click backdrop or × button → close
 //   • Click the image → toggle 1× ↔ 2.4× (zoomed view scrolls in
@@ -1006,115 +880,6 @@ export function CardStack({ tool, gate, face, onDive, onBack, alreadyLevel, alre
   )
 }
 
-// ── Swipe wrapper — drag card to trigger an action ────────────
-//   • LEFT  → skip
-//   • RIGHT → I do it (practice)
-//   • UP    → I know it (flag)
-const SWIPE_THRESH = 90
-const SWIPE_GREEN  = '#A8D870'
-const SWIPE_CORAL  = '#FB7185'
-
-export function SwipeWrap({ enabled, onAction, children }) {
-  const [drag, setDrag] = useState({ x: 0, y: 0, exiting: false })
-  const startRef = useRef(null)
-  // Direction lock: 'pending' before first move > LOCK_PX, then either
-  // 'swipe' (we own the gesture) or 'scroll' (we let the inner card
-  // scroll natively and ignore the rest of this touch).
-  const modeRef  = useRef(null)
-  const LOCK_PX  = 10
-
-  const begin = (cx, cy) => {
-    if (!enabled) return
-    startRef.current = { x: cx, y: cy }
-    modeRef.current  = 'pending'
-    setDrag({ x: 0, y: 0, exiting: false })
-  }
-  const move = (cx, cy) => {
-    if (!startRef.current) return
-    const dx = cx - startRef.current.x
-    const dy = cy - startRef.current.y
-    if (modeRef.current === 'pending') {
-      if (Math.max(Math.abs(dx), Math.abs(dy)) < LOCK_PX) return
-      // Any dominantly vertical gesture (up OR down) → scroll the card.
-      // Only horizontal swipes trigger card actions now.
-      if (Math.abs(dy) > Math.abs(dx)) {
-        modeRef.current  = 'scroll'
-        startRef.current = null
-        return
-      }
-      modeRef.current = 'swipe'
-    }
-    if (modeRef.current !== 'swipe') return
-    setDrag({ x: dx, y: dy, exiting: false })
-  }
-  const end = () => {
-    if (!startRef.current) { modeRef.current = null; return }
-    const { x, y } = drag
-    let action = null
-    let off = { x: 0, y: 0 }
-    // Only horizontal swipes commit an action now. Vertical-down is
-    // already routed to native scroll via the direction lock above;
-    // vertical-up is no longer bound (the old "flag" gesture is
-    // replaced by the swipe-right evaluation flow).
-    if (x > SWIPE_THRESH && Math.abs(x) > Math.abs(y)) {
-      action = 'practice'; off = { x: 700, y }
-    } else if (x < -SWIPE_THRESH && Math.abs(x) > Math.abs(y)) {
-      action = 'skip'; off = { x: -700, y }
-    }
-    if (action) {
-      setDrag({ x: off.x, y: off.y, exiting: true })
-      setTimeout(() => {
-        onAction(action)
-        // ⚠ Crucial: reset our own drag state so the NEXT card renders
-        //   at (0, 0). Without this the SwipeWrap stays translated
-        //   off-screen and the next card is invisible.
-        setDrag({ x: 0, y: 0, exiting: false })
-      }, 220)
-    } else {
-      setDrag({ x: 0, y: 0, exiting: false })
-    }
-    startRef.current = null
-    modeRef.current  = null
-  }
-
-  // Touch handlers
-  const onTouchStart = (e) => begin(e.touches[0].clientX, e.touches[0].clientY)
-  const onTouchMove  = (e) => move(e.touches[0].clientX, e.touches[0].clientY)
-  const onTouchEnd   = () => end()
-  // Mouse handlers (desktop test)
-  const onMouseDown  = (e) => begin(e.clientX, e.clientY)
-  const onMouseMove  = (e) => { if (startRef.current) move(e.clientX, e.clientY) }
-  const onMouseUp    = () => end()
-  const onMouseLeave = () => { if (startRef.current) end() }
-
-  const rot = Math.max(-12, Math.min(12, drag.x * 0.05))
-
-  // Swipe overlay tags — only horizontal gestures now. Vertical-up
-  // is reserved (no action) and vertical-down lets the card scroll.
-  const showRight = drag.x > 30 && Math.abs(drag.x) > Math.abs(drag.y)
-  const showLeft  = drag.x < -30 && Math.abs(drag.x) > Math.abs(drag.y)
-
-  return (
-    <div
-      onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
-      onMouseDown={onMouseDown} onMouseMove={onMouseMove}
-      onMouseUp={onMouseUp} onMouseLeave={onMouseLeave}
-      style={{
-        position: 'relative',
-        transform: `translate(${drag.x}px, ${drag.y}px) rotate(${rot}deg)`,
-        transition: startRef.current ? 'none' : 'transform .22s ease-out',
-        cursor: enabled ? 'grab' : 'default',
-        touchAction: 'pan-y',
-        userSelect: 'none',
-      }}>
-      {children}
-      {/* Overlay action labels */}
-      {showRight && <SwipeTag color={SWIPE_GREEN} pos="left">I KNOW IT</SwipeTag>}
-      {showLeft  && <SwipeTag color="#9C958A"   pos="right">NEW TO ME</SwipeTag>}
-    </div>
-  )
-}
-
 // Small chevron button used in the deck header to step the cursor
 // back or forward without committing any rating. Disabled at the
 // edges of the deck.
@@ -1143,47 +908,71 @@ function NavArrow({ dir, onClick, disabled }) {
   )
 }
 
-function SwipeTag({ children, color, pos }) {
-  const base = {
-    position: 'absolute',
-    padding: '8px 16px',
-    borderRadius: 10,
-    border: `3px solid ${color}`,
-    color, background: 'rgba(255,255,255,.9)',
-    fontFamily: 'Barlow Condensed, Impact, sans-serif',
-    fontWeight: 900, fontSize: 22, letterSpacing: '.06em',
-    textTransform: 'uppercase',
-    pointerEvents: 'none',
-    transform: pos === 'left' ? 'rotate(-15deg)' : pos === 'right' ? 'rotate(15deg)' : 'rotate(0)',
-  }
-  const place = pos === 'left'
-    ? { top: 30, left: 20 }
-    : pos === 'right'
-    ? { top: 30, right: 20 }
-    : { bottom: 30, left: '50%', marginLeft: -55 }
-  return <div style={{ ...base, ...place }}>{children}</div>
-}
+// ── Rating row — 4 single-tap options, no modal, no swipe.
+// Replaces the previous swipe→modal flow with one direct decision.
+// The four levels match the SKILL_LEVELS definition plus a fifth
+// "new to me" option that maps to the existing skipTool() mechanism.
+//   • new   → skipped[]            ("I haven't encountered this method")
+//   • theory      → practiced.theory      ("I know about it, never run it")
+//   • occasional  → practiced.occasional  ("I have run it sometimes")
+//   • regular     → practiced.regular     ("I run it routinely")
+//
+// Hovering the active one is highlighted so the user can see their
+// previous answer when revisiting a card.
+export function RatingRow({ show, currentLevel, currentSkipped, onPick }) {
+  const OPTIONS = [
+    { id: 'new',        label: 'New to me',  short: 'NEW',
+      hint: "Haven't met it",        col: '#9C958A' },
+    { id: 'theory',     label: 'Read about', short: 'READ',
+      hint: 'In theory only',        col: '#5A5550' },
+    { id: 'occasional', label: 'Tried it',   short: 'TRIED',
+      hint: 'Used a few times',      col: '#F97316' },
+    { id: 'regular',    label: 'I run it',   short: 'RUN',
+      hint: 'Routine practice',      col: '#10B981' },
+  ]
+  const activeId = currentSkipped ? 'new' : (currentLevel || null)
 
-// ── Action buttons (Skip / I know it) — fallback for users who don't
-// want to swipe. "I know it" routes through the same evaluation modal
-// as a swipe-right.
-export function ActionButtons({ show, onAction }) {
   return (
     <div style={{
-      display: 'flex', flexDirection: 'row', gap: 8,
+      display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6,
       opacity: show ? 1 : 0,
       transform: show ? 'translateY(0)' : 'translateY(12px)',
       pointerEvents: show ? 'auto' : 'none',
       transition: 'all .3s',
     }}>
-      <ScrappyButton onClick={() => onAction('skip')}
-        color="#FFFFFF" textColor="#7B746A" size="sm" full>
-        NEW TO ME
-      </ScrappyButton>
-      <ScrappyButton onClick={() => onAction('practice')}
-        color={YELLOW} size="sm" full>
-        I KNOW IT →
-      </ScrappyButton>
+      {OPTIONS.map(opt => {
+        const isActive = activeId === opt.id
+        return (
+          <button key={opt.id}
+            onClick={() => onPick(opt.id)}
+            title={opt.hint}
+            style={{
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'stretch', justifyContent: 'center',
+              padding: '8px 6px',
+              background: isActive ? opt.col : '#FFFFFF',
+              color:      isActive ? '#FFFFFF' : INK,
+              border: `2.5px solid ${INK}`, borderRadius: 12,
+              cursor: 'pointer',
+              boxShadow: isActive ? '2px 2px 0 ' + INK : 'none',
+              transform:  isActive ? 'translate(-1px,-1px)' : 'none',
+              transition: 'transform .08s',
+            }}>
+            <span style={{
+              fontFamily: 'Barlow Condensed, Impact, sans-serif',
+              fontWeight: 900, fontSize: 12,
+              letterSpacing: '.04em', textTransform: 'uppercase',
+              lineHeight: 1.05,
+            }}>{opt.label}</span>
+            <span style={{
+              fontFamily: '-apple-system, Helvetica Neue, sans-serif',
+              fontWeight: 600, fontSize: 9,
+              color: isActive ? 'rgba(255,255,255,.85)' : '#9C958A',
+              marginTop: 3, lineHeight: 1.2,
+            }}>{opt.hint}</span>
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -1222,12 +1011,8 @@ export function ExploreView() {
   // Local card-face state (synth ↔ deep). No more cover-flip
   // between cards — synthesis appears immediately on each new card.
   const [face, setFace] = useState('synth')
-  // Pending evaluation modal — opened on swipe-right, closed on
-  // level pick (or cancel). When closed without a level it does not
-  // advance the deck, letting the user retry.
-  const [pendingEval, setPendingEval] = useState(false)
-  // Last action drives the conveyor-belt animation: skip = old card
-  // flew left, new one slides in from the right; practice = inverse.
+  // Last action drives the conveyor-belt animation: 'new' = old card
+  // flew left, new one slides in from the right; otherwise inverse.
   const [lastAction, setLastAction] = useState(null)
 
   const gate  = eGate
@@ -1237,35 +1022,25 @@ export function ExploreView() {
 
   // When the active card changes, snap back to synth (in case user
   // was reading dive-deeper details on the previous card).
-  useEffect(() => { setFace('synth'); setPendingEval(false) }, [eIdx, eGate, eDim])
+  useEffect(() => { setFace('synth') }, [eIdx, eGate, eDim])
 
   if (eIdx >= tools.length) return <GateComplete gate={gate} />
 
   const tool = tools[eIdx]
 
-  // Swipe-right ("I know it") opens the evaluation modal instead of
-  // committing immediately — the user has to pick depth (regular /
-  // occasional / theory) before we advance.
-  const handleAction = (action) => {
-    setLastAction(action)
-    if (action === 'practice') {
-      setPendingEval(true)
-      return
-    }
-    if (action === 'skip') skipTool(tool.n)
-    window.speechSynthesis?.cancel()
-    nextCard()
-  }
-
-  // Three-beat commit so the user sees feedback before the deck moves:
-  //   1. close the modal
-  //   2. write the level → banner appears on the current card
-  //   3. ~700ms beat, then advance — `lastAction` is still 'practice'
-  //      so the next card slides in from the left (conveyor belt).
-  const commitEvaluation = (level) => {
+  // Single-tap rating — one of the four RatingRow buttons. Writes the
+  // level (or marks the tool as new-to-me), keeps the banner visible
+  // for ~700 ms so the user sees their choice land, then advances. The
+  // 700 ms beat keeps the card-slide animation feeling like a response
+  // to the tap rather than a jump cut.
+  const handleRating = (id) => {
+    setLastAction(id === 'new' ? 'skip' : 'practice')
     try { window.speechSynthesis?.cancel() } catch { /* noop */ }
-    setPendingEval(false)
-    practiceTool(tool.n, level)
+    if (id === 'new') {
+      skipTool(tool.n)
+    } else {
+      practiceTool(tool.n, id)   // 'theory' | 'occasional' | 'regular'
+    }
     setTimeout(() => { nextCard() }, 700)
   }
 
@@ -1335,32 +1110,28 @@ export function ExploreView() {
         <ProgressDots tools={tools} idx={eIdx} />
       </div>
 
-      {/* ── Card stack — swipeable ─────────────────── */}
+      {/* ── Card stack ─────────────────────────────── */}
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
-        <SwipeWrap
-          enabled={face === 'synth'}      // only swipe on the synth face
-          onAction={handleAction}>
-          {/* Inner keyed wrapper — re-mounts on every card change so
-              the conveyor-belt enter animation runs. Direction follows
-              the last action so the new card visually replaces the old
-              from the opposite side. */}
-          <div key={eIdx}
-            style={{
-              animation: lastAction === 'skip'
-                ? 'card-from-right .35s cubic-bezier(.4,1.4,.5,1)'
-                : lastAction === 'practice'
-                ? 'card-from-left .35s cubic-bezier(.4,1.4,.5,1)'
-                : 'none',
-            }}>
-            <CardStack
-              tool={tool} gate={gate} face={face}
-              onDive={() => setFace('deep')}
-              onBack={() => setFace('synth')}
-              alreadyLevel={practiced[tool.n] || null}
-              alreadySkipped={skipped.includes(tool.n)}
-            />
-          </div>
-        </SwipeWrap>
+        {/* Inner keyed wrapper — re-mounts on every card change so the
+            conveyor-belt enter animation runs. Direction follows the
+            last action so the new card visually replaces the old from
+            the opposite side. */}
+        <div key={eIdx}
+          style={{
+            animation: lastAction === 'skip'
+              ? 'card-from-right .35s cubic-bezier(.4,1.4,.5,1)'
+              : lastAction === 'practice'
+              ? 'card-from-left .35s cubic-bezier(.4,1.4,.5,1)'
+              : 'none',
+          }}>
+          <CardStack
+            tool={tool} gate={gate} face={face}
+            onDive={() => setFace('deep')}
+            onBack={() => setFace('synth')}
+            alreadyLevel={practiced[tool.n] || null}
+            alreadySkipped={skipped.includes(tool.n)}
+          />
+        </div>
       </div>
       <style>{`
         @keyframes card-from-left {
@@ -1373,17 +1144,12 @@ export function ExploreView() {
         }
       `}</style>
 
-      {/* ── Actions (compact pills in one row) */}
-      <ActionButtons show={face !== 'cover'} onAction={handleAction} />
-
-      {/* ── Evaluation modal — opened on swipe-right or button-right */}
-      {pendingEval && (
-        <EvaluationModal
-          tool={tool}
-          onPick={commitEvaluation}
-          onCancel={() => setPendingEval(false)}
-        />
-      )}
+      {/* ── Single-tap rating row */}
+      <RatingRow
+        show={face !== 'cover'}
+        currentLevel={practiced[tool.n] || null}
+        currentSkipped={skipped.includes(tool.n)}
+        onPick={handleRating} />
     </div>
   )
 }

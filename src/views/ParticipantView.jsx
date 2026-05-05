@@ -7,7 +7,7 @@ import {
   scoreForGateDim,
 } from '../data/tools'
 import {
-  CardStack, SwipeWrap, EvaluationModal, ProgressDots, ActionButtons,
+  CardStack, ProgressDots, RatingRow,
   playTTS, stopTTS,
 } from './ExploreView'
 import { ScrappyButton, ScrappyChip } from '../components/ScrappyButton'
@@ -282,18 +282,17 @@ function DimPicker({ gate, sessionDim, evals, skipped, onPickDim, onFinish }) {
   )
 }
 
-// ── Tool deck — wraps the same CardStack/SwipeWrap/EvaluationModal
-//   used in the solo journey board so the workshop UX is identical.
+// ── Tool deck — same CardStack as the solo board, with the new
+//   single-tap RatingRow (Phase 2a). No swipe gestures, no modal.
 function ToolDeck({ tools, gate, evals, skipped, onPick, onSkip, onDone }) {
   // Resume at the first tool the user hasn't yet evaluated nor skipped.
   const startIdx = tools.findIndex(t => !evals[t.n] && !skipped.includes(t.n))
   const [idx, setIdx]               = useState(Math.max(0, startIdx))
   const [face, setFace]             = useState('synth')
-  const [pendingEval, setPendingEval] = useState(false)
   const [lastAction, setLastAction] = useState(null)
 
   // Reset card flip state when card changes
-  useEffect(() => { setFace('synth'); setPendingEval(false) }, [idx])
+  useEffect(() => { setFace('synth') }, [idx])
 
   // Done with this dim's deck → bubble back up
   if (idx >= tools.length || tools.length === 0) {
@@ -327,25 +326,17 @@ function ToolDeck({ tools, gate, evals, skipped, onPick, onSkip, onDone }) {
 
   const tool = tools[idx]
 
-  const handleAction = (action) => {
-    setLastAction(action)
-    if (action === 'practice') {
-      setPendingEval(true)
-      return
+  // Single-tap rating, same as the solo board. Banner flashes for
+  // ~700 ms before the deck advances so the user sees their choice
+  // land on the current card.
+  const handleRating = (id) => {
+    setLastAction(id === 'new' ? 'skip' : 'practice')
+    try { window.speechSynthesis?.cancel() } catch { /* noop */ }
+    if (id === 'new') {
+      onSkip(tool)
+    } else {
+      onPick(tool, id)   // 'theory' | 'occasional' | 'regular'
     }
-    if (action === 'skip') onSkip(tool)
-    try { window.speechSynthesis?.cancel() } catch { /* noop */ }
-    setIdx(i => i + 1)
-  }
-
-  // Three-beat commit (matches solo journey board): close modal first,
-  // write the level so the banner shows on the current card, then a
-  // ~700ms beat before advancing — keeps `lastAction = 'practice'` so
-  // the next card slides in from the left.
-  const commit = (level) => {
-    try { window.speechSynthesis?.cancel() } catch { /* noop */ }
-    setPendingEval(false)
-    onPick(tool, level)
     setTimeout(() => { setIdx(i => i + 1) }, 700)
   }
 
@@ -383,37 +374,30 @@ function ToolDeck({ tools, gate, evals, skipped, onPick, onSkip, onDone }) {
 
       {/* Card */}
       <div style={{ display: 'flex', justifyContent: 'center', marginTop: 14, marginBottom: 12 }}>
-        <SwipeWrap
-          enabled={face === 'synth'}
-          onAction={handleAction}>
-          <div key={idx}
-            style={{
-              animation: lastAction === 'skip'
-                ? 'card-from-right .35s cubic-bezier(.4,1.4,.5,1)'
-                : lastAction === 'practice'
-                ? 'card-from-left .35s cubic-bezier(.4,1.4,.5,1)'
-                : 'none',
-            }}>
-            <CardStack
-              tool={tool} gate={gate} face={face}
-              onDive={() => setFace('deep')}
-              onBack={() => setFace('synth')}
-              alreadyLevel={evals[tool.n] || null}
-              alreadySkipped={skipped.includes(tool.n)}
-            />
-          </div>
-        </SwipeWrap>
+        <div key={idx}
+          style={{
+            animation: lastAction === 'skip'
+              ? 'card-from-right .35s cubic-bezier(.4,1.4,.5,1)'
+              : lastAction === 'practice'
+              ? 'card-from-left .35s cubic-bezier(.4,1.4,.5,1)'
+              : 'none',
+          }}>
+          <CardStack
+            tool={tool} gate={gate} face={face}
+            onDive={() => setFace('deep')}
+            onBack={() => setFace('synth')}
+            alreadyLevel={evals[tool.n] || null}
+            alreadySkipped={skipped.includes(tool.n)}
+          />
+        </div>
       </div>
 
-      <ActionButtons show={face !== 'cover'} onAction={handleAction} />
+      <RatingRow
+        show={face !== 'cover'}
+        currentLevel={evals[tool.n] || null}
+        currentSkipped={skipped.includes(tool.n)}
+        onPick={handleRating} />
 
-      {pendingEval && (
-        <EvaluationModal
-          tool={tool}
-          onPick={commit}
-          onCancel={() => setPendingEval(false)}
-        />
-      )}
       <style>{`
         @keyframes card-from-left {
           from { transform: translateX(-110%) rotate(-4deg); opacity: 0; }
