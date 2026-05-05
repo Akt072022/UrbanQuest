@@ -30,6 +30,11 @@ const RIGHT_ZONES = [
   { threshold: 80,  label: 'TRIED IT',   hint: 'A few times',     color: '#F97316', value: 'occasional' },
   { threshold: 140, label: 'I RUN IT',   hint: 'Routine practice', color: '#10B981', value: 'regular' },
 ]
+// Single left-swipe drop target — mirror of one rightZones entry
+// for the "new to me" rating. Threshold matches the right side's
+// commitment band (140 px → top level) so left and right gestures
+// feel symmetric.
+const LEFT_ZONE = { threshold: 60, value: 'new' }
 
 function gateRgba(g, a) {
   // RGB triples mirror GATE_COL above so any rgba() helper stays in
@@ -1302,13 +1307,13 @@ export function ExploreView() {
           <SwipeWrap
             enabled={face !== 'cover'}
             onSwipe={(value) => {
-              // 'left' → 'new'; the right-zones already carry the
-              // exact level value ('theory' | 'occasional' | 'regular').
+              // Both leftZone and rightZones report their level
+              // value directly — no mapping needed.
               setPreviewLevel(null)
-              handleRating(value === 'left' ? 'new' : value)
+              handleRating(value)
             }}
             onZoneChange={setPreviewLevel}
-            leftHint="NEW TO ME" leftColor="#9C958A"
+            leftZone={LEFT_ZONE}
             rightZones={RIGHT_ZONES}>
             <CardStack
               tool={tool} gate={gate} face={face}

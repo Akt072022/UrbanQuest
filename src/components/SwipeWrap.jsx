@@ -41,7 +41,13 @@ export function SwipeWrap({
   leftHint  = null, leftColor  = '#9C958A',
   rightHint = null, rightColor = '#10B981',
   rightZones = null,
-  // Fires whenever the live right-zone changes during a drag (or
+  // Single drop-target for left swipes — mirror of one rightZones
+  // entry but on the negative axis. Shape: { threshold, value }.
+  // When set, |drag.x| past `threshold` lights up the matching
+  // value through onZoneChange (so a parent RatingRow can highlight
+  // the "new to me" button instead of showing a SwipeTag overlay).
+  leftZone = null,
+  // Fires whenever the live drop-target changes during a drag (or
   // returns null when no zone is active / the gesture ends).
   // Consumers use it to drive an external preview UI — typically
   // the RatingRow above the card, which highlights the matching
@@ -99,9 +105,15 @@ export function SwipeWrap({
         } else if (x > SWIPE_THRESH) {
           value = 'right'; off = { x: 700, y }
         }
-      } else if (x < -SWIPE_THRESH) {
-        // Left swipe — always binary
-        value = 'left'; off = { x: -700, y }
+      } else if (x < 0) {
+        // Left swipe — single drop-target if leftZone configured
+        // (parents use it to highlight a "new to me"-style button),
+        // otherwise the legacy binary 'left' commit.
+        if (leftZone && -x >= leftZone.threshold) {
+          value = leftZone.value; off = { x: -700, y }
+        } else if (!leftZone && x < -SWIPE_THRESH) {
+          value = 'left'; off = { x: -700, y }
+        }
       }
     }
 
@@ -139,23 +151,35 @@ export function SwipeWrap({
 
   const rot = Math.max(-12, Math.min(12, drag.x * 0.05))
   const dragging = startRef.current !== null
-  // Live-zone preview during right drag. Drives onZoneChange so the
-  // parent's RatingRow can highlight the matching button.
-  const liveZone = rightZones && drag.x > 20 && Math.abs(drag.x) > Math.abs(drag.y)
-    ? activeRightZone(rightZones, drag.x)
-    : null
+  // Live drop-target during a horizontal drag. Right side picks from
+  // rightZones; left side activates leftZone if configured. Drives
+  // onZoneChange so the parent's RatingRow can highlight the
+  // matching button mid-gesture.
+  const horizontalDrag = Math.abs(drag.x) > Math.abs(drag.y)
+  const liveValue = (() => {
+    if (!horizontalDrag) return null
+    if (drag.x > 20 && rightZones) {
+      const z = activeRightZone(rightZones, drag.x)
+      return z ? z.value : null
+    }
+    if (drag.x < 0 && leftZone && -drag.x >= leftZone.threshold) {
+      return leftZone.value
+    }
+    return null
+  })()
   // Notify parent on every change. Stored in a ref so we don't fire
   // for the same value across consecutive renders.
   const lastZoneRef = useRef(null)
   useEffect(() => {
-    const next = liveZone ? liveZone.value : null
-    if (lastZoneRef.current !== next) {
-      lastZoneRef.current = next
-      onZoneChange?.(next)
+    if (lastZoneRef.current !== liveValue) {
+      lastZoneRef.current = liveValue
+      onZoneChange?.(liveValue)
     }
   })
   const showLegacyRight = !rightZones && drag.x > 30 && Math.abs(drag.x) > Math.abs(drag.y)
-  const showLeft        = drag.x < -30 && Math.abs(drag.x) > Math.abs(drag.y)
+  // Hide the left SwipeTag overlay when leftZone is configured —
+  // the parent renders the preview as a highlighted button instead.
+  const showLeft        = !leftZone && drag.x < -30 && Math.abs(drag.x) > Math.abs(drag.y)
 
   return (
     <div

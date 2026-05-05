@@ -31,6 +31,7 @@ const TRIAGE_RIGHT_ZONES = [
   { threshold: 80,  label: 'TRIED IT',   hint: 'A few times',     color: '#F97316', value: 'occasional' },
   { threshold: 140, label: 'I RUN IT',   hint: 'Routine practice', color: '#10B981', value: 'regular' },
 ]
+const TRIAGE_LEFT_ZONE = { threshold: 60, value: 'new' }
 
 // Map skill level → legacy triage_card payload so the existing
 // TriageHeatmap on the facilitator side still works without changes.
@@ -417,10 +418,10 @@ function ToolDeck({ tools, gate, evals, skipped, onPick, onSkip, onDone }) {
             enabled={face !== 'cover'}
             onSwipe={(value) => {
               setPreviewLevel(null)
-              handleRating(value === 'left' ? 'new' : value)
+              handleRating(value)
             }}
             onZoneChange={setPreviewLevel}
-            leftHint="NEW TO ME" leftColor="#9C958A"
+            leftZone={TRIAGE_LEFT_ZONE}
             rightZones={TRIAGE_RIGHT_ZONES}>
             <CardStack
               tool={tool} gate={gate} face={face}
