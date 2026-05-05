@@ -940,6 +940,37 @@ function Section({ label, emoji, children }) {
 // positioned faces inside fit naturally.
 const CARD_ASPECT = '340 / 540'
 
+// Decorative card behind the active one — gives the deck weight so
+// the user feels how many are left without having to read a counter.
+// Two ghost cards fan slightly to the right + down with diminishing
+// opacity. Pointer-events disabled so they never intercept taps; the
+// active SwipeWrap sits above them at z-index 1.
+export function GhostCard({ depth = 1 }) {
+  const offX     = depth * 8
+  const offY     = depth * 6
+  const rot      = depth * 1.4
+  const scale    = 1 - depth * 0.025
+  const opacity  = 1 - depth * 0.18
+  return (
+    <div aria-hidden="true" style={{
+      position: 'absolute',
+      top: 0,
+      left: '50%',
+      width:  'min(95vw, 460px)',
+      aspectRatio: CARD_ASPECT,
+      background:   '#FFFDF8',
+      border:       `2.5px solid ${INK}`,
+      borderRadius: 18,
+      boxShadow:    `${depth * 1.5}px ${depth * 2}px 0 ${INK}33`,
+      transform: `translate(calc(-50% + ${offX}px), ${offY}px) rotate(${rot}deg) scale(${scale})`,
+      transformOrigin: 'center center',
+      opacity,
+      pointerEvents: 'none',
+      zIndex: -depth,
+    }} />
+  )
+}
+
 export function CardStack({ tool, gate, face, onDive, onBack, alreadyLevel, alreadySkipped }) {
   const flipped = face !== 'cover'
   return (
@@ -1206,10 +1237,21 @@ export function ExploreView() {
       </div>
 
       {/* ── Card stack — swipe shortcuts: left → "New to me", right →
-              "I run it". Buttons below remain the precision affordance. */}
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
+              drag-to-rate (3 zones). The decorative ghost cards
+              behind the active one give the deck weight: you can
+              feel how many are left. They sit slightly to the right
+              and below, fanning into a small stack. ─────────────── */}
+      <div style={{
+        position: 'relative',
+        display: 'flex', justifyContent: 'center',
+        marginBottom: 14,
+      }}>
+        {tools.length - eIdx > 2 && <GhostCard depth={2} />}
+        {tools.length - eIdx > 1 && <GhostCard depth={1} />}
         <div key={eIdx}
           style={{
+            position: 'relative',
+            zIndex: 1,
             // Animation direction follows the user's intent:
             //   • next / skip      → new card slides IN from the right
             //   • prev / practice  → new card slides IN from the left

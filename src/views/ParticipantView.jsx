@@ -7,7 +7,7 @@ import {
   scoreForGateDim,
 } from '../data/tools'
 import {
-  CardStack, ProgressDots, RatingRow,
+  CardStack, ProgressDots, RatingRow, GhostCard,
   playTTS, stopTTS,
 } from './ExploreView'
 import { ScrappyButton, ScrappyChip } from '../components/ScrappyButton'
@@ -382,10 +382,19 @@ function ToolDeck({ tools, gate, evals, skipped, onPick, onSkip, onDone }) {
       </div>
       <ProgressDots tools={tools} idx={idx} />
 
-      {/* Card — swipe shortcuts: left → "New to me", right → "I run it". */}
-      <div style={{ display: 'flex', justifyContent: 'center', marginTop: 14, marginBottom: 12 }}>
+      {/* Card — swipe shortcuts: left → "New to me", right → drag-to-rate.
+          Ghost cards behind give the deck weight. */}
+      <div style={{
+        position: 'relative',
+        display: 'flex', justifyContent: 'center',
+        marginTop: 14, marginBottom: 12,
+      }}>
+        {tools.length - idx > 2 && <GhostCard depth={2} />}
+        {tools.length - idx > 1 && <GhostCard depth={1} />}
         <div key={idx}
           style={{
+            position: 'relative',
+            zIndex: 1,
             animation: lastAction === 'skip'
               ? 'card-from-right .35s cubic-bezier(.4,1.4,.5,1)'
               : lastAction === 'practice'
@@ -830,9 +839,15 @@ function FitDeck({ tools, gate, project, fits, evals, onPick, onDone }) {
           left → "Not for it" (skip), right → "Essential". The four
           buttons below remain the explicit/precision affordance. */}
       <div style={{
-        display: 'flex', justifyContent: 'center', marginTop: 14, marginBottom: 12,
+        position: 'relative',
+        display: 'flex', justifyContent: 'center',
+        marginTop: 14, marginBottom: 12,
       }}>
+        {tools.length - idx > 2 && <GhostCard depth={2} />}
+        {tools.length - idx > 1 && <GhostCard depth={1} />}
         <div key={idx} style={{
+          position: 'relative',
+          zIndex: 1,
           animation: lastAction === 'practice'
             ? 'card-from-left .35s cubic-bezier(.4,1.4,.5,1)' : 'none',
         }}>
