@@ -43,11 +43,15 @@ function AppInner() {
   //   • Explore (cards)        → 560 (so the bigger desktop card fits)
   //   • Profile (badges grid)  → 720 (auto-fill grid likes a bit of room)
   //   • ProjectFit (AI shortlist) → 560 (cards read better at this width)
-  //   • Map / Welcome          → 480 (path geometry is fixed; form is narrow)
+  //   • Map                    → 1280 on wide screens for the horizontal
+  //                              path; falls back to mobile width on
+  //                              narrow viewports via the inner layout.
+  //   • Welcome                → 480 (form is narrow)
   const maxW = (view === 'dashboard' || view === 'facilitator') ? 960
     : view === 'explore'                                          ? 560
     : view === 'profile'                                          ? 720
     : view === 'projectFit'                                       ? 560
+    : view === 'map'                                              ? 1280
     : 480
 
   return (

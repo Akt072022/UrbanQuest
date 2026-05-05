@@ -21,25 +21,36 @@ const CORAL   = '#FB7185'
 const GATE_COL = ['', '#F97316', '#3B82F6', '#10B981', '#8B5CF6']
 
 // ── Layout — each gate is a ROSETTE, not a path segment ─────
-// • Each gate sits centered on the page width.
+// • Each gate sits on the spine (vertical on mobile, horizontal on
+//   desktop / tablet).
 // • Its 6 dimensions sit on a circle around it at NODE_R_MAX radius,
-//   spaced 60° apart (clock positions 1, 3, 5, 7, 9, 11 — top and
-//   bottom are intentionally left empty so the vertical connector
-//   between gates threads through cleanly).
+//   spaced 60° apart. The angles are rotated by orientation so the
+//   spine threads cleanly through the open clock positions:
+//     - vertical layout   → dims at 1, 3, 5, 7, 9, 11; spine at 12+6
+//     - horizontal layout → dims at 12, 2, 4, 6, 8, 10; spine at 3+9
 // • The gate's openness drives the ring's radius: closed = 0 (nodes
 //   collapsed onto the milestone, invisible), open = NODE_R_MAX.
-// • Vertical gap between gates compresses when adjacent gates close.
-const PATH_W      = 360
+// • Spine gap between gates compresses when adjacent gates close.
+const PATH_W      = 360             // canvas width in vertical layout
 const CX          = PATH_W / 2
 const TOP         = 60
-const NODE_R_MAX  = 150     // distance from gate centre to dim-node centre
-const GATE_GAP    = 70      // vertical gap between rosette edges
-const MILESTONE_HALF = 52   // half of the gate (104 px) milestone square
+const NODE_R_MAX  = 150
+const GATE_GAP    = 70
+const MILESTONE_HALF = 52
+// Horizontal layout: per-gate canvas height + side padding. CY_H is
+// the constant Y of every gate's centre when laid out horizontally.
+const PATH_H      = 360
+const CY_H        = PATH_H / 2
+const LEFT_PAD    = 60
 
-// 6 dims around the gate — clock positions {1, 3, 5, 7, 9, 11}.
-// Index in DIMENSIONS array → angle (degrees from 12 o'clock, clockwise).
-const DIM_ANGLES_DEG = [30, 90, 150, 210, 270, 330]
-const DIM_ANGLES = DIM_ANGLES_DEG.map(a => a * Math.PI / 180)
+// Two angle sets — one per orientation, rotated by 30° relative to
+// each other so the spine never collides with a dim node.
+const DIM_ANGLES_DEG_V = [30, 90, 150, 210, 270, 330]
+const DIM_ANGLES_DEG_H = [0, 60, 120, 180, 240, 300]
+const DIM_ANGLES_V = DIM_ANGLES_DEG_V.map(a => a * Math.PI / 180)
+const DIM_ANGLES_H = DIM_ANGLES_DEG_H.map(a => a * Math.PI / 180)
+// Default — kept under the legacy name so any external import resolves.
+const DIM_ANGLES = DIM_ANGLES_V
 
 // Rosette layout reserves ICON_HALF for step icons, LABEL_BLOCK for
 // the dim names + counters under each icon (only when the rosette is
@@ -49,34 +60,54 @@ const ICON_HALF      = 40
 const LABEL_BLOCK    = 32
 const TITLE_BLOCK    = 56
 
-function buildGates(opennessByGate) {
+function buildGates(opennessByGate, orientation = 'v') {
+  const isH = orientation === 'h'
   const gates = []
-  let curY = TOP
+  let cur = isH ? LEFT_PAD : TOP
   for (let g = 1; g <= 4; g++) {
     const o    = opennessByGate ? (opennessByGate[g - 1] ?? 0) : 1
     const ovis = Math.max(0, o)              // never negative
     const oc   = Math.min(1, ovis)           // clamp for layout (no overshoot)
     const radius = NODE_R_MAX * ovis         // visual position keeps overshoot
-    // Top reach: from gate centre to topmost step-icon edge (or just
-    // the milestone half-height when the rosette is collapsed).
-    const halfTop = Math.max(MILESTONE_HALF + 8, NODE_R_MAX * oc * 0.866 + ICON_HALF)
-    // Bottom reach: same as top + labels under the bottom icons (only
-    // when the rosette is open) + the title pill block (always shown).
-    const halfBot = halfTop + oc * LABEL_BLOCK + TITLE_BLOCK
+    // Spine reach: from gate centre to the outer edge of the dim icons
+    // along the spine direction. Vertical spine: dims at 30°/150° → the
+    // top/bottom extent is radius * cos(30°) = 0.866 r. Horizontal spine:
+    // dims at 60°/120° → the left/right extent is radius * sin(60°) =
+    // 0.866 r. Same factor either way, because the angle sets are
+    // rotated mirror images.
+    const halfStart = Math.max(MILESTONE_HALF + 8, NODE_R_MAX * oc * 0.866 + ICON_HALF)
+    // Perpendicular reach (drawn outward from the spine): same as
+    // halfStart + labels under the icons (only when rosette is open) +
+    // title pill (vertical layout only — in horizontal it sits inside
+    // the canvas because there's room).
+    const halfEnd = halfStart + oc * LABEL_BLOCK + (isH ? 0 : TITLE_BLOCK)
 
     if (g === 1) {
-      curY += halfTop + 20
+      cur += halfStart + 20
     } else {
-      curY += gates[g - 2].halfBot + GATE_GAP + halfTop
+      cur += gates[g - 2].halfStart + GATE_GAP + halfStart
     }
 
-    gates.push({ g, cx: CX, cy: curY, radius, halfTop, halfBot })
+    if (isH) {
+      gates.push({
+        g, cx: cur, cy: CY_H, radius,
+        halfStart, halfEnd, halfTop: halfStart, halfBot: halfStart,
+        halfLeft: halfStart, halfRight: halfStart,
+      })
+    } else {
+      gates.push({
+        g, cx: CX, cy: cur, radius,
+        halfStart, halfEnd, halfTop: halfStart, halfBot: halfEnd,
+        halfLeft: halfStart, halfRight: halfStart,
+      })
+    }
   }
   return gates
 }
 
-function buildStops(gates, practiced) {
+function buildStops(gates, practiced, orientation = 'v') {
   const stops = []
+  const angles = orientation === 'h' ? DIM_ANGLES_H : DIM_ANGLES_V
   for (const gate of gates) {
     const gateUnlocked = isUnlocked(gate.g, practiced)
     const gateStarted  = practicedForGate(gate.g, practiced) > 0
@@ -86,7 +117,7 @@ function buildStops(gates, practiced) {
     const gateLockedVisual = !gateUnlocked && !gateStarted
 
     DIMENSIONS.forEach((dim, i) => {
-      const a = DIM_ANGLES[i]
+      const a = angles[i]
       const nx = gate.cx + gate.radius * Math.sin(a)
       const ny = gate.cy - gate.radius * Math.cos(a)
       const total = toolsForGateDim(gate.g, dim.id).length
@@ -128,11 +159,17 @@ function buildStops(gates, practiced) {
   return stops
 }
 
-function buildPathD(gates) {
+function buildPathD(gates, orientation = 'v') {
   if (!gates.length) return ''
-  // Spine connects all gate CENTRES — it begins right inside the first
-  // gate's hexagon (Proof of Impact) and ends at the last one. Each
-  // hexagon's fill covers the segment that runs behind it.
+  // Spine connects all gate CENTRES. Vertical: a single line at x=CX
+  // running top-to-bottom. Horizontal: a single line at y=CY_H running
+  // left-to-right. Each hexagon's fill covers the segment that runs
+  // behind it either way.
+  if (orientation === 'h') {
+    const left  = gates[0].cx
+    const right = gates[gates.length - 1].cx
+    return `M ${left.toFixed(1)} ${CY_H} L ${right.toFixed(1)} ${CY_H}`
+  }
   const top = gates[0].cy
   const bot = gates[gates.length - 1].cy
   return `M ${CX} ${top.toFixed(1)} L ${CX} ${bot.toFixed(1)}`
@@ -200,15 +237,21 @@ function findActiveIdx(stops) {
 }
 
 // ──────────────────────────────────────────────────────────────
-// The spine — single vertical line linking all 4 gate rosettes
+// The spine — single line linking all 4 gate rosettes. Vertical
+// on mobile (full width PATH_W, height = totalSize); horizontal on
+// desktop/tablet (full width totalSize, height PATH_H).
 // ──────────────────────────────────────────────────────────────
-function RibbonPath({ gates, totalHeight }) {
-  const d = buildPathD(gates)
+function RibbonPath({ gates, totalSize, orientation = 'v' }) {
+  const d = buildPathD(gates, orientation)
+  const isH = orientation === 'h'
   return (
-    <svg width={PATH_W} height={totalHeight}
+    <svg
+      width={isH ? totalSize : PATH_W}
+      height={isH ? PATH_H : totalSize}
       style={{
-        position: 'absolute', top: 0, left: '50%',
-        transform: 'translateX(-50%)',
+        position: 'absolute', top: 0,
+        left: isH ? 0 : '50%',
+        transform: isH ? 'none' : 'translateX(-50%)',
         zIndex: 0, pointerEvents: 'none',
         overflow: 'visible',
       }}>
@@ -216,6 +259,29 @@ function RibbonPath({ gates, totalHeight }) {
         strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
+}
+
+// ──────────────────────────────────────────────────────────────
+// Viewport detection — switches the map between vertical (default)
+// and horizontal at a 900 px breakpoint. We use JS rather than a
+// pure CSS @media query because the gate / dim / spine positions
+// are computed in JS with absolute positioning, so the layout
+// function itself needs to know which axis it's rendering on.
+// ──────────────────────────────────────────────────────────────
+const HORIZONTAL_BREAKPOINT = 900
+function useMapOrientation() {
+  const [orientation, setOrientation] = useState(() => {
+    if (typeof window === 'undefined') return 'v'
+    return window.innerWidth >= HORIZONTAL_BREAKPOINT ? 'h' : 'v'
+  })
+  useEffect(() => {
+    const onResize = () => {
+      setOrientation(window.innerWidth >= HORIZONTAL_BREAKPOINT ? 'h' : 'v')
+    }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+  return orientation
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -476,11 +542,21 @@ export function MapView() {
   const tpPct = Math.round((tp / total) * 100)
   const tg = [1,2,3,4].filter(g => practicedForGate(g, practiced) === toolsForGate(g).length).length
 
+  // Layout orientation — vertical on mobile, horizontal on desktop /
+  // tablet. The hook re-renders on viewport resize.
+  const orientation = useMapOrientation()
+  const isH = orientation === 'h'
+
   // Static (fully-open) snapshot — used only to identify the active gate.
   // Active gate logic depends on completion data, not positions, so the
-  // snapshot is independent of the running animation.
-  const staticGates = useMemo(() => buildGates([1, 1, 1, 1]), [])
-  const staticStops = useMemo(() => buildStops(staticGates, practiced), [staticGates, practiced])
+  // snapshot is independent of the running animation. We still compute
+  // it in the current orientation so x/y positions match the live render
+  // (matters for the auto-scroll-to-active effect below).
+  const staticGates = useMemo(() => buildGates([1, 1, 1, 1], orientation), [orientation])
+  const staticStops = useMemo(
+    () => buildStops(staticGates, practiced, orientation),
+    [staticGates, practiced, orientation],
+  )
   const activeIdx   = useMemo(() => findActiveIdx(staticStops), [staticStops])
   const activeGate  = staticStops[activeIdx]?.gate ?? 1
 
@@ -508,17 +584,27 @@ export function MapView() {
 
   const opennessByGate = useGateSprings(openGate)
 
-  // Live gates: each gate's radius + halfH + node positions all scale
-  // with openness, so closed gates physically pull toward each other.
-  const gatesAnim = buildGates(opennessByGate)
-  const stops     = buildStops(gatesAnim, practiced)
+  // Live gates: each gate's radius + half-extents + node positions all
+  // scale with openness, so closed gates physically pull toward each
+  // other along whichever axis the spine runs.
+  const gatesAnim = buildGates(opennessByGate, orientation)
+  const stops     = buildStops(gatesAnim, practiced, orientation)
 
-  const lastGate    = gatesAnim[gatesAnim.length - 1]
-  const totalHeight = lastGate.cy + lastGate.halfBot + 40
+  const lastGate = gatesAnim[gatesAnim.length - 1]
+  // Total span along the spine direction. In vertical layout the
+  // canvas is PATH_W wide and totalSize tall; in horizontal it's
+  // totalSize wide and PATH_H tall.
+  const totalSize = isH
+    ? lastGate.cx + lastGate.halfStart + 40
+    : lastGate.cy + lastGate.halfBot + 40
 
-  // Auto-scroll the parent to the active stop on first render
+  // Auto-scroll the parent to the active stop on first render. The
+  // axis to scroll on depends on orientation. The vertical case keeps
+  // its prior behaviour; the horizontal case skips auto-scroll on
+  // page-load because we expect the whole strip to fit.
   const pathRef = useRef(null)
   useEffect(() => {
+    if (isH) return
     if (pathRef.current && stops[activeIdx]) {
       const target = pathRef.current.offsetTop + stops[activeIdx].y - 240
       const scroller = pathRef.current.closest('div[style*="overflow"]') || window
@@ -636,24 +722,33 @@ export function MapView() {
         </div>
       </div>
 
-      {/* ── The path + rosettes on it ────────────────────────────── */}
+      {/* ── The path + rosettes on it. On mobile the canvas is
+              PATH_W wide and grows tall. On desktop / tablet it's
+              PATH_H tall and grows wide; the outer container scrolls
+              horizontally if the strip overflows the viewport so we
+              never clip the rightmost gate. ─────────────────────── */}
       <div ref={pathRef}
         style={{
           position: 'relative',
           marginLeft: '-18px', marginRight: '-18px',
           padding: '0 18px',
+          overflowX: isH ? 'auto' : 'visible',
+          overflowY: 'visible',
         }}>
         <div style={{
           position: 'relative',
-          width: '100%',
-          height: totalHeight,
+          width: isH ? totalSize : '100%',
+          height: isH ? PATH_H : totalSize,
+          margin: isH ? '0 auto' : 0,
         }}>
-          <RibbonPath gates={gatesAnim} totalHeight={totalHeight} />
+          <RibbonPath gates={gatesAnim} totalSize={totalSize} orientation={orientation} />
 
           <div style={{
-            position: 'absolute', top: 0, left: '50%',
-            transform: 'translateX(-50%)',
-            width: PATH_W, height: totalHeight,
+            position: 'absolute', top: 0,
+            left: isH ? 0 : '50%',
+            transform: isH ? 'none' : 'translateX(-50%)',
+            width:  isH ? totalSize : PATH_W,
+            height: isH ? PATH_H : totalSize,
           }}>
             {stops.map((stop, i) => {
               if (stop.kind === 'milestone') {
