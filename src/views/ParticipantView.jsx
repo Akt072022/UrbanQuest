@@ -23,6 +23,15 @@ const GATE_COL = ['','#F97316','#3B82F6','#10B981','#8B5CF6']
 
 const FONT_HEAD = 'Barlow Condensed, Impact, sans-serif'
 
+// Triage right-swipe rating zones — kept in sync with the same set
+// used by the personal Explore deck so the gesture means the same
+// thing whether the user is rating solo or in a workshop.
+const TRIAGE_RIGHT_ZONES = [
+  { threshold: 40,  label: 'READ ABOUT', color: '#5A5550', value: 'theory' },
+  { threshold: 110, label: 'TRIED IT',   color: '#F97316', value: 'occasional' },
+  { threshold: 190, label: 'I RUN IT',   color: '#10B981', value: 'regular' },
+]
+
 // Map skill level → legacy triage_card payload so the existing
 // TriageHeatmap on the facilitator side still works without changes.
 const LEVEL_TO_PAYLOAD = {
@@ -385,9 +394,11 @@ function ToolDeck({ tools, gate, evals, skipped, onPick, onSkip, onDone }) {
           }}>
           <SwipeWrap
             enabled={face !== 'cover'}
-            onSwipe={(dir) => handleRating(dir === 'right' ? 'regular' : 'new')}
+            onSwipe={(value) => {
+              handleRating(value === 'left' ? 'new' : value)
+            }}
             leftHint="NEW TO ME" leftColor="#9C958A"
-            rightHint="I RUN IT"  rightColor="#10B981">
+            rightZones={TRIAGE_RIGHT_ZONES}>
             <CardStack
               tool={tool} gate={gate} face={face}
               onDive={() => setFace('deep')}
@@ -406,7 +417,7 @@ function ToolDeck({ tools, gate, evals, skipped, onPick, onSkip, onDone }) {
             color: '#9C958A', letterSpacing: '.06em',
             textTransform: 'uppercase',
           }}>
-            ← Swipe new · swipe known → · or tap below
+            ← Swipe new · drag right to rate · or tap below
           </div>
         </div>
       )}

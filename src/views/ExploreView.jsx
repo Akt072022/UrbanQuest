@@ -19,6 +19,18 @@ const TEAL = '#14B8A6'
 const CORAL = '#FB7185'
 const GATE_COL = ['','#F97316','#3B82F6','#10B981','#8B5CF6']
 
+// Right-swipe rating zones — the further the user drags, the higher
+// the commitment level. Thresholds tuned for ~280-360 px wide cards
+// on mobile so each band feels distinct without forcing the user to
+// drag past the screen edge for the top level. The first threshold
+// (40 px) is just past the LOCK_PX dead-zone, so any meaningful
+// horizontal motion immediately surfaces the "READ ABOUT" pill.
+const RIGHT_ZONES = [
+  { threshold: 40,  label: 'READ ABOUT', color: '#5A5550', value: 'theory' },
+  { threshold: 110, label: 'TRIED IT',   color: '#F97316', value: 'occasional' },
+  { threshold: 190, label: 'I RUN IT',   color: '#10B981', value: 'regular' },
+]
+
 function gateRgba(g, a) {
   // RGB triples mirror GATE_COL above so any rgba() helper stays in
   // sync with the headline gate colours.
@@ -1210,9 +1222,13 @@ export function ExploreView() {
           }}>
           <SwipeWrap
             enabled={face !== 'cover'}
-            onSwipe={(dir) => handleRating(dir === 'right' ? 'regular' : 'new')}
+            onSwipe={(value) => {
+              // 'left' → 'new'; the right-zones already carry the
+              // exact level value ('theory' | 'occasional' | 'regular').
+              handleRating(value === 'left' ? 'new' : value)
+            }}
             leftHint="NEW TO ME" leftColor="#9C958A"
-            rightHint="I RUN IT"  rightColor="#10B981">
+            rightZones={RIGHT_ZONES}>
             <CardStack
               tool={tool} gate={gate} face={face}
               onDive={() => setFace('deep')}
@@ -1234,9 +1250,9 @@ export function ExploreView() {
         }
       `}</style>
 
-      {/* ── Action prompt + single-tap rating row. The hint above the
-              buttons names both the swipe shortcut and the tap option
-              so the affordance isn't invisible. ──────────────────── */}
+      {/* ── Action prompt + single-tap rating row. Names both the
+              swipe shortcut and the tap option so the affordance
+              isn't invisible. ──────────────────────────────────── */}
       {face !== 'cover' && (
         <div style={{
           textAlign: 'center', marginBottom: 8,
@@ -1247,7 +1263,7 @@ export function ExploreView() {
             color: '#9C958A', letterSpacing: '.06em',
             textTransform: 'uppercase',
           }}>
-            ← Swipe new · swipe known → · or tap below
+            ← Swipe new · drag right to rate · or tap below
           </div>
         </div>
       )}
