@@ -1044,9 +1044,20 @@ export function ParticipantView({ roomId }) {
     onStatus(ch, (status, err) => {
       if (status === 'SUBSCRIBED') {
         setChanStatus('live')
-        // Announce ourselves once the channel is actually live so
-        // the facilitator can resync us with the current state.
-        sendMsg(ch, { type: 'pong', payload: { participantId: PARTICIPANT_ID } })
+        // Catch-up burst: a single pong can be dropped during the
+        // first second of a fresh broadcast channel. Send 4 pongs
+        // staggered over the first 6 s so the facilitator gets one,
+        // triggers broadcastState, and the participant reaches the
+        // active view fast (worst case ~6 s instead of 12 s).
+        const burst = [0, 1500, 3000, 4500]
+        for (const delay of burst) {
+          setTimeout(() => {
+            if (channelRef.current) {
+              sendMsg(channelRef.current,
+                { type: 'pong', payload: { participantId: PARTICIPANT_ID } })
+            }
+          }, delay)
+        }
       } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
         setChanStatus('error')
         if (err) console.warn('[participant] channel error:', err)

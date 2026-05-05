@@ -402,7 +402,9 @@ export function FacilitatorView() {
         // rebroadcast — cheap insurance.
         const isNew = !seenIdsRef.current.has(id)
         seenIdsRef.current.add(id)
-        if (stateRef.current.triageActive || stateRef.current.questionActive) {
+        if (stateRef.current.triageActive
+         || stateRef.current.questionActive
+         || stateRef.current.methodfitActive) {
           broadcastState()
         }
       }
@@ -466,15 +468,18 @@ export function FacilitatorView() {
     })
   }
 
-  // Heartbeat — every 8 s, rebroadcast the current state if anything
-  // is active. Catches participants whose channel briefly dropped.
+  // Heartbeat — every 3 s, rebroadcast the current state if any
+  // mode is active. Tightened from 8 s because participants who
+  // joined late or had a brief drop felt the wait.
   useEffect(() => {
     if (!started) return
     const id = setInterval(() => {
-      if (stateRef.current.triageActive || stateRef.current.questionActive) {
+      if (stateRef.current.triageActive
+       || stateRef.current.questionActive
+       || stateRef.current.methodfitActive) {
         broadcastState()
       }
-    }, 8000)
+    }, 3000)
     return () => clearInterval(id)
   }, [started])
 
