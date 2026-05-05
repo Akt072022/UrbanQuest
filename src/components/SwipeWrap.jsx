@@ -22,7 +22,6 @@
 //     mouse-event handlers got stuck on desktop releases off-card.
 //   • Direction-locked: vertical drag falls through to native scroll.
 import { useRef, useState, useEffect } from 'react'
-import { createPortal } from 'react-dom'
 
 const SWIPE_THRESH = 90
 const LOCK_PX      = 10
@@ -42,6 +41,12 @@ export function SwipeWrap({
   leftHint  = null, leftColor  = '#9C958A',
   rightHint = null, rightColor = '#10B981',
   rightZones = null,
+  // Fires whenever the live right-zone changes during a drag (or
+  // returns null when no zone is active / the gesture ends).
+  // Consumers use it to drive an external preview UI — typically
+  // the RatingRow above the card, which highlights the matching
+  // button instead of relying on a separate drop-target strip.
+  onZoneChange = null,
 }) {
   const [drag, setDrag] = useState({ x: 0, y: 0, exiting: false })
   const startRef     = useRef(null)
@@ -134,11 +139,21 @@ export function SwipeWrap({
 
   const rot = Math.max(-12, Math.min(12, drag.x * 0.05))
   const dragging = startRef.current !== null
-  // Live-zone preview during right drag — this drives the floating
-  // "ghost zones" stack on the right side and the active SwipeTag.
-  const liveZone = rightZones && drag.x > 30 && Math.abs(drag.x) > Math.abs(drag.y)
+  // Live-zone preview during right drag. Drives onZoneChange so the
+  // parent's RatingRow can highlight the matching button.
+  const liveZone = rightZones && drag.x > 20 && Math.abs(drag.x) > Math.abs(drag.y)
     ? activeRightZone(rightZones, drag.x)
     : null
+  // Notify parent on every change. Stored in a ref so we don't fire
+  // for the same value across consecutive renders.
+  const lastZoneRef = useRef(null)
+  useEffect(() => {
+    const next = liveZone ? liveZone.value : null
+    if (lastZoneRef.current !== next) {
+      lastZoneRef.current = next
+      onZoneChange?.(next)
+    }
+  })
   const showLegacyRight = !rightZones && drag.x > 30 && Math.abs(drag.x) > Math.abs(drag.y)
   const showLeft        = drag.x < -30 && Math.abs(drag.x) > Math.abs(drag.y)
 
@@ -159,71 +174,10 @@ export function SwipeWrap({
       }}>
       {children}
 
-      {/* Multi-zone preview — render the whole stack of right zones as
-          a HORIZONTAL row of drop-target pills, fixed to the bottom
-          of the viewport so they're out of the way of the card and
-          its surrounding UI. Horizontal layout reinforces that
-          horizontal drag distance is what switches zones; generous
-          gap between pills makes each band visually distinct. ── */}
-      {rightZones && drag.x > 20 && Math.abs(drag.x) > Math.abs(drag.y) && (
-        createPortal(
-          <div style={{
-            position: 'fixed',
-            left: 16, right: 16,
-            bottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)',
-            display: 'flex', flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'stretch',
-            gap: 16,
-            pointerEvents: 'none',
-            zIndex: 9999,
-          }}>
-            {rightZones.map((z) => {
-              const active = liveZone && liveZone.value === z.value
-              return (
-                <div key={z.value} style={{
-                  flex: 1,
-                  padding: active ? '12px 14px' : '9px 12px',
-                  borderRadius: 14,
-                  border: `${active ? 3 : 2.5}px solid ${z.color}`,
-                  background: active ? z.color : 'rgba(255,255,255,.97)',
-                  color: active ? '#FFFFFF' : z.color,
-                  fontFamily: 'Barlow Condensed, Impact, sans-serif',
-                  letterSpacing: '.04em', textTransform: 'uppercase',
-                  boxShadow: active
-                    ? '3px 3px 0 #1C2530'
-                    : '2px 2px 0 rgba(28,37,48,0.18)',
-                  transform: active ? 'translate(-1px, -1px) scale(1.04)' : 'none',
-                  transition: 'all .1s',
-                  textAlign: 'center',
-                }}>
-                  <div style={{
-                    fontWeight: 900,
-                    fontSize: active ? 15 : 13,
-                    lineHeight: 1.05,
-                  }}>{z.label}</div>
-                  {z.hint && (
-                    <div style={{
-                      fontFamily: '-apple-system, Helvetica Neue, sans-serif',
-                      fontWeight: 600,
-                      fontSize: 11,
-                      marginTop: 4,
-                      letterSpacing: 0,
-                      textTransform: 'none',
-                      opacity: active ? 0.95 : 0.78,
-                      color: active ? '#FFFFFF' : '#5A5550',
-                      lineHeight: 1.2,
-                    }}>{z.hint}</div>
-                  )}
-                </div>
-              )
-            })}
-          </div>,
-          document.body,
-        )
-      )}
-
-      {/* Legacy single-zone right tag (only when rightZones not set). */}
+      {/* Right-zone preview is now rendered EXTERNALLY by the parent
+          (typically RatingRow above the card highlighting the matching
+          button) via the onZoneChange callback. SwipeWrap itself only
+          paints a left-side "skip" tag; right-side feedback flows up. */}
       {showLegacyRight && rightHint && (
         <SwipeTag color={rightColor} pos="left">{rightHint}</SwipeTag>
       )}

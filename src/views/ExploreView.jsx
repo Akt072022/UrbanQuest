@@ -1036,7 +1036,13 @@ function NavArrow({ dir, onClick, disabled }) {
 //
 // Hovering the active one is highlighted so the user can see their
 // previous answer when revisiting a card.
-export function RatingRow({ show, currentLevel, currentSkipped, onPick }) {
+export function RatingRow({
+  show, currentLevel, currentSkipped, onPick,
+  // The right-swipe drop-target preview, so the user gets feedback
+  // on which button they're about to commit to without a separate
+  // floating strip. Mirrors the values produced by RIGHT_ZONES.
+  previewLevel = null,
+}) {
   const OPTIONS = [
     { id: 'new',        label: 'New to me',  short: 'NEW',
       hint: "Haven't met it",        col: '#9C958A' },
@@ -1047,7 +1053,7 @@ export function RatingRow({ show, currentLevel, currentSkipped, onPick }) {
     { id: 'regular',    label: 'I run it',   short: 'RUN',
       hint: 'Routine practice',      col: '#10B981' },
   ]
-  const activeId = currentSkipped ? 'new' : (currentLevel || null)
+  const committedId = currentSkipped ? 'new' : (currentLevel || null)
 
   return (
     <div style={{
@@ -1058,7 +1064,13 @@ export function RatingRow({ show, currentLevel, currentSkipped, onPick }) {
       transition: 'all .3s',
     }}>
       {OPTIONS.map(opt => {
-        const isActive = activeId === opt.id
+        const isCommitted = committedId === opt.id
+        const isPreview   = previewLevel === opt.id
+        // Preview wins visually while a drag is in flight — same
+        // colour fill, but a thicker shadow + scale-up so the user
+        // can tell apart "you're hovering on this band" from "this
+        // is your committed level on a previously-rated card".
+        const filled = isCommitted || isPreview
         return (
           <button key={opt.id}
             onClick={() => onPick(opt.id)}
@@ -1067,13 +1079,22 @@ export function RatingRow({ show, currentLevel, currentSkipped, onPick }) {
               display: 'flex', flexDirection: 'column',
               alignItems: 'stretch', justifyContent: 'center',
               padding: '8px 6px',
-              background: isActive ? opt.col : '#FFFFFF',
-              color:      isActive ? '#FFFFFF' : INK,
-              border: `2.5px solid ${INK}`, borderRadius: 12,
+              background: filled ? opt.col : '#FFFFFF',
+              color:      filled ? '#FFFFFF' : INK,
+              border: `${isPreview ? 3 : 2.5}px solid ${INK}`,
+              borderRadius: 12,
               cursor: 'pointer',
-              boxShadow: isActive ? '2px 2px 0 ' + INK : 'none',
-              transform:  isActive ? 'translate(-1px,-1px)' : 'none',
-              transition: 'transform .08s',
+              boxShadow: isPreview
+                ? '3px 3px 0 ' + INK
+                : isCommitted
+                ? '2px 2px 0 ' + INK
+                : 'none',
+              transform: isPreview
+                ? 'translate(-1px,-2px) scale(1.04)'
+                : isCommitted
+                ? 'translate(-1px,-1px)'
+                : 'none',
+              transition: 'transform .08s, box-shadow .08s',
             }}>
             <span style={{
               fontFamily: 'Barlow Condensed, Impact, sans-serif',
@@ -1084,7 +1105,7 @@ export function RatingRow({ show, currentLevel, currentSkipped, onPick }) {
             <span style={{
               fontFamily: '-apple-system, Helvetica Neue, sans-serif',
               fontWeight: 600, fontSize: 9,
-              color: isActive ? 'rgba(255,255,255,.85)' : '#9C958A',
+              color: filled ? 'rgba(255,255,255,.85)' : '#9C958A',
               marginTop: 3, lineHeight: 1.2,
             }}>{opt.hint}</span>
           </button>
@@ -1131,6 +1152,9 @@ export function ExploreView() {
   // Last action drives the conveyor-belt animation: 'new' = old card
   // flew left, new one slides in from the right; otherwise inverse.
   const [lastAction, setLastAction] = useState(null)
+  // Live drop-target value while the user is mid-drag-right. Drives
+  // the RatingRow above the card to highlight the matching button.
+  const [previewLevel, setPreviewLevel] = useState(null)
 
   const gate  = eGate
   const tools = eDim ? toolsForGateDim(gate, eDim) : toolsForGate(gate)
@@ -1236,30 +1260,16 @@ export function ExploreView() {
         <ProgressDots tools={tools} idx={eIdx} />
       </div>
 
-      {/* ── Action row ABOVE the card — hint on top, rating buttons
-              right above the card so they're visible at a glance on
-              mobile (the previous below-card placement was hidden
-              under the fold and users swiped by reflex without
-              noticing the buttons existed). ───────────────────── */}
-      {face !== 'cover' && (
-        <div style={{
-          textAlign: 'center', marginBottom: 8,
-        }}>
-          <div style={{
-            fontFamily: 'Barlow Condensed, Impact, sans-serif',
-            fontWeight: 700, fontSize: 10,
-            color: '#9C958A', letterSpacing: '.06em',
-            textTransform: 'uppercase',
-          }}>
-            ← Swipe new · drag right to rate · or tap below
-          </div>
-        </div>
-      )}
+      {/* ── Rating buttons ABOVE the card. They double as drop-zone
+              previews while a right-swipe is in flight: the matching
+              button highlights as the user drags through each
+              threshold, so there's no separate floating pill strip. */}
       <div style={{ marginBottom: 12 }}>
         <RatingRow
           show={face !== 'cover'}
           currentLevel={practiced[tool.n] || null}
           currentSkipped={skipped.includes(tool.n)}
+          previewLevel={previewLevel}
           onPick={handleRating} />
       </div>
 
@@ -1294,8 +1304,10 @@ export function ExploreView() {
             onSwipe={(value) => {
               // 'left' → 'new'; the right-zones already carry the
               // exact level value ('theory' | 'occasional' | 'regular').
+              setPreviewLevel(null)
               handleRating(value === 'left' ? 'new' : value)
             }}
+            onZoneChange={setPreviewLevel}
             leftHint="NEW TO ME" leftColor="#9C958A"
             rightZones={RIGHT_ZONES}>
             <CardStack

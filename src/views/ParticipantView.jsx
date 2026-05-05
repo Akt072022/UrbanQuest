@@ -300,6 +300,7 @@ function ToolDeck({ tools, gate, evals, skipped, onPick, onSkip, onDone }) {
   const [idx, setIdx]               = useState(Math.max(0, startIdx))
   const [face, setFace]             = useState('synth')
   const [lastAction, setLastAction] = useState(null)
+  const [previewLevel, setPreviewLevel] = useState(null)
 
   // Reset card flip state when card changes
   useEffect(() => { setFace('synth') }, [idx])
@@ -382,23 +383,14 @@ function ToolDeck({ tools, gate, evals, skipped, onPick, onSkip, onDone }) {
       </div>
       <ProgressDots tools={tools} idx={idx} />
 
-      {/* Action row ABOVE the card — visible at a glance on mobile. */}
-      {face !== 'cover' && (
-        <div style={{ textAlign: 'center', marginTop: 12, marginBottom: 8 }}>
-          <div style={{
-            fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 10,
-            color: '#9C958A', letterSpacing: '.06em',
-            textTransform: 'uppercase',
-          }}>
-            ← Swipe new · drag right to rate · or tap below
-          </div>
-        </div>
-      )}
-      <div style={{ marginBottom: 12 }}>
+      {/* Rating buttons ABOVE the card — also act as drop-zone
+          previews while the user is mid right-swipe. */}
+      <div style={{ marginTop: 12, marginBottom: 12 }}>
         <RatingRow
           show={face !== 'cover'}
           currentLevel={evals[tool.n] || null}
           currentSkipped={skipped.includes(tool.n)}
+          previewLevel={previewLevel}
           onPick={handleRating} />
       </div>
 
@@ -424,8 +416,10 @@ function ToolDeck({ tools, gate, evals, skipped, onPick, onSkip, onDone }) {
           <SwipeWrap
             enabled={face !== 'cover'}
             onSwipe={(value) => {
+              setPreviewLevel(null)
               handleRating(value === 'left' ? 'new' : value)
             }}
+            onZoneChange={setPreviewLevel}
             leftHint="NEW TO ME" leftColor="#9C958A"
             rightZones={TRIAGE_RIGHT_ZONES}>
             <CardStack
