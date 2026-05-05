@@ -155,7 +155,7 @@ function ModeIcon({ id, active, size = 28 }) {
   return null
 }
 
-// ── Wizard summary row — label · value, used in Step 4 ────────
+// ── Summary row — label · value, used in the launch summary card.
 function SummaryRow({ label, value, col }) {
   return (
     <div style={{
@@ -179,7 +179,7 @@ function SummaryRow({ label, value, col }) {
   )
 }
 
-// ── Dim tile — picture-on-top selector for the wizard's Step 2.
+// ── Dim tile — picture-on-top selector for the deck-filter lens.
 //   Reuses the same illustrations the journey map shows on each
 //   dim node so the two surfaces feel like the same product.
 //   The "All" tile uses a 6-dot hexagon glyph instead of a single
@@ -279,16 +279,17 @@ export function FacilitatorView() {
   const [filterGate, setFilterGate] = useState(1)
   const [filterDim,  setFilterDim]  = useState('all')
 
-  // Pre-start wizard: 1 process step → 2 dimension+deck → 3 mode → 4 launch.
-  // The session page (post-launch) still lets the facilitator switch
-  // between modes — `initialMode` only seeds `tab` on launch.
+  // Phase 3: the pre-start wizard collapsed from 4 steps to a single
+  // configuration screen. Mode is the real decision so it sits at the
+  // top; project context + deck filter follow conditionally; LAUNCH is
+  // one tap away. The session page (post-launch) still lets the
+  // facilitator switch between modes — `initialMode` only seeds `tab`.
   //
-  // Hand-off from the new ProjectFitView: if the user already typed a
-  // project description on the welcome screen and got an AI shortlist,
-  // we land on Step 4 with method-fit picked and the deck pre-filled,
-  // so they can launch the workshop in one click.
+  // Hand-off from ProjectFitView: if the user already typed a project
+  // description on the welcome screen and got an AI shortlist, we land
+  // here with method-fit picked and the deck pre-filled — one tap to
+  // launch.
   const handedOff = !!(storeProjectContext && storeAiSuggestions?.length)
-  const [wizardStep,  setWizardStep]  = useState(handedOff ? 4 : 1)
   const [initialMode, setInitialMode] = useState(handedOff ? 'methodfit' : 'triage')
   const [projectName, setProjectName] = useState(handedOff ? storeProjectContext.name : '')
   const [projectDesc, setProjectDesc] = useState(handedOff ? storeProjectContext.desc : '')
@@ -346,7 +347,7 @@ export function FacilitatorView() {
   const url = participantUrl(roomId)
 
   // Filtered tool list — gate × dim by default. When the AI deck is
-  // toggled on (Step 4 / methodfit), it overrides the filters with the
+  // toggled on (method-fit mode), it overrides the filters with the
   // curated shortlist so every downstream UI (deck preview, launch
   // payload, results matrix) sees the same set.
   const baseToolList = TOOLS.filter(t => {
@@ -644,9 +645,8 @@ export function FacilitatorView() {
     for (const id of allSessionIdsRef.current) endSession(id)
   }, [])
 
-  // ── Pre-start wizard ───────────────────────────────────────────
+  // ── Pre-start configuration ────────────────────────────────────
   if (!started) {
-    const STEP_LABELS = ['Process step', 'Design dimension', 'Mode', 'Launch']
     const totalMin = Math.ceil(toolList.length * 0.4)
 
     return (
@@ -668,51 +668,239 @@ export function FacilitatorView() {
           }}>WORKSHOP</div>
         </div>
 
-        {/* Wizard breadcrumb — 4 steps, current highlighted */}
-        <div style={{
-          display: 'flex', gap: 6, margin: '18px 0 14px', alignItems: 'center',
-        }}>
-          {STEP_LABELS.map((label, i) => {
-            const n = i + 1
-            const active = wizardStep === n
-            const done   = wizardStep >  n
-            return (
-              <button key={n}
-                onClick={() => { if (n < wizardStep) setWizardStep(n) }}
-                disabled={n > wizardStep}
-                style={{
-                  flex: 1, padding: '7px 4px',
-                  background: active ? INK : (done ? GATE_COL[filterGate] : CARD),
-                  color: active || done ? '#FFFFFF' : '#9C958A',
-                  border: `2px solid ${INK}`,
-                  borderRadius: 999,
-                  fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 9,
-                  letterSpacing: '.04em', textTransform: 'uppercase',
-                  cursor: n < wizardStep ? 'pointer' : (active ? 'default' : 'not-allowed'),
-                  boxShadow: active ? '2px 2px 0 ' + INK : 'none',
-                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                }}>
-                {n}. {label}
-              </button>
-            )
-          })}
-        </div>
+        {/* ── 1. MODE — the real decision. Everything below depends on
+                what kind of workshop this is. ───────────────────── */}
+        <SectionCard>
+          <Eyebrow color={INK}>What kind of workshop?</Eyebrow>
+          <div style={{ fontSize: 12, color: '#5A5550', marginBottom: 12, lineHeight: 1.45 }}>
+            You can switch modes any time during the session.
+          </div>
+          <div style={{
+            display: 'grid', gap: 10,
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          }}>
+            {[
+              { id: 'methodfit',
+                title: 'Project method-fit',
+                desc:  'Pin a real project. Participants rate each method as Essential / Helpful / Optional — crossed with capability to surface train-vs-run gaps.' },
+              { id: 'triage',
+                title: 'Collective triage',
+                desc:  'Each participant rates every method on their own phone. Live heatmap shows where the team converges or diverges.' },
+              { id: 'question',
+                title: 'Live question',
+                desc:  'Pick one method at a time and broadcast a question. Free text / slider / 3-way vote — aggregated live.' },
+            ].map(m => {
+              const active = initialMode === m.id
+              return (
+                <button key={m.id} onClick={() => setInitialMode(m.id)}
+                  style={{
+                    textAlign: 'left',
+                    padding: '14px 14px',
+                    background: active ? GATE_COL[filterGate] : CARD,
+                    color: active ? '#FFFFFF' : INK,
+                    border: `2.5px solid ${INK}`,
+                    borderRadius: 14,
+                    cursor: 'pointer',
+                    boxShadow: active ? '3px 3px 0 ' + INK : '2px 2px 0 ' + INK + '33',
+                    transform: active ? 'translate(-1px,-1px)' : 'none',
+                    transition: 'transform .08s',
+                  }}>
+                  <div style={{ marginBottom: 8 }}>
+                    <ModeIcon id={m.id} active={active} size={32} />
+                  </div>
+                  <div style={{
+                    fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 16,
+                    letterSpacing: '.04em', textTransform: 'uppercase',
+                    lineHeight: 1.1, marginBottom: 6,
+                  }}>{m.title}</div>
+                  <div style={{
+                    fontSize: 12, lineHeight: 1.4,
+                    color: active ? 'rgba(255,255,255,.92)' : '#5A5550',
+                    fontWeight: 600,
+                  }}>{m.desc}</div>
+                </button>
+              )
+            })}
+          </div>
+        </SectionCard>
 
-        {/* ── STEP 1 — Process step (gate) ──────────────────── */}
-        {wizardStep === 1 && (
+        {/* ── 2. PROJECT CONTEXT — only relevant for method-fit. */}
+        {initialMode === 'methodfit' && (
           <SectionCard>
-            <Eyebrow color={GATE_COL[filterGate]}>Step 1 · Process step</Eyebrow>
+            <Eyebrow color={INK}>Project context</Eyebrow>
             <div style={{ fontSize: 12, color: '#5A5550', marginBottom: 12, lineHeight: 1.45 }}>
-              Which gate of the journey is this workshop about?
+              Participants see this in the header of the deck while rating.
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <input
+              value={projectName}
+              onChange={e => setProjectName(e.target.value)}
+              placeholder="Project name (e.g. Lyon Part-Dieu redesign)"
+              style={{
+                width: '100%', padding: '10px 12px', marginBottom: 8,
+                border: `2px solid ${INK}`, borderRadius: 10,
+                fontSize: 13, fontWeight: 700, color: INK,
+                background: '#FFFFFF', outline: 'none',
+                boxSizing: 'border-box',
+                fontFamily: '-apple-system, Helvetica Neue, sans-serif',
+              }} />
+            <textarea
+              value={projectDesc}
+              onChange={e => setProjectDesc(e.target.value)}
+              placeholder="One or two lines of context — site, ambition, key constraint."
+              rows={3}
+              style={{
+                width: '100%', padding: '10px 12px',
+                border: `2px solid ${INK}`, borderRadius: 10,
+                fontSize: 12, color: INK,
+                background: '#FFFFFF', outline: 'none', resize: 'none',
+                boxSizing: 'border-box',
+                fontFamily: '-apple-system, Helvetica Neue, sans-serif',
+              }} />
+
+            {/* AI shortlist — Mistral suggests 10-12 methods for this
+                project. The toggle below opts into using them as the deck. */}
+            {hasMistral && (
+              <div style={{ marginTop: 14 }}>
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  gap: 8, marginBottom: 8,
+                }}>
+                  <div style={{
+                    fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
+                    color: INK, letterSpacing: '.06em',
+                    textTransform: 'uppercase',
+                  }}>✨ AI shortlist</div>
+                  {aiSugg.length > 0 && (
+                    <span style={{
+                      fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
+                      color: TEAL,
+                    }}>{aiSugg.length} methods</span>
+                  )}
+                </div>
+
+                {aiSugg.length === 0 && (
+                  <div style={{
+                    fontSize: 11, color: '#5A5550', lineHeight: 1.45, marginBottom: 10,
+                  }}>
+                    Let the AI read your project description and
+                    suggest the most relevant methods from the catalogue.
+                  </div>
+                )}
+
+                <ScrappyButton
+                  onClick={runAiAnalysis}
+                  color={
+                    aiLoading || !projectName.trim() || !projectDesc.trim()
+                      ? '#E0DAD2' : TEAL
+                  }
+                  size="md" full>
+                  {aiLoading ? 'ANALYZING…'
+                    : aiSugg.length > 0 ? '↻ RE-ANALYZE'
+                    : '✨ ANALYZE PROJECT'}
+                </ScrappyButton>
+
+                {aiError && (
+                  <div style={{
+                    marginTop: 8, padding: '6px 10px',
+                    background: '#FCE8E2', border: `1.5px solid #C0452A`,
+                    borderRadius: 8,
+                    fontSize: 11, color: '#7A1F0E', lineHeight: 1.4,
+                  }}>{aiError}</div>
+                )}
+
+                {aiSugg.length > 0 && (
+                  <>
+                    <div style={{
+                      marginTop: 12,
+                      display: 'grid', gap: 6,
+                    }}>
+                      {aiSugg.map(({ tool, why }) => (
+                        <div key={tool.n} style={{
+                          padding: '8px 10px',
+                          background: PAGE,
+                          border: `1.5px solid ${INK}33`, borderRadius: 10,
+                        }}>
+                          <div style={{
+                            display: 'flex', alignItems: 'baseline',
+                            justifyContent: 'space-between', gap: 8,
+                          }}>
+                            <span style={{
+                              fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 13,
+                              color: INK, letterSpacing: '.02em',
+                              flex: 1, minWidth: 0,
+                              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                            }}>{tool.n}</span>
+                            <span style={{
+                              flexShrink: 0, fontSize: 9, color: '#9C958A',
+                              fontWeight: 700, letterSpacing: '.04em',
+                              textTransform: 'uppercase',
+                            }}>{(tool.g || []).map(g => GATE_LABEL[g]).join('/')}</span>
+                          </div>
+                          {why && (
+                            <div style={{
+                              fontSize: 11, color: '#3F3A36',
+                              lineHeight: 1.4, marginTop: 4,
+                            }}>{why}</div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Use AI deck toggle */}
+                    <label style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      marginTop: 12,
+                      padding: '10px 12px',
+                      background: useAiDeck ? '#E6F4EC' : PAGE,
+                      border: `2px solid ${useAiDeck ? '#10B981' : INK}33`,
+                      borderRadius: 10,
+                      cursor: 'pointer',
+                    }}>
+                      <input type="checkbox"
+                        checked={useAiDeck}
+                        onChange={e => setUseAiDeck(e.target.checked)}
+                        style={{ flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{
+                          fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 12,
+                          color: INK, letterSpacing: '.04em',
+                          textTransform: 'uppercase', lineHeight: 1.1,
+                        }}>Use this AI deck</div>
+                        <div style={{
+                          fontSize: 11, color: '#5A5550', marginTop: 2, lineHeight: 1.35,
+                        }}>
+                          {useAiDeck
+                            ? `Participants will rate ${aiSugg.length} curated methods.`
+                            : `Otherwise the gate/dim deck (${baseToolList.length} methods) is used.`}
+                        </div>
+                      </div>
+                    </label>
+                  </>
+                )}
+              </div>
+            )}
+          </SectionCard>
+        )}
+
+        {/* ── 3. DECK FILTER — gate + (optional) dimension. Hidden when
+                method-fit is on the AI deck (the curated shortlist is
+                already the deck) and for live-question mode (the
+                facilitator picks tools per-broadcast in session). ── */}
+        {!(initialMode === 'methodfit' && useAiDeck && aiSugg.length > 0)
+          && initialMode !== 'question' && (
+          <SectionCard>
+            <Eyebrow color={GATE_COL[filterGate]}>Phase</Eyebrow>
+            <div style={{ fontSize: 12, color: '#5A5550', marginBottom: 12, lineHeight: 1.45 }}>
+              Which phase of the journey is this workshop about?
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
               {[1,2,3,4].map(g => {
                 const active = filterGate === g
                 return (
                   <button key={g} onClick={() => setFilterGate(g)}
                     style={{
                       display: 'flex', alignItems: 'flex-start', gap: 14,
-                      padding: '14px 16px', textAlign: 'left',
+                      padding: '12px 14px', textAlign: 'left',
                       background: active ? GATE_COL[g] : CARD,
                       border: `2.5px solid ${INK}`,
                       borderRadius: 14,
@@ -734,7 +922,7 @@ export function FacilitatorView() {
                         justifyContent: 'space-between', gap: 8,
                       }}>
                         <span style={{
-                          fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 16,
+                          fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 15,
                           letterSpacing: '.04em', textTransform: 'uppercase',
                           color: active ? '#FFFFFF' : INK, lineHeight: 1.1,
                         }}>{GATE_LABEL[g]}</span>
@@ -743,10 +931,10 @@ export function FacilitatorView() {
                           fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
                           letterSpacing: '.06em',
                           color: active ? 'rgba(255,255,255,.85)' : '#9C958A',
-                        }}>STEP {g}</span>
+                        }}>PHASE {g}</span>
                       </span>
                       <span style={{
-                        display: 'block', marginTop: 6,
+                        display: 'block', marginTop: 4,
                         fontFamily: '-apple-system, Helvetica Neue, sans-serif',
                         fontSize: 12, lineHeight: 1.4, fontWeight: 600,
                         color: active ? 'rgba(255,255,255,.92)' : '#5A5550',
@@ -756,378 +944,92 @@ export function FacilitatorView() {
                 )
               })}
             </div>
-          </SectionCard>
-        )}
 
-        {/* ── STEP 2 — Design dimension + deck preview ───────── */}
-        {wizardStep === 2 && (
-          <>
-            <SectionCard>
-              <Eyebrow color={filterDim === 'all' ? INK : DIM_BY_ID[filterDim].color}>
-                Step 2 · Design dimension <span style={{ color: '#9C958A' }}>(optional)</span>
-              </Eyebrow>
-              <div style={{ fontSize: 12, color: '#5A5550', marginBottom: 12, lineHeight: 1.45 }}>
-                Narrow the deck to one lens — or keep "All" to triage every method in this gate.
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
-                <DimTile
-                  active={filterDim === 'all'}
-                  color={INK}
-                  label="All"
-                  iconSrc={null}
-                  dotGlyph={<AllDimsGlyph active={filterDim === 'all'} />}
-                  onClick={() => setFilterDim('all')} />
-                {DIMENSIONS.map(d => (
-                  <DimTile key={d.id}
-                    active={filterDim === d.id}
-                    color={d.color}
-                    label={d.label}
-                    iconSrc={DIM_ICON[d.id] || null}
-                    onClick={() => setFilterDim(d.id)} />
-                ))}
-              </div>
-            </SectionCard>
-
-            <SectionCard>
-              <Eyebrow color={INK}>Deck preview</Eyebrow>
-              <div style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-                marginBottom: 10,
-              }}>
-                <span style={{
-                  fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 14, color: INK,
-                  textTransform: 'uppercase', letterSpacing: '.04em',
-                }}>
-                  {GATE_LABEL[filterGate]}
-                  {filterDim !== 'all' && (
-                    <span style={{ color: DIM_BY_ID[filterDim].color, marginLeft: 8 }}>
-                      · {DIM_BY_ID[filterDim].label}
-                    </span>
-                  )}
-                </span>
-                <span style={{
-                  fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 22, color: GATE_COL[filterGate],
-                }}>{toolList.length} tools</span>
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {toolList.slice(0, 6).map(t => (
-                  <ScrappyChip key={t.n} color={CARD} textColor={INK}>{t.n}</ScrappyChip>
-                ))}
-                {toolList.length > 6 && (
-                  <ScrappyChip color={GATE_COL[filterGate]} textColor="#FFFFFF">
-                    +{toolList.length - 6} more
-                  </ScrappyChip>
-                )}
-              </div>
-              <div style={{
-                marginTop: 10, fontSize: 11, color: '#9C958A', fontStyle: 'italic',
-              }}>
-                ≈ {totalMin} min for participants to complete the deck.
-              </div>
-            </SectionCard>
-          </>
-        )}
-
-        {/* ── STEP 3 — Mode picker ───────────────────────────── */}
-        {wizardStep === 3 && (
-          <SectionCard>
-            <Eyebrow color={INK}>Step 3 · How will the workshop run?</Eyebrow>
-            <div style={{ fontSize: 12, color: '#5A5550', marginBottom: 12, lineHeight: 1.45 }}>
-              You can switch modes any time during the session.
+            <Eyebrow color={filterDim === 'all' ? INK : DIM_BY_ID[filterDim].color}>
+              Lens <span style={{ color: '#9C958A' }}>(optional)</span>
+            </Eyebrow>
+            <div style={{ fontSize: 12, color: '#5A5550', marginBottom: 10, lineHeight: 1.45 }}>
+              Narrow the deck to one design lens — or keep "All".
             </div>
-            <div style={{
-              display: 'grid', gap: 10,
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            }}>
-              {[
-                { id: 'triage',
-                  title: 'Collective triage',
-                  desc:  'Each participant rates every method on their own phone. Live heatmap shows where the team converges or diverges.' },
-                { id: 'question',
-                  title: 'Live question',
-                  desc:  'Pick one method at a time and broadcast a question. Free text / slider / 3-way vote — aggregated live.' },
-                { id: 'methodfit',
-                  title: 'Project method-fit',
-                  desc:  'Pin a real project. Participants rate each method as Essential / Helpful / Optional — crossed with capability to surface train-vs-run gaps.' },
-              ].map(m => {
-                const active = initialMode === m.id
-                return (
-                  <button key={m.id} onClick={() => setInitialMode(m.id)}
-                    style={{
-                      textAlign: 'left',
-                      padding: '14px 14px',
-                      background: active ? GATE_COL[filterGate] : CARD,
-                      color: active ? '#FFFFFF' : INK,
-                      border: `2.5px solid ${INK}`,
-                      borderRadius: 14,
-                      cursor: 'pointer',
-                      boxShadow: active ? '3px 3px 0 ' + INK : '2px 2px 0 ' + INK + '33',
-                      transform: active ? 'translate(-1px,-1px)' : 'none',
-                      transition: 'transform .08s',
-                    }}>
-                    <div style={{ marginBottom: 8 }}>
-                      <ModeIcon id={m.id} active={active} size={32} />
-                    </div>
-                    <div style={{
-                      fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 16,
-                      letterSpacing: '.04em', textTransform: 'uppercase',
-                      lineHeight: 1.1, marginBottom: 6,
-                    }}>{m.title}</div>
-                    <div style={{
-                      fontSize: 12, lineHeight: 1.4,
-                      color: active ? 'rgba(255,255,255,.92)' : '#5A5550',
-                      fontWeight: 600,
-                    }}>{m.desc}</div>
-                  </button>
-                )
-              })}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
+              <DimTile
+                active={filterDim === 'all'}
+                color={INK}
+                label="All"
+                iconSrc={null}
+                dotGlyph={<AllDimsGlyph active={filterDim === 'all'} />}
+                onClick={() => setFilterDim('all')} />
+              {DIMENSIONS.map(d => (
+                <DimTile key={d.id}
+                  active={filterDim === d.id}
+                  color={d.color}
+                  label={d.label}
+                  iconSrc={DIM_ICON[d.id] || null}
+                  onClick={() => setFilterDim(d.id)} />
+              ))}
             </div>
           </SectionCard>
         )}
 
-        {/* ── STEP 4 — Launch summary ────────────────────────── */}
-        {wizardStep === 4 && (
-          <SectionCard>
-            <Eyebrow color={GATE_COL[filterGate]}>Step 4 · Ready to launch</Eyebrow>
-            <div style={{
-              display: 'grid', gap: 10, marginBottom: 16,
-            }}>
-              <SummaryRow label="Process step"
-                value={GATE_LABEL[filterGate]} col={GATE_COL[filterGate]} />
-              <SummaryRow label="Dimension"
-                value={filterDim === 'all' ? 'All dimensions' : DIM_BY_ID[filterDim].label}
-                col={filterDim === 'all' ? INK : DIM_BY_ID[filterDim].color} />
-              <SummaryRow label="Initial mode"
-                value={
-                  initialMode === 'triage'    ? 'Collective triage'
-                  : initialMode === 'question' ? 'Live question'
-                  : 'Project method-fit'
-                } col={INK} />
+        {/* ── 4. DECK PREVIEW + LAUNCH — the bottom of the page is the
+                action. The yellow LAUNCH button is the only primary
+                CTA on the screen. ─────────────────────────────────── */}
+        <SectionCard>
+          <Eyebrow color={GATE_COL[filterGate]}>Ready to launch</Eyebrow>
+
+          <div style={{ display: 'grid', gap: 10, marginBottom: 14 }}>
+            <SummaryRow label="Mode"
+              value={
+                initialMode === 'triage'    ? 'Collective triage'
+                : initialMode === 'question' ? 'Live question'
+                : 'Project method-fit'
+              } col={INK} />
+            {initialMode !== 'question' && (
               <SummaryRow label="Deck"
-                value={`${toolList.length} tools · ≈ ${totalMin} min`}
-                col={INK} />
-            </div>
-
-            {/* Project context — only for the Project method-fit mode.
-                Participants see the project name + description in the
-                header of the deck while rating, so it's worth a few
-                lines of explanation rather than a single placeholder. */}
-            {initialMode === 'methodfit' && (
-              <>
-                <div style={{
-                  background: PAGE,
-                  border: `2px solid ${INK}`, borderRadius: 12,
-                  padding: '12px 12px 10px',
-                  marginBottom: 12,
-                }}>
-                  <div style={{
-                    fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
-                    color: INK, letterSpacing: '.06em',
-                    textTransform: 'uppercase', marginBottom: 8,
-                  }}>Project context</div>
-                  <input
-                    value={projectName}
-                    onChange={e => setProjectName(e.target.value)}
-                    placeholder="Project name (e.g. Lyon Part-Dieu redesign)"
-                    style={{
-                      width: '100%', padding: '8px 10px', marginBottom: 8,
-                      border: `2px solid ${INK}`, borderRadius: 10,
-                      fontSize: 13, fontWeight: 700, color: INK,
-                      background: '#FFFFFF', outline: 'none',
-                      boxSizing: 'border-box',
-                      fontFamily: '-apple-system, Helvetica Neue, sans-serif',
-                    }} />
-                  <textarea
-                    value={projectDesc}
-                    onChange={e => setProjectDesc(e.target.value)}
-                    placeholder="One or two lines of context — site, ambition, key constraint."
-                    rows={3}
-                    style={{
-                      width: '100%', padding: '8px 10px',
-                      border: `2px solid ${INK}`, borderRadius: 10,
-                      fontSize: 12, color: INK,
-                      background: '#FFFFFF', outline: 'none', resize: 'none',
-                      boxSizing: 'border-box',
-                      fontFamily: '-apple-system, Helvetica Neue, sans-serif',
-                    }} />
-                </div>
-
-                {/* AI shortlist — Mistral analyzes the project and
-                    suggests 10-12 methods. Hidden if Mistral isn't
-                    configured (no env key). The toggle below the
-                    suggestions opts into using them as the deck. */}
-                {hasMistral && (
-                  <div style={{
-                    background: CARD,
-                    border: `2.5px solid ${INK}`, borderRadius: 14,
-                    padding: '12px 12px 10px',
-                    marginBottom: 14,
-                    boxShadow: '2px 2px 0 ' + INK,
-                  }}>
-                    <div style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      gap: 8, marginBottom: 8,
-                    }}>
-                      <div style={{
-                        fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
-                        color: INK, letterSpacing: '.06em',
-                        textTransform: 'uppercase',
-                      }}>✨ AI shortlist</div>
-                      {aiSugg.length > 0 && (
-                        <span style={{
-                          fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
-                          color: TEAL,
-                        }}>{aiSugg.length} methods</span>
-                      )}
-                    </div>
-
-                    {aiSugg.length === 0 && (
-                      <div style={{
-                        fontSize: 11, color: '#5A5550', lineHeight: 1.45, marginBottom: 10,
-                      }}>
-                        Let the AI read your project description and
-                        suggest the most relevant methods from the catalogue.
-                      </div>
-                    )}
-
-                    <ScrappyButton
-                      onClick={runAiAnalysis}
-                      color={
-                        aiLoading || !projectName.trim() || !projectDesc.trim()
-                          ? '#E0DAD2' : TEAL
-                      }
-                      size="md" full>
-                      {aiLoading ? 'ANALYZING…'
-                        : aiSugg.length > 0 ? '↻ RE-ANALYZE'
-                        : '✨ ANALYZE PROJECT'}
-                    </ScrappyButton>
-
-                    {aiError && (
-                      <div style={{
-                        marginTop: 8, padding: '6px 10px',
-                        background: '#FCE8E2', border: `1.5px solid #C0452A`,
-                        borderRadius: 8,
-                        fontSize: 11, color: '#7A1F0E', lineHeight: 1.4,
-                      }}>{aiError}</div>
-                    )}
-
-                    {aiSugg.length > 0 && (
-                      <>
-                        <div style={{
-                          marginTop: 12,
-                          display: 'grid', gap: 6,
-                        }}>
-                          {aiSugg.map(({ tool, why }) => (
-                            <div key={tool.n} style={{
-                              padding: '8px 10px',
-                              background: PAGE,
-                              border: `1.5px solid ${INK}33`, borderRadius: 10,
-                            }}>
-                              <div style={{
-                                display: 'flex', alignItems: 'baseline',
-                                justifyContent: 'space-between', gap: 8,
-                              }}>
-                                <span style={{
-                                  fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 13,
-                                  color: INK, letterSpacing: '.02em',
-                                  flex: 1, minWidth: 0,
-                                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                                }}>{tool.n}</span>
-                                <span style={{
-                                  flexShrink: 0, fontSize: 9, color: '#9C958A',
-                                  fontWeight: 700, letterSpacing: '.04em',
-                                  textTransform: 'uppercase',
-                                }}>{(tool.g || []).map(g => GATE_LABEL[g]).join('/')}</span>
-                              </div>
-                              {why && (
-                                <div style={{
-                                  fontSize: 11, color: '#3F3A36',
-                                  lineHeight: 1.4, marginTop: 4,
-                                }}>{why}</div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* Use AI deck toggle */}
-                        <label style={{
-                          display: 'flex', alignItems: 'center', gap: 10,
-                          marginTop: 12,
-                          padding: '10px 12px',
-                          background: useAiDeck ? '#E6F4EC' : PAGE,
-                          border: `2px solid ${useAiDeck ? '#10B981' : INK}33`,
-                          borderRadius: 10,
-                          cursor: 'pointer',
-                        }}>
-                          <input type="checkbox"
-                            checked={useAiDeck}
-                            onChange={e => setUseAiDeck(e.target.checked)}
-                            style={{ flexShrink: 0 }} />
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{
-                              fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 12,
-                              color: INK, letterSpacing: '.04em',
-                              textTransform: 'uppercase', lineHeight: 1.1,
-                            }}>Use this AI deck</div>
-                            <div style={{
-                              fontSize: 11, color: '#5A5550', marginTop: 2, lineHeight: 1.35,
-                            }}>
-                              {useAiDeck
-                                ? `Participants will rate ${aiSugg.length} curated methods.`
-                                : `Otherwise the gate/dim deck (${baseToolList.length} methods) is used.`}
-                            </div>
-                          </div>
-                        </label>
-                      </>
-                    )}
-                  </div>
-                )}
-              </>
+                value={
+                  (initialMode === 'methodfit' && useAiDeck && aiSugg.length > 0)
+                    ? `AI shortlist · ${toolList.length} tools · ≈ ${totalMin} min`
+                    : `${GATE_LABEL[filterGate]}${
+                        filterDim === 'all' ? '' : ' · ' + DIM_BY_ID[filterDim].label
+                      } · ${toolList.length} tools · ≈ ${totalMin} min`
+                } col={GATE_COL[filterGate]} />
             )}
-
-            <div style={{
-              fontSize: 11, color: '#5A5550', lineHeight: 1.5,
-              padding: '8px 10px', background: PAGE,
-              border: `1.5px dashed ${INK}33`, borderRadius: 10,
-              marginBottom: 14,
-            }}>
-              Once launched, the QR code and the join link will appear on the
-              session page — share them with participants then.
-            </div>
-            <ScrappyButton
-              onClick={startSession}
-              color={
-                initialMode === 'methodfit' && !projectName.trim()
-                  ? '#E0DAD2' : YELLOW
-              }
-              size="lg" full>
-              LAUNCH SESSION →
-            </ScrappyButton>
-          </SectionCard>
-        )}
-
-        {/* Wizard footer — Back / Next (Launch is in Step 4 above) */}
-        {wizardStep < 4 && (
-          <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-            <ScrappyButton
-              onClick={() => setWizardStep(s => Math.max(1, s - 1))}
-              color={CARD} size="md" full>
-              ← BACK
-            </ScrappyButton>
-            <ScrappyButton
-              onClick={() => setWizardStep(s => s + 1)}
-              color={YELLOW} size="md" full>
-              NEXT →
-            </ScrappyButton>
           </div>
-        )}
-        {wizardStep === 4 && (
+
+          {initialMode !== 'question' && toolList.length > 0 && (
+            <div style={{
+              display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14,
+            }}>
+              {toolList.slice(0, 6).map(t => (
+                <ScrappyChip key={t.n} color={CARD} textColor={INK}>{t.n}</ScrappyChip>
+              ))}
+              {toolList.length > 6 && (
+                <ScrappyChip color={GATE_COL[filterGate]} textColor="#FFFFFF">
+                  +{toolList.length - 6} more
+                </ScrappyChip>
+              )}
+            </div>
+          )}
+
+          <div style={{
+            fontSize: 11, color: '#5A5550', lineHeight: 1.5,
+            padding: '8px 10px', background: PAGE,
+            border: `1.5px dashed ${INK}33`, borderRadius: 10,
+            marginBottom: 14,
+          }}>
+            Once launched, the QR code and the join link will appear on the
+            session page — share them with participants then.
+          </div>
           <ScrappyButton
-            onClick={() => setWizardStep(s => s - 1)}
-            color={CARD} size="md" full>
-            ← BACK
+            onClick={startSession}
+            color={
+              initialMode === 'methodfit' && !projectName.trim()
+                ? '#E0DAD2' : YELLOW
+            }
+            size="lg" full>
+            LAUNCH SESSION →
           </ScrappyButton>
-        )}
+        </SectionCard>
       </div>
     )
   }
