@@ -77,7 +77,7 @@ export function MethodfitMatrix({
         }}>
           <b>{buckets.nocap.length}</b> method{buckets.nocap.length > 1 ? 's' : ''}{' '}
           {buckets.nocap.length > 1 ? 'have' : 'has'} no capability data yet —
-          run a Triage round in this session to populate the Y axis.
+          run a team scan in this session to populate the Y axis.
         </div>
       )}
     </div>

@@ -684,7 +684,7 @@ export function FacilitatorView() {
                 title: 'Project method-fit',
                 desc:  'Pin a real project. Participants rate each method as Essential / Helpful / Optional — crossed with capability to surface train-vs-run gaps.' },
               { id: 'triage',
-                title: 'Collective triage',
+                title: 'Team scan',
                 desc:  'Each participant rates every method on their own phone. Live heatmap shows where the team converges or diverges.' },
               { id: 'question',
                 title: 'Live question',
@@ -980,7 +980,7 @@ export function FacilitatorView() {
           <div style={{ display: 'grid', gap: 10, marginBottom: 14 }}>
             <SummaryRow label="Mode"
               value={
-                initialMode === 'triage'    ? 'Collective triage'
+                initialMode === 'triage'    ? 'Team scan'
                 : initialMode === 'question' ? 'Live question'
                 : 'Project method-fit'
               } col={INK} />
@@ -1122,7 +1122,7 @@ export function FacilitatorView() {
       {/* Tabs (scrappy pills) */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
         {[
-          ['triage',    'TRIAGE'],
+          ['triage',    'TEAM SCAN'],
           ['question',  'LIVE Q'],
           ['methodfit', 'METHOD-FIT'],
         ].map(([id, label]) => {
@@ -1200,7 +1200,7 @@ export function FacilitatorView() {
                 onClick={launchTriage}
                 color={participants.length === 0 ? '#E0DAD2' : YELLOW}
                 size="lg" full>
-                {participants.length === 0 ? 'WAITING FOR PARTICIPANTS…' : 'LAUNCH TRIAGE →'}
+                {participants.length === 0 ? 'WAITING FOR PARTICIPANTS…' : 'LAUNCH TEAM SCAN →'}
               </ScrappyButton>
             </>
           ) : (
@@ -1209,7 +1209,7 @@ export function FacilitatorView() {
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 marginBottom: 10,
               }}>
-                <Eyebrow color="#10B981">● Triage in progress</Eyebrow>
+                <Eyebrow color="#10B981">● Team scan in progress</Eyebrow>
                 <button onClick={launchTriage}
                   style={{
                     padding: '5px 12px',
@@ -1495,8 +1495,8 @@ export function FacilitatorView() {
       )}
 
       {/* ── TAB METHOD-FIT ──────────────────────────────────────
-          Like Triage, but participants rate methods against a
-          named project. Results show a 2×2 of priority × team
+          Like the team scan, but participants rate methods against
+          a named project. Results show a 2×2 of priority × team
           capability so the team can see what to run vs train. */}
       {tab === 'methodfit' && (
         <div>

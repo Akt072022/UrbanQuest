@@ -74,9 +74,9 @@ function classifyDashboard(scores, gates, practiced) {
     if (weakestGate) {
       challenges.push({
         kind: 'workshop',
-        title: `Run a 30-min triage on ${GATE_LABEL[weakestGate.gate]}`,
+        title: `Run a 30-min team scan on ${GATE_LABEL[weakestGate.gate]}`,
         rationale:
-          `Get the team to rate the ${weakestGate.total} methods of this gate together — ` +
+          `Get the team to rate the ${weakestGate.total} methods of this phase together — ` +
           `the live heatmap surfaces convergence and blind spots in real time.`,
         action: { type: 'facilitator' },
       })
@@ -120,7 +120,7 @@ function classifyDashboard(scores, gates, practiced) {
       tools.push({
         dim, tool: top,
         rationale: `${dim.label} is at ${dim.score}% — this method covers ${top.d.length} ` +
-                   `dimension${top.d.length === 1 ? '' : 's'} and ${top.g.length} gate${top.g.length === 1 ? '' : 's'}.`,
+                   `dimension${top.d.length === 1 ? '' : 's'} and ${top.g.length} phase${top.g.length === 1 ? '' : 's'}.`,
       })
     }
     const deepenPrompt = weakestGate ? {
@@ -1415,7 +1415,7 @@ function TeamView({ team, userId }) {
 
 // ── Session row + expansion ────────────────────────────────────
 const MODE_META = {
-  triage:    { label: 'Collective triage',    col: '#3B82F6' },
+  triage:    { label: 'Team scan',            col: '#3B82F6' },
   methodfit: { label: 'Project method-fit',   col: '#F97316' },
   question:  { label: 'Live question',        col: '#8B5CF6' },
 }

@@ -25,7 +25,7 @@ const LEVEL_BADGE = {
 
 const CAT_LABEL = {
   progression: 'Progression',
-  gate:        'Gate clearances',
+  gate:        'Phase clearances',
   dimension:   'Dimension mastery',
   depth:       'Depth & breadth',
 }
@@ -697,7 +697,7 @@ export function ProfileView() {
         <Stat label="Methods" value={totalEvaluated} sub={`/${TOOLS.length}`} col={INK} />
         <Stat label="Routine" value={byLevel.regular} col="#10B981" />
         <Stat label="Theory" value={byLevel.theory} col="#5A5550" />
-        <Stat label="Gates"  value={gatesCleared} sub="/4" col={YELLOW} />
+        <Stat label="Phases" value={gatesCleared} sub="/4" col={YELLOW} />
       </div>
 
       {/* ── Badges grid ───────────────────────────────── */}

@@ -155,9 +155,9 @@ ${TOOLS.map(t => `- ${t.n} [g:${(t.g || []).join(',')}; d:${(t.d || []).join('/'
 
 Based on this snapshot:
 ${stage === 'sparse'
-  ? '- The team has barely populated its capability map. Recommend 3 specific WORKSHOPS or CHALLENGES they should run next to fill in the most useful diagnostic data (e.g., "Run a triage on the dimensions with 0% coverage", "Have each team member rate 5 methods they use most"). Do NOT suggest individual methods to evaluate yet — the priority is to get more data.'
+  ? '- The team has barely populated its capability map. Recommend 3 specific WORKSHOPS or CHALLENGES they should run next to fill in the most useful diagnostic data (e.g., "Run a team scan on the dimensions with 0% coverage", "Have each team member rate 5 methods they use most"). Do NOT suggest individual methods to evaluate yet — the priority is to get more data.'
   : stage === 'mixed'
-  ? '- Mid-stage. Recommend 2 workshops/challenges to deepen the weakest gate or dimension AND 2 specific methods (by exact name) to evaluate next that would unlock the best follow-up insight.'
+  ? '- Mid-stage. Recommend 2 workshops/challenges to deepen the weakest phase or dimension AND 2 specific methods (by exact name) to evaluate next that would unlock the best follow-up insight.'
   : '- They have rich data. Recommend 3 methods (by exact name) to APPLY now on a typical urban transformation project (preferably methods at regular practice level), and 3 methods to LEARN next (theoretical-only or untouched, in their weakest dimensions).'}
 
 Return ONLY this JSON shape — no prose, no code fences:

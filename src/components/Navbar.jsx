@@ -1,11 +1,14 @@
 import { useShallow } from 'zustand/react/shallow'
 import { useStore } from '../store/useStore'
-import { getLevel, LEVELS } from '../data/tools'
+import { getLevel } from '../data/tools'
 
 const INK = '#1C2530'
 const YELLOW = '#FFC83D'
 
-// One emoji-style achievement badge per level
+// One emoji-style achievement badge per level. Used in the Navbar
+// as a small "tap to open Profile" indicator — the full level pill
+// (label + XP progress + raw XP number) lives on Profile only, so
+// the navbar stays focused on navigation rather than gamification.
 const LEVEL_BADGE = {
   Apprentice: { icon: '🌱', col: '#A8D080' },
   Planner:    { icon: '⚒',  col: '#14B8A6' },
@@ -33,8 +36,7 @@ export function Navbar() {
   const onProjectFit = view === 'projectFit'
   const projectLabel = (projectContext?.name || 'Your project').trim()
 
-  const { min, max, label } = getLevel(xp)
-  const pct = Math.min(100, Math.round(((xp - min) / (max - min)) * 100))
+  const { label } = getLevel(xp)
   const badge = LEVEL_BADGE[label] || LEVEL_BADGE.Apprentice
 
   return (
@@ -106,90 +108,44 @@ export function Navbar() {
         </button>
       )}
 
-      {/* Right side: badge + level pill — clickable, opens Profile */}
+      {/* Profile entry — small achievement badge only. The level pill
+          (label + XP progress + raw number) used to live here too;
+          Phase 4 demotes it to Profile so the navbar focuses on
+          navigation rather than gamification. The badge still
+          changes icon by level, so progression remains visible. */}
       {team && (
-        <div
+        <button
           onClick={goProfile}
-          role="button" tabIndex={0}
           aria-label="Open profile"
+          title={`${label} · open profile`}
           style={{
             marginLeft: 'auto',
-            display: 'flex', alignItems: 'center', gap: 8,
-            cursor: 'pointer',
-          }}>
-          {/* Achievement badge — scrappy circular sticker */}
-          <div title={`${label} · ${xp} XP`}
-            style={{
-              position: 'relative',
-              width: 38, height: 38,
-              flexShrink: 0,
-              fontSize: 18, lineHeight: 1,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-            {/* offset blob */}
-            <span aria-hidden="true" style={{
-              position: 'absolute',
-              top: 3, left: 4, right: -2, bottom: -2,
-              background: badge.col,
-              borderRadius: '52% 48% 50% 52% / 50% 54% 48% 52%',
-              zIndex: 0,
-            }} />
-            {/* ink outline */}
-            <span aria-hidden="true" style={{
-              position: 'absolute', inset: 0,
-              border: `2.5px solid ${INK}`,
-              borderRadius: '50%',
-              zIndex: 1,
-            }} />
-            <span style={{ position: 'relative', zIndex: 2 }}>{badge.icon}</span>
-          </div>
-
-          {/* Level pill — scrappy chip with mini progress */}
-          <div style={{
             position: 'relative',
-            padding: '6px 12px',
-            display: 'flex', alignItems: 'center', gap: 7,
+            width: 38, height: 38,
             flexShrink: 0,
+            padding: 0,
+            background: 'transparent', border: 'none',
+            cursor: 'pointer',
+            fontSize: 18, lineHeight: 1,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            <span aria-hidden="true" style={{
-              position: 'absolute',
-              top: 3, left: 4, right: -2, bottom: -2,
-              background: '#FFFDF8',
-              borderRadius: '999px',
-              zIndex: 0,
-            }} />
-            <span aria-hidden="true" style={{
-              position: 'absolute', inset: 0,
-              border: `2.5px solid ${INK}`,
-              borderRadius: 999,
-              zIndex: 1,
-            }} />
-            <span style={{
-              position: 'relative', zIndex: 2,
-              fontFamily: 'Barlow Condensed, Impact, sans-serif',
-              fontWeight: 900, fontSize: 12,
-              color: INK, letterSpacing: '.04em',
-              textTransform: 'uppercase',
-            }}>
-              {label}
-            </span>
-            <div style={{
-              position: 'relative', zIndex: 2,
-              width: 24, height: 5,
-              borderRadius: 999,
-              background: '#EAE5DB',
-              overflow: 'hidden',
-              border: `1px solid ${INK}`,
-            }}>
-              <div style={{ height: '100%', width: pct + '%', background: badge.col }} />
-            </div>
-            <span style={{
-              position: 'relative', zIndex: 2,
-              fontFamily: 'Barlow Condensed, Impact, sans-serif',
-              fontSize: 11, fontWeight: 900, color: INK,
-            }}>{xp}</span>
-          </div>
-        </div>
+          {/* offset blob */}
+          <span aria-hidden="true" style={{
+            position: 'absolute',
+            top: 3, left: 4, right: -2, bottom: -2,
+            background: badge.col,
+            borderRadius: '52% 48% 50% 52% / 50% 54% 48% 52%',
+            zIndex: 0,
+          }} />
+          {/* ink outline */}
+          <span aria-hidden="true" style={{
+            position: 'absolute', inset: 0,
+            border: `2.5px solid ${INK}`,
+            borderRadius: '50%',
+            zIndex: 1,
+          }} />
+          <span style={{ position: 'relative', zIndex: 2 }}>{badge.icon}</span>
+        </button>
       )}
     </nav>
   )
