@@ -194,8 +194,8 @@ function useGateSprings(openGate, count = 4) {
       { length: count },
       (_, i) => (i + 1 === openGate ? 1 : 0),
     )
-    const stiffness = 0.18
-    const damping   = 0.74          // < 1 → springy oscillation
+    const stiffness = 0.16
+    const damping   = 0.9           // close to critical — smooth settle, only a hint of overshoot
     let raf
     const tick = () => {
       const s = ref.current
