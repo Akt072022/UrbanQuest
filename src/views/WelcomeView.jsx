@@ -148,18 +148,43 @@ export function WelcomeView() {
         // button doesn't pile up rate-limit errors.
         setCooldown(60)
       } catch (err2) {
-        const msg = err2?.message || ''
-        // Pull the wait time out of the Supabase message when it
-        // tells us ("For security purposes, you can only request
-        // this after X seconds"). Fallback to 60 s.
-        const m = msg.match(/(\d+)\s*seconds?/i)
-        const wait = m ? parseInt(m[1], 10) : 60
-        const isRate = /rate|exceeded|seconds/i.test(msg)
+        // Log the full error to the console so we can inspect the
+        // status / code Supabase returned (the displayed message
+        // alone often hides whether it's the per-email cooldown
+        // or the project-wide hourly cap).
+        console.warn('[welcome] sendMagicLink error:', err2)
+        const msg    = err2?.message || ''
+        const status = err2?.status ?? err2?.statusCode ?? null
+        const code   = err2?.code   ?? null
+        // Per-email security cooldown: Supabase tells us how long
+        // to wait. Hourly project cap: message has no number, just
+        // "email rate limit exceeded".
+        const m       = msg.match(/(\d+)\s*seconds?/i)
+        const cdown   = m ? parseInt(m[1], 10) : 0
+        const isHourly = /rate limit (?:reached|exceeded)/i.test(msg)
+                       && cdown === 0
+        const isCool   = cdown > 0
         setMagicStatus('idle')
-        setCooldown(isRate ? wait : 0)
-        setErr(isRate
-          ? `Email rate limit reached — wait ${wait}s before requesting another link. Your project is saved; the button will re-arm itself.`
-          : (msg || 'Could not send the link. Try again.'))
+        setCooldown(isCool ? cdown : 0)
+        if (isHourly) {
+          setErr(
+            `Supabase hourly email cap reached — the built-in email service is limited to ~2 sends/hour, ` +
+            `regardless of plan. Add a custom SMTP provider in Supabase Dashboard → Authentication → ` +
+            `Emails (Resend / SendGrid / SES / Postmark) to raise it. ` +
+            (status ? `[${status}] ` : '') + (code ? `(${code}) ` : '') +
+            msg
+          )
+        } else if (isCool) {
+          setErr(
+            `Per-email cooldown — wait ${cdown}s before requesting another link. ` +
+            `Your project is saved; the button will re-arm itself.`
+          )
+        } else {
+          setErr(
+            (status ? `[${status}] ` : '') + (code ? `(${code}) ` : '') +
+            (msg || 'Could not send the link. Try again.')
+          )
+        }
       }
       return
     }
