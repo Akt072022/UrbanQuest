@@ -11,6 +11,7 @@ import {
   playTTS, stopTTS,
 } from './ExploreView'
 import { ScrappyButton, ScrappyChip } from '../components/ScrappyButton'
+import { SwipeWrap } from '../components/SwipeWrap'
 
 const PARTICIPANT_ID = Math.random().toString(36).slice(2, 8)
 const INK    = '#1C2530'
@@ -372,7 +373,7 @@ function ToolDeck({ tools, gate, evals, skipped, onPick, onSkip, onDone }) {
       </div>
       <ProgressDots tools={tools} idx={idx} />
 
-      {/* Card */}
+      {/* Card — swipe shortcuts: left → "New to me", right → "I run it". */}
       <div style={{ display: 'flex', justifyContent: 'center', marginTop: 14, marginBottom: 12 }}>
         <div key={idx}
           style={{
@@ -382,16 +383,33 @@ function ToolDeck({ tools, gate, evals, skipped, onPick, onSkip, onDone }) {
               ? 'card-from-left .35s cubic-bezier(.4,1.4,.5,1)'
               : 'none',
           }}>
-          <CardStack
-            tool={tool} gate={gate} face={face}
-            onDive={() => setFace('deep')}
-            onBack={() => setFace('synth')}
-            alreadyLevel={evals[tool.n] || null}
-            alreadySkipped={skipped.includes(tool.n)}
-          />
+          <SwipeWrap
+            enabled={face !== 'cover'}
+            onSwipe={(dir) => handleRating(dir === 'right' ? 'regular' : 'new')}
+            leftHint="NEW TO ME" leftColor="#9C958A"
+            rightHint="I RUN IT"  rightColor="#10B981">
+            <CardStack
+              tool={tool} gate={gate} face={face}
+              onDive={() => setFace('deep')}
+              onBack={() => setFace('synth')}
+              alreadyLevel={evals[tool.n] || null}
+              alreadySkipped={skipped.includes(tool.n)}
+            />
+          </SwipeWrap>
         </div>
       </div>
 
+      {face !== 'cover' && (
+        <div style={{ textAlign: 'center', marginBottom: 8 }}>
+          <div style={{
+            fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 10,
+            color: '#9C958A', letterSpacing: '.06em',
+            textTransform: 'uppercase',
+          }}>
+            ← Swipe new · swipe known → · or tap below
+          </div>
+        </div>
+      )}
       <RatingRow
         show={face !== 'cover'}
         currentLevel={evals[tool.n] || null}
@@ -796,7 +814,10 @@ function FitDeck({ tools, gate, project, fits, evals, onPick, onDone }) {
 
       <ProgressDots tools={tools} idx={idx} />
 
-      {/* Card */}
+      {/* Card — wrapped in SwipeWrap so participants who try to swipe
+          (Tinder muscle memory) get a fast path to the two extremes:
+          left → "Not for it" (skip), right → "Essential". The four
+          buttons below remain the explicit/precision affordance. */}
       <div style={{
         display: 'flex', justifyContent: 'center', marginTop: 14, marginBottom: 12,
       }}>
@@ -804,21 +825,41 @@ function FitDeck({ tools, gate, project, fits, evals, onPick, onDone }) {
           animation: lastAction === 'practice'
             ? 'card-from-left .35s cubic-bezier(.4,1.4,.5,1)' : 'none',
         }}>
-          <CardStack
-            tool={tool} gate={gate} face={face}
-            onDive={() => setFace('deep')}
-            onBack={() => setFace('synth')}
-            alreadyLevel={priorCap || null}
-          />
+          <SwipeWrap
+            onSwipe={(dir) => pickFit(dir === 'right' ? 'essential' : 'skip')}
+            leftHint="NOT FOR IT" leftColor="#9C958A"
+            rightHint="ESSENTIAL"   rightColor="#10B981">
+            <CardStack
+              tool={tool} gate={gate} face={face}
+              onDive={() => setFace('deep')}
+              onBack={() => setFace('synth')}
+              alreadyLevel={priorCap || null}
+            />
+          </SwipeWrap>
+        </div>
+      </div>
+
+      {/* Action prompt — explicit + visible. Tells the user this is
+          where the next move happens (the card itself isn't the
+          control). Names both the swipe shortcut and the tap option. */}
+      <div style={{
+        textAlign: 'center', marginBottom: 8,
+      }}>
+        <div style={{
+          fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 13,
+          color: INK, letterSpacing: '.04em', textTransform: 'uppercase',
+          lineHeight: 1.2,
+        }}>How important for {project?.name || 'this project'}?</div>
+        <div style={{
+          fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 10,
+          color: '#9C958A', letterSpacing: '.06em',
+          textTransform: 'uppercase', marginTop: 3,
+        }}>
+          ← Swipe skip · swipe essential → · or tap below
         </div>
       </div>
 
       {/* 4-way priority picker */}
-      <div style={{
-        fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 10,
-        color: '#5A5550', letterSpacing: '.08em',
-        textTransform: 'uppercase', marginBottom: 6,
-      }}>How important for {project?.name || 'this project'}?</div>
       <div style={{
         display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8,
         marginBottom: 4,
@@ -826,12 +867,12 @@ function FitDeck({ tools, gate, project, fits, evals, onPick, onDone }) {
         {FIT_OPTIONS.map(o => (
           <button key={o.id} onClick={() => pickFit(o.id)}
             style={{
-              padding: '10px 10px',
+              padding: '12px 12px',
               background: CARD, color: o.col,
               border: `2.5px solid ${INK}`, borderRadius: 12,
               cursor: 'pointer',
               boxShadow: '2px 2px 0 ' + INK,
-              fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 13,
+              fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 14,
               letterSpacing: '.04em', textTransform: 'uppercase',
               textAlign: 'left',
             }}>

@@ -11,6 +11,7 @@ import {
 import { canvasUrl, canvasThumbUrl, CANVAS_FILES } from '../data/canvas'
 import { GateSymbol, stageFromRatio } from '../components/GateSymbol'
 import { ScrappyButton, ScrappyChip } from '../components/ScrappyButton'
+import { SwipeWrap } from '../components/SwipeWrap'
 
 const INK = '#1C2530'
 const YELLOW = '#FFC83D'
@@ -1110,12 +1111,9 @@ export function ExploreView() {
         <ProgressDots tools={tools} idx={eIdx} />
       </div>
 
-      {/* ── Card stack ─────────────────────────────── */}
+      {/* ── Card stack — swipe shortcuts: left → "New to me", right →
+              "I run it". Buttons below remain the precision affordance. */}
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
-        {/* Inner keyed wrapper — re-mounts on every card change so the
-            conveyor-belt enter animation runs. Direction follows the
-            last action so the new card visually replaces the old from
-            the opposite side. */}
         <div key={eIdx}
           style={{
             animation: lastAction === 'skip'
@@ -1124,13 +1122,19 @@ export function ExploreView() {
               ? 'card-from-left .35s cubic-bezier(.4,1.4,.5,1)'
               : 'none',
           }}>
-          <CardStack
-            tool={tool} gate={gate} face={face}
-            onDive={() => setFace('deep')}
-            onBack={() => setFace('synth')}
-            alreadyLevel={practiced[tool.n] || null}
-            alreadySkipped={skipped.includes(tool.n)}
-          />
+          <SwipeWrap
+            enabled={face !== 'cover'}
+            onSwipe={(dir) => handleRating(dir === 'right' ? 'regular' : 'new')}
+            leftHint="NEW TO ME" leftColor="#9C958A"
+            rightHint="I RUN IT"  rightColor="#10B981">
+            <CardStack
+              tool={tool} gate={gate} face={face}
+              onDive={() => setFace('deep')}
+              onBack={() => setFace('synth')}
+              alreadyLevel={practiced[tool.n] || null}
+              alreadySkipped={skipped.includes(tool.n)}
+            />
+          </SwipeWrap>
         </div>
       </div>
       <style>{`
@@ -1144,7 +1148,23 @@ export function ExploreView() {
         }
       `}</style>
 
-      {/* ── Single-tap rating row */}
+      {/* ── Action prompt + single-tap rating row. The hint above the
+              buttons names both the swipe shortcut and the tap option
+              so the affordance isn't invisible. ──────────────────── */}
+      {face !== 'cover' && (
+        <div style={{
+          textAlign: 'center', marginBottom: 8,
+        }}>
+          <div style={{
+            fontFamily: 'Barlow Condensed, Impact, sans-serif',
+            fontWeight: 700, fontSize: 10,
+            color: '#9C958A', letterSpacing: '.06em',
+            textTransform: 'uppercase',
+          }}>
+            ← Swipe new · swipe known → · or tap below
+          </div>
+        </div>
+      )}
       <RatingRow
         show={face !== 'cover'}
         currentLevel={practiced[tool.n] || null}

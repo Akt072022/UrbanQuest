@@ -54,19 +54,94 @@ export function MethodfitMatrix({
         ● {responses.length} responses · {doneCount}/{participantCount} done
       </div>
 
+      {/* Matrix with axis labels — Y on the left running bottom→top,
+          X under the grid running left→right. The labels make it
+          explicit that vertical = team capability and horizontal =
+          project priority, instead of relying on the quadrant titles
+          alone. ─────────────────────────────────────────────────── */}
       <div style={{
-        display: 'grid', gridTemplateColumns: '1fr 1fr',
-        gap: 10, marginTop: 4,
+        display: 'grid',
+        gridTemplateColumns: 'auto 1fr',
+        gridTemplateRows: 'auto auto',
+        gap: 4, marginTop: 4,
       }}>
-        <Quadrant title="TRAIN / HIRE" hint="Priority for the project · gap on the team"
-          tone="gold" tools={buckets.train} highlight />
-        <Quadrant title="RUN IT" hint="Priority · the team can deliver"
-          tone="ok" tools={buckets.run} />
-        <Quadrant title="SKIP" hint="Low priority for this project"
-          tone="muted" tools={buckets.skip} />
-        <Quadrant title="BENCH" hint="Team can run it · low priority here"
-          tone="bench" tools={buckets.bench} />
+        {/* Y axis label — vertical, runs bottom-to-top */}
+        <div style={{
+          gridColumn: '1', gridRow: '1',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          width: 28,
+        }}>
+          <div style={{
+            transform: 'rotate(-90deg)', whiteSpace: 'nowrap',
+            fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 10,
+            color: INK, letterSpacing: '.08em', textTransform: 'uppercase',
+          }}>
+            ↑ Team capability
+          </div>
+        </div>
+        {/* The 2×2 quadrant grid */}
+        <div style={{
+          gridColumn: '2', gridRow: '1',
+          display: 'grid', gridTemplateColumns: '1fr 1fr',
+          gridTemplateRows: '1fr 1fr',
+          gap: 8,
+        }}>
+          <Quadrant title="TRAIN / HIRE" hint="Priority for the project · gap on the team"
+            tone="gold" tools={buckets.train} highlight />
+          <Quadrant title="RUN IT" hint="Priority · the team can deliver"
+            tone="ok" tools={buckets.run} />
+          <Quadrant title="BENCH" hint="Team can run it · low priority here"
+            tone="bench" tools={buckets.bench} />
+          <Quadrant title="SKIP" hint="Low priority for this project"
+            tone="muted" tools={buckets.skip} />
+        </div>
+        {/* X axis label */}
+        <div style={{
+          gridColumn: '2', gridRow: '2',
+          textAlign: 'center', marginTop: 4,
+          fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 10,
+          color: INK, letterSpacing: '.08em', textTransform: 'uppercase',
+        }}>
+          Project priority →
+        </div>
       </div>
+
+      {/* "How this is built" — surfaces the calculation so the team
+          can read the chart instead of guessing what landed where. */}
+      <details style={{
+        marginTop: 12,
+        background: '#F2EDE4',
+        border: `1.5px dashed ${INK}33`, borderRadius: 10,
+        padding: '8px 10px',
+      }}>
+        <summary style={{
+          cursor: 'pointer',
+          fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 10,
+          color: INK, letterSpacing: '.06em',
+          textTransform: 'uppercase',
+        }}>How this matrix is built</summary>
+        <div style={{
+          fontSize: 11, color: '#3F3A36', lineHeight: 1.5,
+          marginTop: 8,
+        }}>
+          For each method, every participant rates two things:
+          <ul style={{ margin: '6px 0 6px 18px', padding: 0 }}>
+            <li>
+              <b>Priority</b> for the project — Essential (3) · Helpful (2) ·
+              Optional (1) · Not for it (0).
+            </li>
+            <li>
+              <b>Capability</b> on the team — I run it (3) · I have run
+              it sometimes (2) · I know it in theory only (1).
+            </li>
+          </ul>
+          We average each across the team. Methods with a priority
+          average ≥ 1.5 land in the right column; capability ≥ 1.5
+          lands in the top row. <b>TRAIN / HIRE</b> (top-left) is the
+          most actionable cell — the team should either skill up or
+          bring help in.
+        </div>
+      </details>
 
       {buckets.nocap.length > 0 && (
         <div style={{
