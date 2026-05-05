@@ -786,14 +786,6 @@ export function MapView() {
         borderTop: `1px dashed ${INK}33`,
       }}>
         <div style={{
-          fontFamily: 'Barlow Condensed, Impact, sans-serif',
-          fontWeight: 900, fontSize: 10,
-          color: '#9C958A', letterSpacing: '.08em',
-          textTransform: 'uppercase',
-          marginBottom: isH ? 8 : 4,
-          textAlign: isH ? 'center' : 'left',
-        }}>Or do something different</div>
-        <div style={{
           display: 'flex',
           flexDirection: isH ? 'row' : 'column',
           justifyContent: isH ? 'space-evenly' : 'flex-start',
