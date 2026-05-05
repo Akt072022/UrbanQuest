@@ -1175,7 +1175,7 @@ export function ExploreView() {
             display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
           }}>
             <NavArrow dir="prev"
-              onClick={() => prevCard()}
+              onClick={() => { setLastAction('prev'); prevCard() }}
               disabled={eIdx === 0} />
             <div style={{
               fontFamily: 'Barlow Condensed, Impact, sans-serif',
@@ -1185,7 +1185,7 @@ export function ExploreView() {
               {eIdx + 1}/{tools.length}
             </div>
             <NavArrow dir="next"
-              onClick={() => nextCard()}
+              onClick={() => { setLastAction('next'); nextCard() }}
               disabled={eIdx >= tools.length - 1} />
           </div>
         </div>
@@ -1198,11 +1198,15 @@ export function ExploreView() {
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
         <div key={eIdx}
           style={{
-            animation: lastAction === 'skip'
-              ? 'card-from-right .35s cubic-bezier(.4,1.4,.5,1)'
-              : lastAction === 'practice'
-              ? 'card-from-left .35s cubic-bezier(.4,1.4,.5,1)'
-              : 'none',
+            // Animation direction follows the user's intent:
+            //   • next / skip      → new card slides IN from the right
+            //   • prev / practice  → new card slides IN from the left
+            animation:
+              lastAction === 'skip' || lastAction === 'next'
+                ? 'card-from-right .35s cubic-bezier(.4,1.4,.5,1)'
+                : lastAction === 'practice' || lastAction === 'prev'
+                ? 'card-from-left .35s cubic-bezier(.4,1.4,.5,1)'
+                : 'none',
           }}>
           <SwipeWrap
             enabled={face !== 'cover'}
