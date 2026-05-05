@@ -1,14 +1,16 @@
 // Generic swipe-gesture wrapper for cards. Wraps any child element;
 // fires onSwipe('left') or onSwipe('right') when the user drags past
-// SWIPE_THRESH px and releases. Touch + mouse, with a vertical-lock
-// fallback so down-drag scrolls the inner card natively.
+// SWIPE_THRESH px and releases.
 //
-// Why this exists: Phase 2a removed the old swipe gesture in favour
-// of single-tap rating buttons, but real users keep trying to swipe
-// (Tinder muscle memory). We bring the gesture back as a *shortcut*
-// for the two extreme actions while leaving the buttons as the
-// precision affordance for the middle options.
-import { useRef, useState } from 'react'
+// Implementation note — uses Pointer Events with setPointerCapture so
+// the browser keeps delivering pointermove / pointerup / pointercancel
+// to this element even when the cursor leaves its bounds. The earlier
+// mouse-event version got stuck on desktop when users released the
+// button off-screen: neither mouseup nor mouseleave fired after the
+// release point, so end() never ran and the card stayed translated.
+//
+// Vertical-lock fallback so down-drag scrolls the inner card natively.
+import { useRef, useState, useEffect } from 'react'
 
 const SWIPE_THRESH = 90
 const LOCK_PX      = 10
@@ -19,10 +21,23 @@ export function SwipeWrap({
   rightHint = null, rightColor = '#10B981',
 }) {
   const [drag, setDrag] = useState({ x: 0, y: 0, exiting: false })
-  const startRef = useRef(null)
+  const startRef    = useRef(null)
   // 'pending' before first move > LOCK_PX, then either 'swipe' (we
   // own the gesture) or 'scroll' (let inner card scroll natively).
-  const modeRef  = useRef(null)
+  const modeRef     = useRef(null)
+  const exitTimerRef = useRef(null)
+  const mountedRef   = useRef(true)
+
+  // Cancel any in-flight exit timer if the component unmounts mid
+  // animation, otherwise the timeout would call setDrag on an
+  // already-gone component and React warns.
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      if (exitTimerRef.current) clearTimeout(exitTimerRef.current)
+    }
+  }, [])
 
   const begin = (cx, cy) => {
     if (!enabled) return
@@ -46,9 +61,13 @@ export function SwipeWrap({
     if (modeRef.current !== 'swipe') return
     setDrag({ x: dx, y: dy, exiting: false })
   }
-  const end = () => {
+  const end = (committedDrag) => {
     if (!startRef.current) { modeRef.current = null; return }
-    const { x, y } = drag
+    // Take drag from the latest committed value when caller passes it
+    // (avoids stale-closure reads when end runs from a captured event
+    // handler that fires several ticks after the last move).
+    const cur = committedDrag || drag
+    const x = cur.x, y = cur.y
     let dir = null
     let off = { x: 0, y: 0 }
     if (x > SWIPE_THRESH && Math.abs(x) > Math.abs(y)) {
@@ -56,28 +75,50 @@ export function SwipeWrap({
     } else if (x < -SWIPE_THRESH && Math.abs(x) > Math.abs(y)) {
       dir = 'left'; off = { x: -700, y }
     }
-    if (dir) {
-      setDrag({ x: off.x, y: off.y, exiting: true })
-      setTimeout(() => {
-        onSwipe?.(dir)
-        // Reset so the next card renders centred. Without this the
-        // wrapper stays translated off-screen.
-        setDrag({ x: 0, y: 0, exiting: false })
-      }, 220)
-    } else {
-      setDrag({ x: 0, y: 0, exiting: false })
-    }
     startRef.current = null
     modeRef.current  = null
+    if (dir) {
+      setDrag({ x: off.x, y: off.y, exiting: true })
+      exitTimerRef.current = setTimeout(() => {
+        exitTimerRef.current = null
+        onSwipe?.(dir)
+        if (mountedRef.current) setDrag({ x: 0, y: 0, exiting: false })
+      }, 220)
+    } else {
+      // Snap back. Clear any prior exit timer in case a previous
+      // gesture left one pending and the user grabbed the card again.
+      if (exitTimerRef.current) {
+        clearTimeout(exitTimerRef.current)
+        exitTimerRef.current = null
+      }
+      setDrag({ x: 0, y: 0, exiting: false })
+    }
   }
 
-  const onTouchStart = (e) => begin(e.touches[0].clientX, e.touches[0].clientY)
-  const onTouchMove  = (e) => move(e.touches[0].clientX, e.touches[0].clientY)
-  const onTouchEnd   = () => end()
-  const onMouseDown  = (e) => begin(e.clientX, e.clientY)
-  const onMouseMove  = (e) => { if (startRef.current) move(e.clientX, e.clientY) }
-  const onMouseUp    = () => end()
-  const onMouseLeave = () => { if (startRef.current) end() }
+  // Pointer event handlers — capture the pointer so up/cancel reach
+  // us even when the cursor leaves the element's bounds.
+  const onPointerDown = (e) => {
+    if (!enabled) return
+    if (e.button !== undefined && e.button !== 0) return  // primary button only
+    try { e.currentTarget.setPointerCapture(e.pointerId) } catch { /* noop */ }
+    begin(e.clientX, e.clientY)
+  }
+  const onPointerMove = (e) => {
+    if (!startRef.current) return
+    move(e.clientX, e.clientY)
+  }
+  const onPointerUp = (e) => {
+    try { e.currentTarget.releasePointerCapture(e.pointerId) } catch { /* noop */ }
+    end()
+  }
+  const onPointerCancel = () => {
+    end()
+  }
+  // Lost capture — e.g. the user agent stole the pointer. Treat it as
+  // a release so we never get stuck mid-gesture.
+  const onLostPointerCapture = () => {
+    end()
+  }
 
   const rot = Math.max(-12, Math.min(12, drag.x * 0.05))
   const showRight = drag.x > 30 && Math.abs(drag.x) > Math.abs(drag.y)
@@ -85,9 +126,11 @@ export function SwipeWrap({
 
   return (
     <div
-      onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
-      onMouseDown={onMouseDown} onMouseMove={onMouseMove}
-      onMouseUp={onMouseUp} onMouseLeave={onMouseLeave}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
+      onLostPointerCapture={onLostPointerCapture}
       style={{
         position: 'relative',
         transform: `translate(${drag.x}px, ${drag.y}px) rotate(${rot}deg)`,
