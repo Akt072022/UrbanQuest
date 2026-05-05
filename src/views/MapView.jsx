@@ -778,29 +778,41 @@ export function MapView() {
 
       {/* ── Demoted secondary doors — quiet text-link strip at the
               bottom of the page. Phase 2b: one CTA per screen, the
-              rest are reachable but not competing. ───────────────── */}
+              rest are reachable but not competing. On desktop /
+              tablet the three links lay out in a single row, evenly
+              spaced; on mobile they stack as before. ─────────────── */}
       <div style={{
         marginTop: 24, paddingTop: 16,
         borderTop: `1px dashed ${INK}33`,
-        display: 'flex', flexDirection: 'column', gap: 4,
       }}>
         <div style={{
           fontFamily: 'Barlow Condensed, Impact, sans-serif',
           fontWeight: 900, fontSize: 10,
           color: '#9C958A', letterSpacing: '.08em',
-          textTransform: 'uppercase', marginBottom: 4,
+          textTransform: 'uppercase',
+          marginBottom: isH ? 8 : 4,
+          textAlign: isH ? 'center' : 'left',
         }}>Or do something different</div>
-        {projectContext ? (
-          <SecondaryLink onClick={goProjectFit}
-            label="Back to my project shortlist" />
-        ) : (
-          <SecondaryLink onClick={goWelcome}
-            label="✨ Analyse a new project" />
-        )}
-        <SecondaryLink onClick={goDashboard}
-          label="See my capability map" />
-        <SecondaryLink onClick={goFacilitator}
-          label="Run a live workshop" />
+        <div style={{
+          display: 'flex',
+          flexDirection: isH ? 'row' : 'column',
+          justifyContent: isH ? 'space-evenly' : 'flex-start',
+          alignItems: isH ? 'center' : 'stretch',
+          flexWrap: isH ? 'wrap' : 'nowrap',
+          gap: isH ? 32 : 4,
+        }}>
+          {projectContext ? (
+            <SecondaryLink onClick={goProjectFit}
+              label="Back to my project shortlist" />
+          ) : (
+            <SecondaryLink onClick={goWelcome}
+              label="✨ Analyse a new project" />
+          )}
+          <SecondaryLink onClick={goDashboard}
+            label="See my capability map" />
+          <SecondaryLink onClick={goFacilitator}
+            label="Run a live workshop" />
+        </div>
       </div>
 
       <style>{`
