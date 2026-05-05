@@ -27,9 +27,9 @@ const FONT_HEAD = 'Barlow Condensed, Impact, sans-serif'
 // used by the personal Explore deck so the gesture means the same
 // thing whether the user is rating solo or in a workshop.
 const TRIAGE_RIGHT_ZONES = [
-  { threshold: 40,  label: 'READ ABOUT', color: '#5A5550', value: 'theory' },
-  { threshold: 110, label: 'TRIED IT',   color: '#F97316', value: 'occasional' },
-  { threshold: 190, label: 'I RUN IT',   color: '#10B981', value: 'regular' },
+  { threshold: 25,  label: 'READ ABOUT', hint: 'In theory only',  color: '#5A5550', value: 'theory' },
+  { threshold: 80,  label: 'TRIED IT',   hint: 'A few times',     color: '#F97316', value: 'occasional' },
+  { threshold: 140, label: 'I RUN IT',   hint: 'Routine practice', color: '#10B981', value: 'regular' },
 ]
 
 // Map skill level → legacy triage_card payload so the existing
@@ -382,12 +382,32 @@ function ToolDeck({ tools, gate, evals, skipped, onPick, onSkip, onDone }) {
       </div>
       <ProgressDots tools={tools} idx={idx} />
 
+      {/* Action row ABOVE the card — visible at a glance on mobile. */}
+      {face !== 'cover' && (
+        <div style={{ textAlign: 'center', marginTop: 12, marginBottom: 8 }}>
+          <div style={{
+            fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 10,
+            color: '#9C958A', letterSpacing: '.06em',
+            textTransform: 'uppercase',
+          }}>
+            ← Swipe new · drag right to rate · or tap below
+          </div>
+        </div>
+      )}
+      <div style={{ marginBottom: 12 }}>
+        <RatingRow
+          show={face !== 'cover'}
+          currentLevel={evals[tool.n] || null}
+          currentSkipped={skipped.includes(tool.n)}
+          onPick={handleRating} />
+      </div>
+
       {/* Card — swipe shortcuts: left → "New to me", right → drag-to-rate.
           Ghost cards behind give the deck weight. */}
       <div style={{
         position: 'relative',
         display: 'flex', justifyContent: 'center',
-        marginTop: 14, marginBottom: 12,
+        marginBottom: 12,
       }}>
         {tools.length - idx > 2 && <GhostCard depth={2} />}
         {tools.length - idx > 1 && <GhostCard depth={1} />}
@@ -418,23 +438,6 @@ function ToolDeck({ tools, gate, evals, skipped, onPick, onSkip, onDone }) {
           </SwipeWrap>
         </div>
       </div>
-
-      {face !== 'cover' && (
-        <div style={{ textAlign: 'center', marginBottom: 8 }}>
-          <div style={{
-            fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 10,
-            color: '#9C958A', letterSpacing: '.06em',
-            textTransform: 'uppercase',
-          }}>
-            ← Swipe new · drag right to rate · or tap below
-          </div>
-        </div>
-      )}
-      <RatingRow
-        show={face !== 'cover'}
-        currentLevel={evals[tool.n] || null}
-        currentSkipped={skipped.includes(tool.n)}
-        onPick={handleRating} />
 
       <style>{`
         @keyframes card-from-left {

@@ -21,14 +21,14 @@ const GATE_COL = ['','#F97316','#3B82F6','#10B981','#8B5CF6']
 
 // Right-swipe rating zones — the further the user drags, the higher
 // the commitment level. Thresholds tuned for ~280-360 px wide cards
-// on mobile so each band feels distinct without forcing the user to
-// drag past the screen edge for the top level. The first threshold
-// (40 px) is just past the LOCK_PX dead-zone, so any meaningful
-// horizontal motion immediately surfaces the "READ ABOUT" pill.
+// on mobile so transitions between zones feel snappy (~50 px each)
+// and the top level is reachable without dragging past the screen
+// edge. Each zone carries a hint so the band itself communicates
+// what level the user is about to commit to.
 const RIGHT_ZONES = [
-  { threshold: 40,  label: 'READ ABOUT', color: '#5A5550', value: 'theory' },
-  { threshold: 110, label: 'TRIED IT',   color: '#F97316', value: 'occasional' },
-  { threshold: 190, label: 'I RUN IT',   color: '#10B981', value: 'regular' },
+  { threshold: 25,  label: 'READ ABOUT', hint: 'In theory only',  color: '#5A5550', value: 'theory' },
+  { threshold: 80,  label: 'TRIED IT',   hint: 'A few times',     color: '#F97316', value: 'occasional' },
+  { threshold: 140, label: 'I RUN IT',   hint: 'Routine practice', color: '#10B981', value: 'regular' },
 ]
 
 function gateRgba(g, a) {
@@ -1236,6 +1236,33 @@ export function ExploreView() {
         <ProgressDots tools={tools} idx={eIdx} />
       </div>
 
+      {/* ── Action row ABOVE the card — hint on top, rating buttons
+              right above the card so they're visible at a glance on
+              mobile (the previous below-card placement was hidden
+              under the fold and users swiped by reflex without
+              noticing the buttons existed). ───────────────────── */}
+      {face !== 'cover' && (
+        <div style={{
+          textAlign: 'center', marginBottom: 8,
+        }}>
+          <div style={{
+            fontFamily: 'Barlow Condensed, Impact, sans-serif',
+            fontWeight: 700, fontSize: 10,
+            color: '#9C958A', letterSpacing: '.06em',
+            textTransform: 'uppercase',
+          }}>
+            ← Swipe new · drag right to rate · or tap below
+          </div>
+        </div>
+      )}
+      <div style={{ marginBottom: 12 }}>
+        <RatingRow
+          show={face !== 'cover'}
+          currentLevel={practiced[tool.n] || null}
+          currentSkipped={skipped.includes(tool.n)}
+          onPick={handleRating} />
+      </div>
+
       {/* ── Card stack — swipe shortcuts: left → "New to me", right →
               drag-to-rate (3 zones). The decorative ghost cards
               behind the active one give the deck weight: you can
@@ -1292,28 +1319,6 @@ export function ExploreView() {
         }
       `}</style>
 
-      {/* ── Action prompt + single-tap rating row. Names both the
-              swipe shortcut and the tap option so the affordance
-              isn't invisible. ──────────────────────────────────── */}
-      {face !== 'cover' && (
-        <div style={{
-          textAlign: 'center', marginBottom: 8,
-        }}>
-          <div style={{
-            fontFamily: 'Barlow Condensed, Impact, sans-serif',
-            fontWeight: 700, fontSize: 10,
-            color: '#9C958A', letterSpacing: '.06em',
-            textTransform: 'uppercase',
-          }}>
-            ← Swipe new · drag right to rate · or tap below
-          </div>
-        </div>
-      )}
-      <RatingRow
-        show={face !== 'cover'}
-        currentLevel={practiced[tool.n] || null}
-        currentSkipped={skipped.includes(tool.n)}
-        onPick={handleRating} />
     </div>
   )
 }

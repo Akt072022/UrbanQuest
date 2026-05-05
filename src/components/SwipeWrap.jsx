@@ -22,6 +22,7 @@
 //     mouse-event handlers got stuck on desktop releases off-card.
 //   • Direction-locked: vertical drag falls through to native scroll.
 import { useRef, useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 
 const SWIPE_THRESH = 90
 const LOCK_PX      = 10
@@ -159,43 +160,67 @@ export function SwipeWrap({
       {children}
 
       {/* Multi-zone preview — render the whole stack of right zones as
-          ghost pills along the right edge, with the active one bright
-          and bigger. Tells the user "drop me here for theory / tried /
-          regular" mid-drag. The pills counter-translate the wrapper's
-          drag so they stay anchored in screen space. */}
-      {rightZones && drag.x > 30 && Math.abs(drag.x) > Math.abs(drag.y) && (
-        <div style={{
-          position: 'absolute',
-          top: 16, right: 12,
-          display: 'flex', flexDirection: 'column', gap: 8,
-          // Counter-translate so the ghost stack stays put while the
-          // card rotates and slides under the cursor.
-          transform: `translate(${-drag.x}px, ${-drag.y}px) rotate(${-rot}deg)`,
-          transformOrigin: 'top right',
-          pointerEvents: 'none',
-          zIndex: 5,
-        }}>
-          {rightZones.map((z) => {
-            const active = liveZone && liveZone.value === z.value
-            return (
-              <div key={z.value} style={{
-                padding: active ? '8px 14px' : '6px 12px',
-                borderRadius: 10,
-                border: `${active ? 3 : 2}px solid ${z.color}`,
-                background: active ? z.color : 'rgba(255,255,255,.92)',
-                color: active ? '#FFFFFF' : z.color,
-                fontFamily: 'Barlow Condensed, Impact, sans-serif',
-                fontWeight: 900,
-                fontSize: active ? 16 : 12,
-                letterSpacing: '.06em', textTransform: 'uppercase',
-                boxShadow: active ? '2px 2px 0 #1C2530' : 'none',
-                transform: active ? 'translate(-1px, -1px) rotate(8deg)' : 'rotate(8deg)',
-                transition: 'all .12s',
-                whiteSpace: 'nowrap',
-              }}>{z.label}</div>
-            )
-          })}
-        </div>
+          a HORIZONTAL row of drop-target pills, fixed to the bottom
+          of the viewport so they're out of the way of the card and
+          its surrounding UI. Horizontal layout reinforces that
+          horizontal drag distance is what switches zones; generous
+          gap between pills makes each band visually distinct. ── */}
+      {rightZones && drag.x > 20 && Math.abs(drag.x) > Math.abs(drag.y) && (
+        createPortal(
+          <div style={{
+            position: 'fixed',
+            left: 16, right: 16,
+            bottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)',
+            display: 'flex', flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'stretch',
+            gap: 16,
+            pointerEvents: 'none',
+            zIndex: 9999,
+          }}>
+            {rightZones.map((z) => {
+              const active = liveZone && liveZone.value === z.value
+              return (
+                <div key={z.value} style={{
+                  flex: 1,
+                  padding: active ? '12px 14px' : '9px 12px',
+                  borderRadius: 14,
+                  border: `${active ? 3 : 2.5}px solid ${z.color}`,
+                  background: active ? z.color : 'rgba(255,255,255,.97)',
+                  color: active ? '#FFFFFF' : z.color,
+                  fontFamily: 'Barlow Condensed, Impact, sans-serif',
+                  letterSpacing: '.04em', textTransform: 'uppercase',
+                  boxShadow: active
+                    ? '3px 3px 0 #1C2530'
+                    : '2px 2px 0 rgba(28,37,48,0.18)',
+                  transform: active ? 'translate(-1px, -1px) scale(1.04)' : 'none',
+                  transition: 'all .1s',
+                  textAlign: 'center',
+                }}>
+                  <div style={{
+                    fontWeight: 900,
+                    fontSize: active ? 15 : 13,
+                    lineHeight: 1.05,
+                  }}>{z.label}</div>
+                  {z.hint && (
+                    <div style={{
+                      fontFamily: '-apple-system, Helvetica Neue, sans-serif',
+                      fontWeight: 600,
+                      fontSize: 11,
+                      marginTop: 4,
+                      letterSpacing: 0,
+                      textTransform: 'none',
+                      opacity: active ? 0.95 : 0.78,
+                      color: active ? '#FFFFFF' : '#5A5550',
+                      lineHeight: 1.2,
+                    }}>{z.hint}</div>
+                  )}
+                </div>
+              )
+            })}
+          </div>,
+          document.body,
+        )
       )}
 
       {/* Legacy single-zone right tag (only when rightZones not set). */}
