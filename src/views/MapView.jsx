@@ -39,7 +39,11 @@ const GATE_GAP    = 70
 const MILESTONE_HALF = 52
 // Horizontal layout: per-gate canvas height + side padding. CY_H is
 // the constant Y of every gate's centre when laid out horizontally.
-const PATH_H      = 360
+// Bumped from 360 → 480 so the open rosette (NODE_R_MAX = 150 + dim
+// icon = 40 + label block = 32 = 222 perpendicular extent) has room
+// to breathe without the topmost dim's label crowding the chrome
+// above. CY_H sits well clear of either edge of the canvas.
+const PATH_H      = 480
 const CY_H        = PATH_H / 2
 const LEFT_PAD    = 60
 
@@ -638,87 +642,102 @@ export function MapView() {
 
   return (
     <div className="anim-fadein" style={{ position: 'relative' }}>
-      {/* ── Title — kept lean post-Phase 1; the legacy team blob
-              ("MY CITY · My team · mixed") was meaningless after the
-              project-first welcome shipped, so it's gone. ────────── */}
-      <div style={{ marginBottom: 10 }}>
+      {/* ── Header strip — title, compact progress bar and primary CTA
+              fold into a single horizontal row on desktop / tablet so
+              the chrome above the journey takes ~80 px instead of
+              ~250 px. On mobile they keep the original stacked layout
+              because the column width is too narrow for one row. ── */}
+      <div style={{
+        display: 'flex',
+        flexDirection: isH ? 'row' : 'column',
+        alignItems: isH ? 'center' : 'stretch',
+        gap: isH ? 18 : 0,
+        marginBottom: isH ? 12 : 0,
+      }}>
+        {/* Title */}
         <div style={{
-          fontFamily: 'Barlow Condensed, Impact, sans-serif',
-          fontWeight: 900,
-          fontSize: 'clamp(28px,8vw,42px)', color: INK, lineHeight: .95,
-        }}>
-          BROWSE METHODS
-        </div>
-        <div style={{ fontSize: 12, color: '#5A5550', marginTop: 2 }}>
-          All 133 methods grouped by phase and dimension. Tap any rosette to dive in.
-        </div>
-      </div>
-
-      {/* ── Light progress strip (no card chrome) ───── */}
-      <div style={{ marginBottom: 4, padding: '4px 2px 6px' }}>
-        <div style={{
-          display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-          marginBottom: 6,
+          flexShrink: 0,
+          marginBottom: isH ? 0 : 8,
         }}>
           <div style={{
             fontFamily: 'Barlow Condensed, Impact, sans-serif',
-            fontWeight: 900, fontSize: 12, color: INK, letterSpacing: '.06em',
-          }}>QUEST PROGRESS</div>
-          <div style={{
-            fontFamily: 'Barlow Condensed, Impact, sans-serif',
-            fontWeight: 900, fontSize: 18, color: INK,
+            fontWeight: 900,
+            fontSize: isH ? 26 : 'clamp(28px,8vw,42px)',
+            color: INK, lineHeight: .95,
           }}>
-            {tp}<span style={{ color: '#9C958A' }}>/{total}</span>
-            <span style={{ fontSize: 12, color: CORAL, marginLeft: 6 }}>({tpPct}%)</span>
+            BROWSE METHODS
+          </div>
+          {!isH && (
+            <div style={{ fontSize: 12, color: '#5A5550', marginTop: 2 }}>
+              All 133 methods grouped by phase and dimension. Tap any rosette to dive in.
+            </div>
+          )}
+        </div>
+
+        {/* Progress bar — flex:1 in horizontal so it stretches to fill
+            the remaining row width. */}
+        <div style={{
+          flex: isH ? 1 : 'initial',
+          marginBottom: isH ? 0 : 8,
+          padding: isH ? 0 : '4px 2px 6px',
+        }}>
+          <div style={{
+            display: 'flex', justifyContent: 'space-between',
+            alignItems: 'baseline',
+            marginBottom: isH ? 4 : 6,
+          }}>
+            <div style={{
+              fontFamily: 'Barlow Condensed, Impact, sans-serif',
+              fontWeight: 900, fontSize: 11, color: INK, letterSpacing: '.06em',
+            }}>QUEST PROGRESS</div>
+            <div style={{
+              fontFamily: 'Barlow Condensed, Impact, sans-serif',
+              fontWeight: 900, fontSize: 14, color: INK,
+            }}>
+              {tp}<span style={{ color: '#9C958A' }}>/{total}</span>
+              <span style={{ fontSize: 11, color: CORAL, marginLeft: 6 }}>({tpPct}%)</span>
+              <span style={{
+                fontSize: 10, color: '#5A5550', marginLeft: 10, fontWeight: 700,
+              }}>{tg}/4 cleared</span>
+            </div>
+          </div>
+          <div style={{
+            height: 10, background: '#F5F1EB',
+            border: `2px solid ${INK}`,
+            borderRadius: 999, overflow: 'hidden',
+          }}>
+            <div style={{
+              height: '100%', width: tpPct + '%',
+              background: `linear-gradient(90deg, ${YELLOW} 0%, ${TEAL} 50%, ${CORAL} 100%)`,
+              transition: 'width .8s',
+              borderRight: tpPct > 0 ? `2px solid ${INK}` : 'none',
+            }} />
           </div>
         </div>
-        <div style={{
-          height: 14, background: '#F5F1EB',
-          border: `2.5px solid ${INK}`,
-          borderRadius: 999, overflow: 'hidden',
-        }}>
-          <div style={{
-            height: '100%', width: tpPct + '%',
-            background: `linear-gradient(90deg, ${YELLOW} 0%, ${TEAL} 50%, ${CORAL} 100%)`,
-            transition: 'width .8s',
-            borderRight: tpPct > 0 ? `2px solid ${INK}` : 'none',
-          }} />
-        </div>
-        <div style={{
-          display: 'flex', gap: 14, marginTop: 6,
-          fontSize: 11, color: '#5A5550', fontWeight: 700,
-        }}>
-          <span><b style={{ color: INK }}>{tg}</b>/4 cleared</span>
-          <span><b style={{ color: INK }}>{xp}</b> XP</span>
-        </div>
-      </div>
 
-      {/* ── Primary CTA — single, focused. Always resumes at a single
-              dim (smaller deck, ~5-7 cards) instead of the whole gate
-              so the user gets a contained burst of rating with a clear
-              end state. The dim chosen is whichever has un-rated tools
-              first; falls through to a generic "OPEN THE FIRST PHASE"
-              when nothing is mid-flight. ─────────────────────────── */}
-      <div style={{
-        display: 'flex', justifyContent: 'center',
-        margin: '20px 0 28px',
-      }}>
+        {/* Primary CTA — single, focused. Resumes at the active dim. */}
         <div style={{
-          width: 240,
+          flexShrink: 0,
+          width: isH ? 240 : '100%',
+          margin: isH ? 0 : '12px 0 14px',
           animation: 'bob-cta 1.8s ease-in-out infinite',
+          display: isH ? 'block' : 'flex',
+          justifyContent: 'center',
         }}>
-          {activeStop && activeStop.kind === 'node'
-            && !activeStop.complete && !activeStop.locked && !activeStop.empty ? (
-            <ScrappyButton onClick={() => goExploreDim(activeStop.gate, activeStop.dim.id)}
-              color={YELLOW} size="md" full>
-              ▼ {tp === 0 ? 'START WITH' : 'CONTINUE'} {activeStop.dim.label.toUpperCase()}
-            </ScrappyButton>
-          ) : (
-            <ScrappyButton onClick={() => goExplore(1)}
-              color={YELLOW} size="md" full>
-              ▼ OPEN THE FIRST PHASE
-            </ScrappyButton>
-          )}
+          <div style={{ width: isH ? '100%' : 240 }}>
+            {activeStop && activeStop.kind === 'node'
+              && !activeStop.complete && !activeStop.locked && !activeStop.empty ? (
+              <ScrappyButton onClick={() => goExploreDim(activeStop.gate, activeStop.dim.id)}
+                color={YELLOW} size="md" full>
+                ▼ {tp === 0 ? 'START WITH' : 'CONTINUE'} {activeStop.dim.label.toUpperCase()}
+              </ScrappyButton>
+            ) : (
+              <ScrappyButton onClick={() => goExplore(1)}
+                color={YELLOW} size="md" full>
+                ▼ OPEN THE FIRST PHASE
+              </ScrappyButton>
+            )}
+          </div>
         </div>
       </div>
 
@@ -782,7 +801,8 @@ export function MapView() {
               tablet the three links lay out in a single row, evenly
               spaced; on mobile they stack as before. ─────────────── */}
       <div style={{
-        marginTop: 24, paddingTop: 16,
+        marginTop: isH ? 8 : 18,
+        paddingTop: isH ? 8 : 14,
         borderTop: `1px dashed ${INK}33`,
       }}>
         <div style={{
@@ -822,10 +842,10 @@ function SecondaryLink({ onClick, label }) {
   return (
     <button onClick={onClick}
       style={{
-        textAlign: 'left', padding: '8px 0',
+        textAlign: 'left', padding: '6px 0',
         background: 'transparent', border: 'none', cursor: 'pointer',
         fontFamily: 'Barlow Condensed, Impact, sans-serif',
-        fontWeight: 900, fontSize: 13,
+        fontWeight: 900, fontSize: 12,
         color: INK, letterSpacing: '.04em',
         textTransform: 'uppercase',
         display: 'flex', alignItems: 'center', gap: 8,
