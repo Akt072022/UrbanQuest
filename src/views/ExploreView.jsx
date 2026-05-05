@@ -142,6 +142,79 @@ export function playTTS(tool, { onStart, onEnd } = {}) {
 
 // (PillButton removed — using shared ScrappyButton)
 
+// ── Dim complete — shown when the user finishes a dim-specific
+// deck (e.g. arriving from a dashboard suggestion that filtered to
+// one dim, or from the new "Start with X" flow on the map). The
+// previous behaviour fell through to GateComplete which celebrates
+// the WHOLE gate's clearance — confusing when the user has only
+// finished one slice of it. We surface a small, accurate summary +
+// two clear next steps instead. ────────────────────────────────
+function DimComplete({ gate, dim }) {
+  const { goMap, goExploreDim, goExplore, practiced, skipped } = useStore(useShallow(s => ({
+    goMap:         s.goMap,
+    goExploreDim:  s.goExploreDim,
+    goExplore:     s.goExplore,
+    practiced:     s.practiced,
+    skipped:       s.skipped,
+  })))
+  const dimMeta = DIM_BY_ID[dim]
+  const col     = dimMeta?.color || GATE_COL[gate]
+
+  // Find the next dim of the same gate that still has un-touched tools.
+  const skipSet = new Set(skipped || [])
+  const nextDim = DIMENSIONS.find(d => {
+    if (d.id === dim) return false
+    const pool = toolsForGateDim(gate, d.id)
+    return pool.some(t => !practiced[t.n] && !skipSet.has(t.n))
+  })
+
+  return (
+    <div className="anim-fadein" style={{ textAlign: 'center', padding: '40px 16px' }}>
+      <div style={{
+        width: 64, height: 64, borderRadius: '50%',
+        background: '#E6F4EC', border: `3px solid ${col}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        margin: '0 auto 18px',
+      }}>
+        <svg viewBox="0 0 24 24" width="32" height="32" fill="none">
+          <path d="M5 13l4 4L19 7" stroke={col} strokeWidth="3"
+            strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </div>
+      <div style={{
+        fontFamily: 'Barlow Condensed, Impact, sans-serif',
+        fontSize: 'clamp(28px,8vw,42px)', color: col, lineHeight: 1,
+        textTransform: 'uppercase', letterSpacing: '.02em',
+        padding: '0 16px',
+      }}>
+        {dimMeta?.label || 'Dimension'}
+      </div>
+      <div style={{
+        fontFamily: 'Barlow Condensed, Impact, sans-serif',
+        fontSize: 18, color: INK, marginTop: 8, marginBottom: 22,
+        letterSpacing: '.05em',
+      }}>
+        DONE FOR {GATE_LABEL[gate].toUpperCase()}
+      </div>
+      <div style={{
+        display: 'flex', flexDirection: 'column', gap: 10,
+        maxWidth: 320, margin: '0 auto',
+      }}>
+        {nextDim && (
+          <ScrappyButton
+            onClick={() => goExploreDim(gate, nextDim.id)}
+            color={YELLOW}>
+            ▼ NEXT: {nextDim.label.toUpperCase()} →
+          </ScrappyButton>
+        )}
+        <ScrappyButton onClick={goMap} color="#FFFFFF">
+          ← BACK TO MAP
+        </ScrappyButton>
+      </div>
+    </div>
+  )
+}
+
 // ── Gate complete celebration ─────────────────────────────────
 function GateComplete({ gate }) {
   const { goMap, practiced } = useStore(useShallow(s => ({
@@ -1025,7 +1098,16 @@ export function ExploreView() {
   // was reading dive-deeper details on the previous card).
   useEffect(() => { setFace('synth') }, [eIdx, eGate, eDim])
 
-  if (eIdx >= tools.length) return <GateComplete gate={gate} />
+  if (eIdx >= tools.length) {
+    // If the user was working on a single dim (arrived from a
+    // dashboard suggestion or the new "Start with X" map flow), show
+    // a per-dim summary instead of celebrating the whole gate. The
+    // earlier behaviour fell through to GateComplete which made the
+    // user think the rating button "did nothing" since the resulting
+    // celebration screen never matched their last action.
+    if (eDim) return <DimComplete gate={gate} dim={eDim} />
+    return <GateComplete gate={gate} />
+  }
 
   const tool = tools[eIdx]
 

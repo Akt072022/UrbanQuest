@@ -607,10 +607,12 @@ export function MapView() {
         </div>
       </div>
 
-      {/* ── Primary CTA — single, focused. Resumes at the first un-rated
-              tool of the active gate; falls back to a generic "BROWSE
-              METHODS" jump when nothing is mid-flight. Dashboard +
-              Workshop entries are demoted to the bottom of the page. ── */}
+      {/* ── Primary CTA — single, focused. Always resumes at a single
+              dim (smaller deck, ~5-7 cards) instead of the whole gate
+              so the user gets a contained burst of rating with a clear
+              end state. The dim chosen is whichever has un-rated tools
+              first; falls through to a generic "OPEN THE FIRST PHASE"
+              when nothing is mid-flight. ─────────────────────────── */}
       <div style={{
         display: 'flex', justifyContent: 'center',
         margin: '20px 0 28px',
@@ -621,9 +623,9 @@ export function MapView() {
         }}>
           {activeStop && activeStop.kind === 'node'
             && !activeStop.complete && !activeStop.locked && !activeStop.empty ? (
-            <ScrappyButton onClick={() => goExplore(activeGate)}
+            <ScrappyButton onClick={() => goExploreDim(activeStop.gate, activeStop.dim.id)}
               color={YELLOW} size="md" full>
-              ▼ {tp === 0 ? 'START RATING' : 'CONTINUE RATING'}
+              ▼ {tp === 0 ? 'START WITH' : 'CONTINUE'} {activeStop.dim.label.toUpperCase()}
             </ScrappyButton>
           ) : (
             <ScrappyButton onClick={() => goExplore(1)}
