@@ -24,7 +24,7 @@ export const useStore = create(
   persist(
     (set, get) => ({
       // ── Core state ─────────────────────────
-      view: 'welcome',     // 'welcome'|'map'|'explore'|'dashboard'|'facilitator'
+      view: 'welcome',     // 'welcome'|'projectFit'|'map'|'explore'|'dashboard'|'facilitator'|'profile'
       team: null,          // { name, city, proj }
       practiced: {},       // { [toolName]: 'regular' | 'occasional' | 'theory' }
       skipped:   [],       // [toolName] — explicitly passed-over for now
@@ -43,6 +43,15 @@ export const useStore = create(
       // ── Session (facilitator/participants) ─
       sessionId:   null,
       sessionRole: null,
+
+      // ── Project method-fit (Phase 1 hero) ──────────────────
+      // The user's current project description and the AI shortlist
+      // generated from it. Persisted so a reload after typing a
+      // project doesn't lose the suggestions. `aiSuggestions` is
+      // an array of { tool: { n, g, d, ... }, why: string } picked
+      // from the catalogue by suggestMethods().
+      projectContext: null,    // { name, desc } | null
+      aiSuggestions:  [],
 
       // ── Auth (set by syncSupabase, never persisted) ────────
       userId:    null,
@@ -66,6 +75,23 @@ export const useStore = create(
       goDashboard:   (gate = null) => set({ view: 'dashboard', dashboardGate: gate }),
       goFacilitator: () => set({ view: 'facilitator' }),
       goProfile:     () => set({ view: 'profile' }),
+      goProjectFit:  () => set({ view: 'projectFit' }),
+      goWelcome:     () => set({ view: 'welcome' }),
+
+      // Persist whatever the user typed about their project + the
+      // AI shortlist that came back. Both shared with the workshop
+      // wizard so "use these methods in a workshop" is a one-tap
+      // hand-off instead of a re-prompt.
+      setProjectContext: (ctx) => set({ projectContext: ctx }),
+      setAiSuggestions:  (arr) => set({ aiSuggestions: Array.isArray(arr) ? arr : [] }),
+
+      // Phase 1 deferred-auth helper — when a user wants to "browse"
+      // without filling in the welcome form, give them a default
+      // team blob so navbar / dashboard / etc keep working without
+      // a sweep. They can rename it later from Profile.
+      ensureDefaultTeam: () => set(state => state.team
+        ? {}
+        : { team: { name: 'My team', city: '', proj: 'mixed' } }),
 
       // Resume at the first un-touched tool of the gate (or dim).
       goExplore: (gate) => set(state => {

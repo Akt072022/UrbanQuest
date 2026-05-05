@@ -260,12 +260,15 @@ export function FacilitatorView() {
   const {
     goMap, setSession, sessionId: savedRoomId,
     currentTeamId, userId,
+    storeProjectContext, storeAiSuggestions,
   } = useStore(useShallow(s => ({
-    goMap:         s.goMap,
-    setSession:    s.setSession,
-    sessionId:     s.sessionId,
-    currentTeamId: s.currentTeamId,
-    userId:        s.userId,
+    goMap:               s.goMap,
+    setSession:          s.setSession,
+    sessionId:           s.sessionId,
+    currentTeamId:       s.currentTeamId,
+    userId:              s.userId,
+    storeProjectContext: s.projectContext,
+    storeAiSuggestions:  s.aiSuggestions,
   })))
 
   const [roomId] = useState(savedRoomId || makeRoomId())
@@ -279,13 +282,16 @@ export function FacilitatorView() {
   // Pre-start wizard: 1 process step → 2 dimension+deck → 3 mode → 4 launch.
   // The session page (post-launch) still lets the facilitator switch
   // between modes — `initialMode` only seeds `tab` on launch.
-  const [wizardStep, setWizardStep] = useState(1)
-  const [initialMode, setInitialMode] = useState('triage')
-  // Project method-fit needs a project context — collected on Step 4
-  // when that mode is picked, broadcast as part of the methodfit_start
-  // payload so participants see what they're rating against.
-  const [projectName, setProjectName] = useState('')
-  const [projectDesc, setProjectDesc] = useState('')
+  //
+  // Hand-off from the new ProjectFitView: if the user already typed a
+  // project description on the welcome screen and got an AI shortlist,
+  // we land on Step 4 with method-fit picked and the deck pre-filled,
+  // so they can launch the workshop in one click.
+  const handedOff = !!(storeProjectContext && storeAiSuggestions?.length)
+  const [wizardStep,  setWizardStep]  = useState(handedOff ? 4 : 1)
+  const [initialMode, setInitialMode] = useState(handedOff ? 'methodfit' : 'triage')
+  const [projectName, setProjectName] = useState(handedOff ? storeProjectContext.name : '')
+  const [projectDesc, setProjectDesc] = useState(handedOff ? storeProjectContext.desc : '')
 
   // Method-fit responses & completion tracking (live session)
   const [methodfitResponses, setMethodfitResponses] = useState([])
@@ -295,10 +301,11 @@ export function FacilitatorView() {
   // Mistral AI suggestions for the project — { tool, why } rows.
   // When `useAiDeck` is on, the active deck swaps from gate/dim filter
   // to the AI shortlist (sent to participants verbatim by name).
+  // Pre-fill from the store if the user came in via ProjectFitView.
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError,   setAiError]   = useState('')
-  const [aiSugg,    setAiSugg]    = useState([])
-  const [useAiDeck, setUseAiDeck] = useState(false)
+  const [aiSugg,    setAiSugg]    = useState(handedOff ? storeAiSuggestions : [])
+  const [useAiDeck, setUseAiDeck] = useState(handedOff)
 
   // Session state
   const [participants, setParticipants]     = useState([])
