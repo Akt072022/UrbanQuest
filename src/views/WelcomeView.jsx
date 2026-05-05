@@ -73,6 +73,17 @@ export function WelcomeView() {
   // 'idle' | 'sending' | 'sent' — drives the auth gate UI when the
   // user clicks the primary CTA without being signed in.
   const [magicStatus, setMagicStatus] = useState('idle')
+  // Cooldown (in seconds) until the user can request another magic
+  // link. Supabase OTP throttles per-email — without a UI countdown
+  // people repeatedly tap the button and pile up rate-limit errors.
+  const [cooldown, setCooldown] = useState(0)
+
+  // Tick the cooldown down to zero.
+  useEffect(() => {
+    if (cooldown <= 0) return
+    const id = setTimeout(() => setCooldown(c => c - 1), 1000)
+    return () => clearTimeout(id)
+  }, [cooldown])
 
   // Auth gating. When Supabase is configured we require a verified
   // email before running the AI analysis. When it isn't, the welcome
@@ -82,7 +93,7 @@ export function WelcomeView() {
 
   const descReady = desc.trim().length >= 20
   const emailValid = /\S+@\S+\.\S+/.test(email.trim())
-  const canSubmit = descReady && hasMistral && !busy
+  const canSubmit = descReady && hasMistral && !busy && cooldown === 0
     && (!authGated || emailValid || magicStatus === 'sent')
 
   // Run the AI analysis. Assumes the project is already in the store
@@ -105,6 +116,7 @@ export function WelcomeView() {
   const submit = async (e) => {
     e?.preventDefault?.()
     if (busy) return
+    if (cooldown > 0) return
     if (!descReady) {
       setErr('A few sentences would help — what is the project about, where, who is it for?')
       return
@@ -116,9 +128,11 @@ export function WelcomeView() {
     const pName = name.trim() || 'Your project'
     const pDesc = desc.trim()
     // Persist the project FIRST so it survives the magic-link
-    // round-trip. The user's email-app jump and back into the SPA
-    // would otherwise lose what they typed.
+    // round-trip. Also clear any stale shortlist so the auto-resume
+    // useEffect actually fires for the new project (otherwise the
+    // user re-enters with an unrelated old shortlist still cached).
     setProjectContext({ name: pName, desc: pDesc })
+    setAiSuggestions([])
 
     if (authGated) {
       if (!emailValid) {
@@ -129,9 +143,23 @@ export function WelcomeView() {
       try {
         await sendMagicLink(email.trim())
         setMagicStatus('sent')
+        // Conservative cooldown — Supabase's per-email OTP limit
+        // is around 60 s. We arm the countdown so the resend
+        // button doesn't pile up rate-limit errors.
+        setCooldown(60)
       } catch (err2) {
+        const msg = err2?.message || ''
+        // Pull the wait time out of the Supabase message when it
+        // tells us ("For security purposes, you can only request
+        // this after X seconds"). Fallback to 60 s.
+        const m = msg.match(/(\d+)\s*seconds?/i)
+        const wait = m ? parseInt(m[1], 10) : 60
+        const isRate = /rate|exceeded|seconds/i.test(msg)
         setMagicStatus('idle')
-        setErr(err2?.message || 'Could not send the link. Try again.')
+        setCooldown(isRate ? wait : 0)
+        setErr(isRate
+          ? `Email rate limit reached — wait ${wait}s before requesting another link. Your project is saved; the button will re-arm itself.`
+          : (msg || 'Could not send the link. Try again.'))
       }
       return
     }
@@ -155,6 +183,7 @@ export function WelcomeView() {
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userEmail])
+
 
   const skipToBrowse = () => {
     ensureDefaultTeam()
@@ -249,7 +278,10 @@ export function WelcomeView() {
           )}
 
           {/* Magic-link sent — confirmation panel, replaces the email
-              field once the link is on its way. */}
+              field once the link is on its way. Shows a cooldown
+              countdown so the user knows when they can resend, plus
+              an "I clicked the link, generate now" fallback for the
+              case where the auto-resume useEffect didn't fire. */}
           {authGated && magicStatus === 'sent' && (
             <div style={{
               padding: '10px 12px',
@@ -263,9 +295,26 @@ export function WelcomeView() {
               }}>✓ Check your email</div>
               We sent a one-tap link to <b>{email}</b>. Click it to
               come back here — your shortlist will generate automatically.
-              <div style={{ marginTop: 8 }}>
+              <div style={{
+                marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 12,
+              }}>
                 <button type="button"
-                  onClick={() => { setMagicStatus('idle') }}
+                  onClick={() => { if (cooldown === 0) submit() }}
+                  disabled={cooldown > 0 || busy}
+                  style={{
+                    background: 'transparent', border: 'none',
+                    cursor: cooldown === 0 ? 'pointer' : 'default',
+                    padding: 0,
+                    fontFamily: 'Barlow Condensed, Impact, sans-serif',
+                    fontWeight: 900, fontSize: 10,
+                    color: cooldown === 0 ? '#1F4E32' : '#9CB6A4',
+                    letterSpacing: '.06em', textTransform: 'uppercase',
+                    textDecoration: cooldown === 0 ? 'underline' : 'none',
+                  }}>
+                  {cooldown > 0 ? `Resend in ${cooldown}s` : '↻ Resend link'}
+                </button>
+                <button type="button"
+                  onClick={() => { setMagicStatus('idle'); setCooldown(0) }}
                   style={{
                     background: 'transparent', border: 'none',
                     cursor: 'pointer', padding: 0,
@@ -273,8 +322,27 @@ export function WelcomeView() {
                     fontWeight: 900, fontSize: 10, color: '#1F4E32',
                     letterSpacing: '.06em', textTransform: 'uppercase',
                     textDecoration: 'underline',
-                  }}>· Use a different email</button>
+                  }}>· Different email</button>
               </div>
+            </div>
+          )}
+
+          {/* Signed-in returning user — no email gate, just a status
+              chip. If the auto-resume useEffect already kicked off,
+              the form is "busy" and the button label says "ANALYSING…".
+              Otherwise the user can click GENERATE manually. */}
+          {hasSupabase && userEmail && (
+            <div style={{
+              padding: '8px 10px',
+              background: '#FFFDF8', border: `1.5px solid ${INK}33`,
+              borderRadius: 10,
+            }}>
+              <div style={{
+                fontFamily: 'Barlow Condensed, Impact, sans-serif',
+                fontWeight: 900, fontSize: 10,
+                color: '#5A5550', letterSpacing: '.06em',
+                textTransform: 'uppercase',
+              }}>✓ Signed in as {userEmail}</div>
             </div>
           )}
 
@@ -292,6 +360,7 @@ export function WelcomeView() {
               size="lg" full>
               {busy ? 'ANALYSING…'
                 : magicStatus === 'sending' ? 'SENDING LINK…'
+                : cooldown > 0 ? `WAIT ${cooldown}S TO RETRY`
                 : authGated ? '✨ EMAIL ME MY SHORTLIST →'
                 : '✨ GET MY METHOD SHORTLIST →'}
             </ScrappyButton>
