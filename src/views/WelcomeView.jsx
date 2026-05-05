@@ -85,6 +85,48 @@ export function WelcomeView() {
     return () => clearTimeout(id)
   }, [cooldown])
 
+  // Mount-time: if the URL carries a ?p=<base64> blob (from the
+  // magic-link redirectTo), decode it and restore the project. Then
+  // strip the param so it doesn't linger in the address bar. This is
+  // the cross-origin / cross-browser fallback for projects that
+  // localStorage didn't carry over.
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const p = params.get('p')
+      if (!p) return
+      const decoded = JSON.parse(decodeURIComponent(escape(atob(p))))
+      if (decoded?.desc?.length >= 20) {
+        if (!projectContext?.desc) {
+          setProjectContext({
+            name: decoded.name || 'Your project',
+            desc: decoded.desc,
+          })
+        }
+        setName(prev => prev || decoded.name || '')
+        setDesc(prev => prev || decoded.desc || '')
+      }
+      // Always strip the param so refresh / share doesn't leak it.
+      params.delete('p')
+      const qs = params.toString()
+      const newUrl = window.location.pathname + (qs ? `?${qs}` : '') + window.location.hash
+      window.history.replaceState({}, '', newUrl)
+    } catch (e) {
+      console.warn('[welcome] failed to restore project from URL:', e)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Re-sync the form fields when projectContext arrives or changes —
+  // handles the case where rehydration / auth restore happens AFTER
+  // mount, so the initial useState(projectContext?.name || '') reads
+  // an empty store but it later fills in.
+  useEffect(() => {
+    if (!projectContext) return
+    setName(prev => prev || projectContext.name || '')
+    setDesc(prev => prev || projectContext.desc || '')
+  }, [projectContext])
+
   // Auth gating. When Supabase is configured we require a verified
   // email before running the AI analysis. When it isn't, the welcome
   // falls back to the previous anonymous flow so dev / preview
@@ -140,8 +182,21 @@ export function WelcomeView() {
         return
       }
       setMagicStatus('sending'); setErr('')
+      // Encode the project into the magic-link redirect URL so the
+      // round-trip survives even when localStorage isn't shared with
+      // the landing origin (cross-browser, cross-device, dev → prod
+      // redirect, private tab, ITP eviction). The mount-time effect
+      // below reads ?p=<base64> back out and restores projectContext.
+      let redirectTo
       try {
-        await sendMagicLink(email.trim())
+        const blob = JSON.stringify({ name: pName, desc: pDesc })
+        const b64  = btoa(unescape(encodeURIComponent(blob)))
+        redirectTo = `${window.location.origin}${window.location.pathname}?p=${b64}`
+      } catch {
+        redirectTo = undefined
+      }
+      try {
+        await sendMagicLink(email.trim(), redirectTo)
         setMagicStatus('sent')
         // Conservative cooldown — Supabase's per-email OTP limit
         // is around 60 s. We arm the countdown so the resend

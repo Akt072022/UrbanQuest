@@ -24,12 +24,17 @@ export const supabase = hasSupabase
 // Sends a magic-link email (passwordless). The link redirects back to
 // `window.location.origin`, where Supabase reads the token, stores the
 // session, and auth.onAuthStateChange fires.
-export async function sendMagicLink(email) {
+//
+// Callers may pass an explicit `redirectTo` so they can attach query
+// params that should survive the email round-trip (e.g. a base64 of
+// the project the user typed before sign-in — `localStorage` isn't
+// reliable across origins, so URL params are the defensive backup).
+export async function sendMagicLink(email, redirectTo) {
   if (!supabase) throw new Error('Supabase not configured')
-  const redirectTo = window.location.origin + window.location.pathname
+  const url = redirectTo || (window.location.origin + window.location.pathname)
   const { error } = await supabase.auth.signInWithOtp({
     email,
-    options: { emailRedirectTo: redirectTo },
+    options: { emailRedirectTo: url },
   })
   if (error) throw error
 }
