@@ -303,20 +303,24 @@ function DimComplete({ gate, dim }) {
             }}>
               ✦ Next badge to unlock
             </div>
-            {/* Locked badge icon — same silhouette treatment as the
-                Profile screen's BadgeTile (filter: brightness(0)
-                opacity(.4)) so the user reads 'badge, not earned'
-                at a glance. Painted in greys with a dashed border
-                instead of the dim's accent colour. */}
+            {/* Locked badge icon — coloured but de-emphasised, with
+                a small padlock corner badge so the locked state
+                reads at a glance. Mirrors Profile's BadgeTile in
+                feel: same dashed grey border, same muted disc
+                background, same lock overlay. The image keeps its
+                natural colour (no brightness:0 silhouette) so the
+                user can see what badge they're working toward,
+                just behind a 50 % opacity veil. */}
             {badge && (
               <div style={{
+                position: 'relative',
                 width: 56, height: 56, borderRadius: '50%',
                 margin: '0 auto 10px',
                 background: '#D6CFC1',
                 border: `2px dashed #9C958A`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 26, color: '#9C958A',
-                overflow: 'hidden',
+                fontSize: 26,
+                overflow: 'visible',
               }}>
                 {badge.iconSrc ? (
                   <img src={badge.iconSrc} alt=""
@@ -325,10 +329,25 @@ function DimComplete({ gate, dim }) {
                       width: '88%', height: '88%', objectFit: 'contain',
                       clipPath: 'circle(50%)',
                       mixBlendMode: 'multiply',
-                      filter: 'brightness(0) opacity(.4)',
+                      opacity: 0.5,
                       userSelect: 'none', pointerEvents: 'none',
                     }} />
-                ) : badge.icon}
+                ) : (
+                  <span style={{ opacity: 0.55 }}>{badge.icon}</span>
+                )}
+                {/* Tiny padlock — same affordance Profile uses on
+                    locked tiles, top-right. Tells the user 'not
+                    earned yet' without needing copy. */}
+                <span aria-hidden="true" style={{
+                  position: 'absolute',
+                  top: -4, right: -4,
+                  width: 18, height: 18, borderRadius: '50%',
+                  background: '#FFFDF8',
+                  border: `1.5px solid #9C958A`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 11, color: '#7B746A',
+                  lineHeight: 1,
+                }}>🔒</span>
               </div>
             )}
             {/* Badge name — the actual reward. Greyed out to match
