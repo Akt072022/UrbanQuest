@@ -410,9 +410,9 @@ function ToolDeck({ tools, gate, evals, skipped, onPick, onSkip, onDone }) {
             // Direction follows the user's intent — same mapping as Explore.
             animation:
               lastAction === 'skip' || lastAction === 'next'
-                ? 'card-from-right .35s cubic-bezier(.4,1.4,.5,1)'
+                ? 'card-from-right .35s cubic-bezier(.4,0,.2,1)'
                 : lastAction === 'practice' || lastAction === 'prev'
-                ? 'card-from-left .35s cubic-bezier(.4,1.4,.5,1)'
+                ? 'card-from-left .35s cubic-bezier(.4,0,.2,1)'
                 : 'none',
           }}>
           <SwipeWrap
@@ -968,9 +968,9 @@ export function FitDeck({ tools, gate, project, fits, evals, onPick, onDone }) {
           zIndex: 1,
           animation:
             lastAction === 'next'
-              ? 'card-from-right .35s cubic-bezier(.4,1.4,.5,1)'
+              ? 'card-from-right .35s cubic-bezier(.4,0,.2,1)'
               : (lastAction === 'practice' || lastAction === 'prev')
-              ? 'card-from-left .35s cubic-bezier(.4,1.4,.5,1)'
+              ? 'card-from-left .35s cubic-bezier(.4,0,.2,1)'
               : 'none',
         }}>
           <SwipeWrap

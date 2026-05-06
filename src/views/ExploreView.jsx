@@ -367,7 +367,7 @@ function BadgeReward({ badges }) {
             background: b.col + '18',
             border: `2px solid ${b.col}`,
             borderRadius: 10,
-            animation: 'badge-pop .35s cubic-bezier(.4,1.4,.5,1)',
+            animation: 'badge-pop .35s cubic-bezier(.4,0,.2,1)',
           }}>
             <div style={{
               flexShrink: 0,
@@ -1786,9 +1786,9 @@ export function ExploreView() {
             //   • prev / practice  → new card slides IN from the left
             animation:
               lastAction === 'skip' || lastAction === 'next'
-                ? 'card-from-right .35s cubic-bezier(.4,1.4,.5,1)'
+                ? 'card-from-right .35s cubic-bezier(.4,0,.2,1)'
                 : lastAction === 'practice' || lastAction === 'prev'
-                ? 'card-from-left .35s cubic-bezier(.4,1.4,.5,1)'
+                ? 'card-from-left .35s cubic-bezier(.4,0,.2,1)'
                 : 'none',
           }}>
           <SwipeWrap
