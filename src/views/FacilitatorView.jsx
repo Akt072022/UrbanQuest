@@ -143,7 +143,7 @@ function SummaryRow({ label, value, col }) {
 //   dim node so the two surfaces feel like the same product.
 //   The "All" tile uses a 6-dot hexagon glyph instead of a single
 //   illustration since it stands for the union. ────────────────
-function DimTile({ active, color, label, iconSrc, dotGlyph, onClick }) {
+function DimTile({ active, color, gateColor, label, iconSrc, dotGlyph, onClick }) {
   return (
     <button onClick={onClick}
       style={{
@@ -161,26 +161,37 @@ function DimTile({ active, color, label, iconSrc, dotGlyph, onClick }) {
         minHeight: 96,
       }}>
       <div style={{
+        position: 'relative',
         width: 56, height: 56,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
         {iconSrc ? (
-          <img src={iconSrc} alt=""
-            draggable={false}
-            style={{
-              width: '100%', height: '100%',
-              objectFit: 'contain',
-              // Crop to a circle so the PNG's rounded-rect frame
-              // corners (slightly-off-white, ant-aliased) don't
-              // leak through the multiply blend.
-              clipPath: 'circle(50%)',
-              // Inactive: blend into the CARD tile via multiply.
-              // Active: keep the brightness/invert filter that turns
-              // the icon solid white over the coloured tile.
-              mixBlendMode: active ? 'normal' : 'multiply',
-              filter: active ? 'brightness(0) invert(1)' : 'none',
-              userSelect: 'none', pointerEvents: 'none',
-            }} />
+          <>
+            <img src={iconSrc} alt=""
+              draggable={false}
+              style={{
+                width: '100%', height: '100%',
+                objectFit: 'contain',
+                clipPath: 'circle(50%)',
+                mixBlendMode: active ? 'normal' : 'multiply',
+                filter: active ? 'brightness(0) invert(1)' : 'none',
+                userSelect: 'none', pointerEvents: 'none',
+              }} />
+            {/* Gate-colour tint — ties the inactive tile to its
+                parent gate. Skipped when active because the tile
+                background already carries the gate colour and the
+                icon is solid white. */}
+            {!active && gateColor && (
+              <div aria-hidden="true" style={{
+                position: 'absolute', inset: 0,
+                background: gateColor,
+                clipPath: 'circle(50%)',
+                mixBlendMode: 'multiply',
+                opacity: 0.22,
+                pointerEvents: 'none',
+              }} />
+            )}
+          </>
         ) : (
           dotGlyph
         )}
@@ -930,6 +941,7 @@ export function FacilitatorView() {
                 <DimTile key={d.id}
                   active={filterDim === d.id}
                   color={d.color}
+                  gateColor={GATE_COL[filterGate]}
                   label={d.label}
                   iconSrc={DIM_ICON[d.id] || null}
                   onClick={() => setFilterDim(d.id)} />

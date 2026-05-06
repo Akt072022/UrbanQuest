@@ -333,23 +333,37 @@ function PathNode({ stop, onClick, opn = 1 }) {
         onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)' }}
       >
         {iconSrc ? (
-          <img src={iconSrc} alt=""
-            draggable={false}
-            style={{
-              width: '95%', height: '95%',
-              objectFit: 'contain',
-              // Multiply hides perfectly-white pixels into the tile,
-              // but the PNGs ship with a rounded-rect frame whose
-              // corners are slightly off-white (anti-aliasing /
-              // compression). Clip the image to a circle so those
-              // corners are cropped out entirely. The illustrations
-              // are already centred inside a round safe area, so the
-              // clip never cuts into the artwork.
-              clipPath: 'circle(50%)',
-              mixBlendMode: 'multiply',
-              filter: locked ? 'grayscale(1) opacity(.55)' : 'none',
-              userSelect: 'none', pointerEvents: 'none',
-            }} />
+          <div style={{
+            position: 'relative',
+            width: '95%', height: '95%',
+            pointerEvents: 'none',
+          }}>
+            <img src={iconSrc} alt=""
+              draggable={false}
+              style={{
+                width: '100%', height: '100%',
+                objectFit: 'contain',
+                clipPath: 'circle(50%)',
+                mixBlendMode: 'multiply',
+                filter: locked ? 'grayscale(1) opacity(.55)' : 'none',
+                userSelect: 'none', pointerEvents: 'none',
+              }} />
+            {/* Gate-colour tint — ties each dim icon to the gate it
+                belongs to. Multiply with low opacity so white parts
+                stay bright (gate-tinted-cream) and coloured parts
+                pick up the gate hue without losing their identity.
+                Skipped on locked tiles so they read as inert. */}
+            {!locked && (
+              <div aria-hidden="true" style={{
+                position: 'absolute', inset: 0,
+                background: GATE_COL[stop.gate],
+                clipPath: 'circle(50%)',
+                mixBlendMode: 'multiply',
+                opacity: 0.22,
+                pointerEvents: 'none',
+              }} />
+            )}
+          </div>
         ) : (
           // Fallback for "economic" (no icon yet) — coloured dot with letter
           <div style={{
