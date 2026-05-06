@@ -921,17 +921,6 @@ function FitDeck({ tools, gate, project, fits, evals, onPick, onDone }) {
         }}>{project.desc}</div>
       )}
 
-      {/* Fit-rating row ABOVE the card — also acts as drop-zone
-          previews while the user is mid-swipe. Same pattern as
-          the personal Explore deck and Team-scan ToolDeck. */}
-      <div style={{ marginTop: 12, marginBottom: 12 }}>
-        <FitRatingRow
-          show={face !== 'cover'}
-          currentLevel={currentFit}
-          previewLevel={previewLevel}
-          onPick={pickFit} />
-      </div>
-
       {/* Card — multi-zone right swipe (optional / helpful /
           essential), single left zone for "skip". Ghost cards behind
           give the deck weight. */}
@@ -966,6 +955,19 @@ function FitDeck({ tools, gate, project, fits, evals, onPick, onDone }) {
             />
           </SwipeWrap>
         </div>
+      </div>
+
+      {/* Fit-rating row BELOW the card — sits between the card and
+          the deck footer so the priority choice reads as the next
+          step after seeing the method, and the four buttons (Not
+          for it / Optional / Helpful / Essential) double as live
+          drop-zone previews during a right-swipe. */}
+      <div style={{ marginTop: 4, marginBottom: 8 }}>
+        <FitRatingRow
+          show={face !== 'cover'}
+          currentLevel={currentFit}
+          previewLevel={previewLevel}
+          onPick={pickFit} />
       </div>
 
       {/* Footer — chevrons + dots + counter on one row below the

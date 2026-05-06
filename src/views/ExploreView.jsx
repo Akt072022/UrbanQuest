@@ -423,7 +423,7 @@ export function CardCover({ tool, gate }) {
   const [thumbOk, setThumbOk] = useState(!!thumbSrc)
   return (
     <div style={{
-      position: 'absolute', inset: 0,
+      position: 'relative',
       borderRadius: 22, overflow: 'hidden',
       background: '#FFFDF8',
       border: `3px solid ${INK}`,
@@ -431,6 +431,9 @@ export function CardCover({ tool, gate }) {
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
       padding: 16,
+      // Visual baseline so the cover never collapses below a card-
+      // shape even when its content is light.
+      minHeight: 360,
     }}>
       <div style={{
         position: 'absolute', top: 0, left: 0, right: 0, height: 6,
@@ -511,9 +514,18 @@ export function CardSynthesis({ tool, gate, onDive, alreadyLevel = null, already
     setSpeaking(true)
   }
 
+  // Reconstruct the full description from the source fields. The
+  // `tool.def` field is pre-truncated (ends with "…") for legacy
+  // synth-card layouts; we now have room to show the whole thing.
+  const why      = tool.gu?.[gate] || (tool.g?.[0] && tool.gu?.[tool.g[0]]) || null
+  const evidence = tool.evidence || null
+  const fullDef  = (why && evidence)
+    ? `${why} — ${evidence}`
+    : (why || evidence || tool.def || '')
+
   return (
     <div style={{
-      position: 'absolute', inset: 0,
+      position: 'relative',
       borderRadius: 22, overflow: 'hidden',
       background: '#FFFDF8',
       border: `3px solid ${INK}`,
@@ -595,9 +607,11 @@ export function CardSynthesis({ tool, gate, onDive, alreadyLevel = null, already
         </div>
       )}
       <div style={{
-        padding: '14px 16px 12px', flex: 1, minHeight: 0,
-        overflowY: 'auto', overflowX: 'hidden',
-        WebkitOverflowScrolling: 'touch',
+        padding: '14px 16px 12px',
+        // No more internal scroll — the parent CardStack uses grid
+        // stacking so the card grows to the natural height of this
+        // content. Long definitions render in full instead of being
+        // ellipsised behind a hidden scrollbar.
         display: 'flex', flexDirection: 'column',
       }}>
         <div style={{
@@ -674,13 +688,14 @@ export function CardSynthesis({ tool, gate, onDive, alreadyLevel = null, already
             )
           })}
         </div>
-        {/* Definition — full text; the parent panel scrolls when long. */}
+        {/* Definition — full text rebuilt from gu[gate] + evidence so
+            we don't render the truncated `tool.def` legacy field. */}
         <p style={{
           fontFamily: '-apple-system, Helvetica Neue, sans-serif', fontWeight: 700,
           fontSize: 14, color: '#3F3A36', lineHeight: 1.5,
           margin: '0 0 20px',
         }}>
-          {tool.def}
+          {fullDef}
         </p>
         {/* Practitioner tip */}
         {tool.t && (
@@ -739,7 +754,7 @@ export function CardDeep({ tool, gate, onBack }) {
 
   return (
     <div style={{
-      position: 'absolute', inset: 0,
+      position: 'relative',
       borderRadius: 22, overflow: 'hidden',
       background: '#FFFDF8',
       border: `3px solid ${INK}`,
@@ -785,7 +800,7 @@ export function CardDeep({ tool, gate, onBack }) {
           </a>
         )}
       </div>
-      <div style={{ flex: 1, overflowY: 'auto', padding: '12px 14px' }}>
+      <div style={{ padding: '12px 14px' }}>
         {/* Mechanics — numbered steps */}
         {tool.steps && tool.steps.length > 0 && (
           <Section label="MECHANICS" emoji="🛠">
@@ -978,20 +993,34 @@ export function GhostCard({ depth = 1 }) {
 
 export function CardStack({ tool, gate, face, onDive, onBack, alreadyLevel, alreadySkipped }) {
   const flipped = face !== 'cover'
+  // Grid-stacking instead of position:absolute on each face, so the
+  // card grows to the visible face's natural content height. The
+  // synth view used to clamp to a fixed 340×540 aspect ratio with an
+  // internal overflow-y:auto — long definitions ended up scrolling
+  // inside the card AND visibly truncated. With grid stacking the
+  // container's height = max(cover, synth) so the synth text always
+  // fits, no scroll, no ellipsis. CardDeep is still position:absolute
+  // (relative to this grid container) so its own internal scroller
+  // can keep handling step lists and materials.
   return (
     <div className="perspective-900" style={{
       width: 'min(95vw, 460px)',
-      aspectRatio: CARD_ASPECT,
     }}>
       <div className="preserve-3d" style={{
-        position: 'relative', width: '100%', height: '100%',
+        position: 'relative', width: '100%',
+        display: 'grid',
+        gridTemplateAreas: '"face"',
         transition: 'transform .8s cubic-bezier(.7,0,.3,1)',
         transform: flipped ? 'rotateY(180deg)' : 'rotateY(0)',
       }}>
-        <div className="backface-hidden" style={{ position: 'absolute', inset: 0 }}>
+        <div className="backface-hidden" style={{
+          gridArea: 'face',
+        }}>
           <CardCover tool={tool} gate={gate} />
         </div>
-        <div className="backface-hidden rotate-y-180" style={{ position: 'absolute', inset: 0 }}>
+        <div className="backface-hidden rotate-y-180" style={{
+          gridArea: 'face',
+        }}>
           {face !== 'deep'
             ? <CardSynthesis tool={tool} gate={gate} onDive={onDive}
                 alreadyLevel={alreadyLevel} alreadySkipped={alreadySkipped} />
