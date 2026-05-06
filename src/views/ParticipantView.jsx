@@ -376,12 +376,23 @@ function ToolDeck({ tools, gate, evals, skipped, onPick, onSkip, onDone }) {
         </div>
       </div>
 
+      {/* Rating buttons ABOVE the card — also act as drop-zone
+          previews during a right-swipe. */}
+      <div style={{ marginTop: 12, marginBottom: 12 }}>
+        <RatingRow
+          show={face !== 'cover'}
+          currentLevel={evals[tool.n] || null}
+          currentSkipped={skipped.includes(tool.n)}
+          previewLevel={previewLevel}
+          onPick={handleRating} />
+      </div>
+
       {/* Card — swipe shortcuts: left → "New to me", right → drag-to-rate.
           Ghost cards behind give the deck weight. */}
       <div style={{
         position: 'relative',
         display: 'flex', justifyContent: 'center',
-        marginTop: 12, marginBottom: 12,
+        marginBottom: 12,
       }}>
         {tools.length - idx > 2 && <GhostCard depth={2} />}
         {tools.length - idx > 1 && <GhostCard depth={1} />}
@@ -417,21 +428,9 @@ function ToolDeck({ tools, gate, evals, skipped, onPick, onSkip, onDone }) {
         </div>
       </div>
 
-      {/* Rating buttons BELOW the card — also act as drop-zone
-          previews during a right-swipe. Same placement as the
-          personal Explore deck and the FitDeck for consistency. */}
-      <div style={{ marginBottom: 8 }}>
-        <RatingRow
-          show={face !== 'cover'}
-          currentLevel={evals[tool.n] || null}
-          currentSkipped={skipped.includes(tool.n)}
-          previewLevel={previewLevel}
-          onPick={handleRating} />
-      </div>
-
       {/* Footer — chevrons + dots + counter on one row below the
-          rating buttons. Counter sits at the end of the dashes.
-          Prev / next move the local cursor without committing. */}
+          card. Counter sits at the end of the dashes. Prev / next
+          move the local cursor without committing. */}
       <DeckFooter
         idx={idx} total={tools.length}
         onPrev={() => { setLastAction('prev'); setIdx(i => Math.max(0, i - 1)) }}
@@ -922,6 +921,16 @@ function FitDeck({ tools, gate, project, fits, evals, onPick, onDone }) {
         }}>{project.desc}</div>
       )}
 
+      {/* Fit-rating row ABOVE the card — also acts as drop-zone
+          previews while the user is mid-swipe. */}
+      <div style={{ marginTop: 12, marginBottom: 12 }}>
+        <FitRatingRow
+          show={face !== 'cover'}
+          currentLevel={currentFit}
+          previewLevel={previewLevel}
+          onPick={pickFit} />
+      </div>
+
       {/* Card — multi-zone right swipe (optional / helpful /
           essential), single left zone for "skip". Ghost cards behind
           give the deck weight. */}
@@ -956,19 +965,6 @@ function FitDeck({ tools, gate, project, fits, evals, onPick, onDone }) {
             />
           </SwipeWrap>
         </div>
-      </div>
-
-      {/* Fit-rating row BELOW the card — sits between the card and
-          the deck footer so the priority choice reads as the next
-          step after seeing the method, and the four buttons (Not
-          for it / Optional / Helpful / Essential) double as live
-          drop-zone previews during a right-swipe. */}
-      <div style={{ marginTop: 4, marginBottom: 8 }}>
-        <FitRatingRow
-          show={face !== 'cover'}
-          currentLevel={currentFit}
-          previewLevel={previewLevel}
-          onPick={pickFit} />
       </div>
 
       {/* Footer — chevrons + dots + counter on one row below the

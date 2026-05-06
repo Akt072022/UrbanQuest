@@ -1315,6 +1315,19 @@ export function ExploreView() {
         </div>
       </div>
 
+      {/* Rating buttons ABOVE the card. They double as drop-zone
+          previews while a right-swipe is in flight: the matching
+          button highlights as the user drags through each
+          threshold. */}
+      <div style={{ marginBottom: 12 }}>
+        <RatingRow
+          show={face !== 'cover'}
+          currentLevel={practiced[tool.n] || null}
+          currentSkipped={skipped.includes(tool.n)}
+          previewLevel={previewLevel}
+          onPick={handleRating} />
+      </div>
+
       {/* ── Card stack — swipe shortcuts: left → "New to me", right →
               drag-to-rate (3 zones). The decorative ghost cards
               behind the active one give the deck weight. */}
@@ -1370,19 +1383,6 @@ export function ExploreView() {
           to   { transform: translateX(0)     rotate(0);     opacity: 1; }
         }
       `}</style>
-
-      {/* Rating buttons BELOW the card — now consistent with the
-          FitDeck. They double as drop-zone previews while a right-
-          swipe is in flight: the matching button highlights as the
-          user drags through each threshold. */}
-      <div style={{ marginBottom: 8 }}>
-        <RatingRow
-          show={face !== 'cover'}
-          currentLevel={practiced[tool.n] || null}
-          currentSkipped={skipped.includes(tool.n)}
-          previewLevel={previewLevel}
-          onPick={handleRating} />
-      </div>
 
       {/* Footer — chevrons + dots + counter on one row, counter at
           the end of the dashes. */}
