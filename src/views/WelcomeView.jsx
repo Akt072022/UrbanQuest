@@ -310,12 +310,24 @@ function ProjectInterview({ onAnalyse, onSwitchToForm, busyParent }) {
   // disappears and the "Analyse my project" CTA takes over.
   const [done, setDone] = useState(null)
   const scrollRef = useRef(null)
+  const inputRef  = useRef(null)
 
   // Auto-scroll the chat to the latest message.
   useEffect(() => {
     const el = scrollRef.current
     if (el) el.scrollTop = el.scrollHeight
   }, [messages, done])
+
+  // Keep focus in the textarea after each reply lands so the user
+  // can type their next answer without tapping back into the field.
+  // Skipped once the brief is finalised (done) — the textarea is
+  // gone at that point and the "Analyse my project" button takes
+  // over.
+  useEffect(() => {
+    if (busy || done) return
+    const el = inputRef.current
+    if (el) el.focus()
+  }, [busy, done])
 
   const send = async () => {
     if (busy || !input.trim()) return
@@ -388,12 +400,14 @@ function ProjectInterview({ onAnalyse, onSwitchToForm, busyParent }) {
         <>
           <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
             <textarea
+              ref={inputRef}
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={onKey}
               rows={2}
               placeholder="Type your answer…"
               disabled={busy}
+              autoFocus
               style={{
                 ...INP,
                 resize: 'none',
