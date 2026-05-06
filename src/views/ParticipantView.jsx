@@ -407,7 +407,12 @@ function ToolDeck({ tools, gate, evals, skipped, onPick, onSkip, onDone }) {
           style={{
             position: 'relative',
             zIndex: 1,
-            animation: 'card-fade-in .18s ease-out',
+            animation:
+              lastAction === 'skip' || lastAction === 'next'
+                ? 'card-from-right .22s cubic-bezier(.4,0,.2,1)'
+                : lastAction === 'practice' || lastAction === 'prev'
+                ? 'card-from-left .22s cubic-bezier(.4,0,.2,1)'
+                : 'card-fade-in .18s ease-out',
           }}>
           <SwipeWrap
             enabled={!deepTool}
@@ -440,6 +445,14 @@ function ToolDeck({ tools, gate, evals, skipped, onPick, onSkip, onDone }) {
         @keyframes card-fade-in {
           from { opacity: 0; }
           to   { opacity: 1; }
+        }
+        @keyframes card-from-left {
+          from { transform: translateX(-90%) rotate(-3deg); opacity: 0; }
+          to   { transform: translateX(0)    rotate(0);     opacity: 1; }
+        }
+        @keyframes card-from-right {
+          from { transform: translateX(90%)  rotate(3deg);  opacity: 0; }
+          to   { transform: translateX(0)    rotate(0);     opacity: 1; }
         }
       `}</style>
 
@@ -956,7 +969,12 @@ export function FitDeck({ tools, gate, project, fits, evals, onPick, onDone }) {
         <div key={idx} style={{
           position: 'relative',
           zIndex: 1,
-          animation: 'card-fade-in .18s ease-out',
+          animation:
+            lastAction === 'next'
+              ? 'card-from-right .22s cubic-bezier(.4,0,.2,1)'
+              : (lastAction === 'practice' || lastAction === 'prev')
+              ? 'card-from-left .22s cubic-bezier(.4,0,.2,1)'
+              : 'card-fade-in .18s ease-out',
         }}>
           <SwipeWrap
             enabled={!deepTool && !pendingFit}

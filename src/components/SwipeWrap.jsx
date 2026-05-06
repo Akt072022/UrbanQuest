@@ -22,6 +22,16 @@ import { useRef, useState, useEffect } from 'react'
 const SWIPE_THRESH = 90
 const LOCK_PX      = 6
 const Y_CLAMP      = 18
+// Exit animation length, in ms. Used both for the setTimeout that
+// fires onSwipe and for the matching CSS transition while exiting,
+// so the off-screen visual completes the moment the parent
+// unmounts the wrapper. 160 ms is short enough that the off-screen
+// hover reads as a flick, not a 'card stuck on the side'.
+const EXIT_MS      = 160
+// Off-screen distance the card travels during the exit animation.
+// 480 pushes the card visibly past the typical card width without
+// the heavy 700 px sweep that exaggerated the 'stuck' perception.
+const EXIT_OFF     = 480
 
 function activeRightZone(zones, x) {
   if (!zones || zones.length === 0) return null
@@ -109,15 +119,15 @@ export function SwipeWrap({
       if (x > 0) {
         if (rightZones && rightZones.length > 0) {
           const z = activeRightZone(rightZones, x)
-          if (z) { value = z.value; off = { x: 700, y } }
+          if (z) { value = z.value; off = { x: EXIT_OFF, y } }
         } else if (x > SWIPE_THRESH) {
-          value = 'right'; off = { x: 700, y }
+          value = 'right'; off = { x: EXIT_OFF, y }
         }
       } else if (x < 0) {
         if (leftZone && -x >= leftZone.threshold) {
-          value = leftZone.value; off = { x: -700, y }
+          value = leftZone.value; off = { x: -EXIT_OFF, y }
         } else if (!leftZone && x < -SWIPE_THRESH) {
-          value = 'left'; off = { x: -700, y }
+          value = 'left'; off = { x: -EXIT_OFF, y }
         }
       }
     }
@@ -127,19 +137,30 @@ export function SwipeWrap({
     activeTouchRef.current = null
 
     if (value) {
-      // No exit animation. The previous design translated the card
-      // off-screen to drag.x = ±700 over 220 ms before firing
-      // onSwipe — but during that window the card visibly hung off
-      // to the side (read as 'stuck on the screen edge') AND the
-      // liveValue calculation kept reporting the off-screen position
-      // as if it were a fresh drag, so onZoneChange flashed the
-      // wrong rating button green for the duration. Snap the card
-      // back to centre and advance immediately; the gesture release
-      // is its own feedback.
-      dragRef.current = { x: 0, y: 0 }
-      setDrag({ x: 0, y: 0, exiting: false })
+      // Exit animation: card translates off-screen in the direction
+      // of the swipe over EXIT_MS, then onSwipe fires and the parent
+      // advances. Two safeguards prevent the bugs the previous
+      // implementation hit:
+      //   1. We notify the parent immediately (onZoneChange(null))
+      //      so the rating row freezes on the value the user just
+      //      committed — the off-screen drag.x can't drive a stale
+      //      liveValue any more (extra defence on top of the
+      //      drag.exiting / dragging guard in liveValue itself).
+      //   2. The exit duration is short (160 ms) and the matching
+      //      CSS transition runs the same length, so the off-screen
+      //      hover that read as 'card stuck on the side' is brief
+      //      enough that the eye reads it as a flick, not a freeze.
       onZoneChange?.(null)
-      onSwipe?.(value)
+      dragRef.current = { x: off.x, y: off.y }
+      setDrag({ x: off.x, y: off.y, exiting: true })
+      exitTimerRef.current = setTimeout(() => {
+        exitTimerRef.current = null
+        onSwipe?.(value)
+        if (mountedRef.current) {
+          dragRef.current = { x: 0, y: 0 }
+          setDrag({ x: 0, y: 0, exiting: false })
+        }
+      }, EXIT_MS) // keep in sync with the CSS transition below
     } else {
       if (exitTimerRef.current) {
         clearTimeout(exitTimerRef.current)
@@ -303,7 +324,16 @@ export function SwipeWrap({
       style={{
         position: 'relative',
         transform: `translate(${drag.x}px, ${yOff}px) rotate(${rot}deg)`,
-        transition: dragging ? 'none' : 'transform .22s ease-out',
+        // Two transition speeds: while exiting, match EXIT_MS so
+        // the visual lands at the off-screen target the moment the
+        // parent unmounts us. While idle (snap-back from a too-short
+        // drag), use the gentler 220 ms ease-out so the bounce-back
+        // feels physical.
+        transition: dragging
+          ? 'none'
+          : (drag.exiting
+              ? `transform ${EXIT_MS}ms ease-out`
+              : 'transform .22s ease-out'),
         cursor: enabled ? 'grab' : 'default',
         // touch-action: pan-y leaves vertical scroll to the browser
         // (so the user can scroll the page past the card without

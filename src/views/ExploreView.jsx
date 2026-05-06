@@ -242,6 +242,14 @@ function DimComplete({ gate, dim }) {
   ]
   const nextTier = dimTiers.find(t => t.current < t.threshold)
 
+  // Resolve the four BADGE objects for this dim, one per tier, so
+  // the dim ladder below shows their actual icons. Each entry is
+  // augmented with `earned` so the renderer can style accordingly.
+  const dimBadges = dimTiers.map(t => {
+    const badge = BADGES.find(b => b.id === `dim_${dim}_${t.tier.toLowerCase()}`)
+    return badge ? { ...badge, tier: t.tier, earned: t.current >= t.threshold } : null
+  }).filter(Boolean)
+
   return (
     <div className="anim-fadein" style={{ textAlign: 'center', padding: '40px 16px' }}>
       <div style={{
@@ -272,6 +280,75 @@ function DimComplete({ gate, dim }) {
       </div>
 
       <BadgeReward badges={newBadges} />
+
+      {/* Dim badge ladder — earned tiers in full colour with the
+          dim's accent, unearned ones greyed in the same locked
+          treatment as Profile / next-badge card. Lets the user
+          see the badges they've already collected for this lens
+          alongside the next one they're working toward. */}
+      {dimBadges.length > 0 && (
+        <div style={{
+          maxWidth: 360, margin: '0 auto 16px',
+          padding: '12px 12px 10px',
+          background: '#FFFDF8',
+          border: `1.5px dashed ${INK}33`, borderRadius: 12,
+        }}>
+          <div style={{
+            fontFamily: 'Barlow Condensed, Impact, sans-serif',
+            fontWeight: 900, fontSize: 10, color: '#5A5550',
+            letterSpacing: '.1em', textTransform: 'uppercase',
+            textAlign: 'center', marginBottom: 8,
+          }}>
+            {dimMeta?.label} badges &middot; {dimBadges.filter(b => b.earned).length} of {dimBadges.length}
+          </div>
+          <div style={{
+            display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6,
+          }}>
+            {dimBadges.map(b => {
+              const earnedCol = col
+              return (
+                <div key={b.id} style={{
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', gap: 4,
+                }}>
+                  <div style={{
+                    position: 'relative',
+                    width: 40, height: 40, borderRadius: '50%',
+                    background: b.earned ? '#FFFFFF' : '#D6CFC1',
+                    border: b.earned
+                      ? `2px solid ${earnedCol}`
+                      : `2px dashed #9C958A`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 18,
+                    overflow: 'hidden',
+                  }}>
+                    {b.iconSrc ? (
+                      <img src={b.iconSrc} alt=""
+                        draggable={false}
+                        style={{
+                          width: '88%', height: '88%', objectFit: 'contain',
+                          clipPath: 'circle(50%)',
+                          mixBlendMode: 'multiply',
+                          opacity: b.earned ? 1 : 0.5,
+                          userSelect: 'none', pointerEvents: 'none',
+                        }} />
+                    ) : (
+                      <span style={{ opacity: b.earned ? 1 : 0.55 }}>{b.icon}</span>
+                    )}
+                  </div>
+                  <div style={{
+                    fontFamily: 'Barlow Condensed, Impact, sans-serif',
+                    fontWeight: 900, fontSize: 9,
+                    color: b.earned ? INK : '#9C958A',
+                    letterSpacing: '.04em', textTransform: 'uppercase',
+                    textAlign: 'center', lineHeight: 1.1,
+                  }}>{b.tier}</div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Fallback reward — guaranteed visual feedback when finishing
           the slice didn't itself trip a new badge. Shows progress
@@ -1888,12 +1965,12 @@ export function ExploreView() {
           onPick={handleRating} />
       </div>
 
-      {/* Card stack. The slide-in entrance animation that used to
-          run here on every advance has been removed — it landed the
-          card off-centre for ~150 ms in the middle of the keyframe
-          which read consistently as 'card stuck on the side'. A
-          plain key={eIdx} remount + a quick fade is all that's
-          needed to signal 'new card'. */}
+      {/* Card stack — directional slide-in animation per lastAction
+          so the new card arrives consistently with how the previous
+          one left. Duration is short (220 ms) and the easing is
+          ease-out without overshoot, so the off-centre middle of
+          the keyframe is brief and the card settles cleanly at
+          centre — no 'stuck on the side' moment. */}
       <div style={{
         position: 'relative',
         display: 'flex', justifyContent: 'center',
@@ -1903,7 +1980,12 @@ export function ExploreView() {
           style={{
             position: 'relative',
             zIndex: 1,
-            animation: 'card-fade-in .18s ease-out',
+            animation:
+              lastAction === 'skip' || lastAction === 'next'
+                ? 'card-from-right .22s cubic-bezier(.4,0,.2,1)'
+                : lastAction === 'practice' || lastAction === 'prev'
+                ? 'card-from-left .22s cubic-bezier(.4,0,.2,1)'
+                : 'card-fade-in .18s ease-out',
           }}>
           <SwipeWrap
             enabled={!deepTool}
@@ -1927,6 +2009,14 @@ export function ExploreView() {
         @keyframes card-fade-in {
           from { opacity: 0; }
           to   { opacity: 1; }
+        }
+        @keyframes card-from-left {
+          from { transform: translateX(-90%) rotate(-3deg); opacity: 0; }
+          to   { transform: translateX(0)    rotate(0);     opacity: 1; }
+        }
+        @keyframes card-from-right {
+          from { transform: translateX(90%)  rotate(3deg);  opacity: 0; }
+          to   { transform: translateX(0)    rotate(0);     opacity: 1; }
         }
       `}</style>
 
