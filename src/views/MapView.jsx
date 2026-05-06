@@ -700,23 +700,27 @@ export function MapView() {
 
   return (
     <div className="anim-fadein" style={{ position: 'relative' }}>
-      {/* ── Header strip — three stacked rows:
-              1. "Browse methods" title, left-aligned.
-              2. Quest progress bar, centred (capped width so it
-                 doesn't sprawl on wide desktop layouts).
-              3. Primary CTA, centred. ──────────────────────────── */}
+      {/* ── Header — single 480px-capped column so the title, the
+              progress bar and the CTA share the same left + right
+              edges. Previously the title spanned the full canvas
+              while the bar/CTA were centred at a smaller cap, which
+              left a sprawling title and a floating bar misaligned
+              with each other. Locking everything to one column
+              gives a clear vertical rhythm. ──────────────────── */}
       <div style={{
-        display: 'flex', flexDirection: 'column',
-        gap: 12, marginBottom: 14,
+        width: '100%', maxWidth: 520,
+        margin: '0 auto 14px',
+        display: 'flex', flexDirection: 'column', gap: 14,
       }}>
-        {/* Row 1 — title, left-aligned */}
-        <div style={{ alignSelf: 'stretch' }}>
+        {/* Title — smaller than before so it reads as a section
+            label, not a hero headline. */}
+        <div>
           <div style={{
             fontFamily: 'Barlow Condensed, Impact, sans-serif',
             fontWeight: 900,
-            fontSize: 'clamp(28px,6vw,42px)',
-            color: INK, lineHeight: .95,
-            textAlign: 'left',
+            fontSize: 'clamp(24px,5vw,30px)',
+            color: INK, lineHeight: 1,
+            letterSpacing: '.01em',
           }}>
             BROWSE METHODS
           </div>
@@ -727,11 +731,9 @@ export function MapView() {
           )}
         </div>
 
-        {/* Row 2 — progress bar, centred */}
-        <div style={{
-          width: '100%', maxWidth: 560,
-          marginLeft: 'auto', marginRight: 'auto',
-        }}>
+        {/* Progress bar — eyebrow on the left, counters on the right,
+            bar spans the column. */}
+        <div>
           <div style={{
             display: 'flex', justifyContent: 'space-between',
             alignItems: 'baseline', marginBottom: 6,
@@ -742,7 +744,7 @@ export function MapView() {
             }}>QUEST PROGRESS</div>
             <div style={{
               fontFamily: 'Barlow Condensed, Impact, sans-serif',
-              fontWeight: 900, fontSize: 14, color: INK,
+              fontWeight: 900, fontSize: 13, color: INK,
             }}>
               {tp}<span style={{ color: '#9C958A' }}>/{total}</span>
               <span style={{ fontSize: 11, color: CORAL, marginLeft: 6 }}>({tpPct}%)</span>
@@ -765,24 +767,22 @@ export function MapView() {
           </div>
         </div>
 
-        {/* Row 3 — primary CTA, centred */}
-        <div style={{
-          display: 'flex', justifyContent: 'center',
-          animation: 'bob-cta 1.8s ease-in-out infinite',
-        }}>
-          <div style={{ width: 'min(100%, 320px)' }}>
-            {resumeTarget ? (
-              <ScrappyButton onClick={() => goExploreDim(resumeTarget.gate, resumeTarget.dim.id)}
-                color={YELLOW} size="md" full>
-                ▼ {tp === 0 ? 'START WITH' : (resumeIsLast ? 'CONTINUE WITH' : 'CONTINUE')} {resumeTarget.dim.label.toUpperCase()}
-              </ScrappyButton>
-            ) : (
-              <ScrappyButton onClick={() => goExplore(1)}
-                color={YELLOW} size="md" full>
-                ▼ OPEN THE FIRST PHASE
-              </ScrappyButton>
-            )}
-          </div>
+        {/* Primary CTA — full column width, button text centred
+            inside. Sharing edges with the bar above gives the eye
+            a clean stack of three rectangles instead of three
+            differently-anchored elements. */}
+        <div style={{ animation: 'bob-cta 1.8s ease-in-out infinite' }}>
+          {resumeTarget ? (
+            <ScrappyButton onClick={() => goExploreDim(resumeTarget.gate, resumeTarget.dim.id)}
+              color={YELLOW} size="md" full>
+              ▼ {tp === 0 ? 'START WITH' : (resumeIsLast ? 'CONTINUE WITH' : 'CONTINUE')} {resumeTarget.dim.label.toUpperCase()}
+            </ScrappyButton>
+          ) : (
+            <ScrappyButton onClick={() => goExplore(1)}
+              color={YELLOW} size="md" full>
+              ▼ OPEN THE FIRST PHASE
+            </ScrappyButton>
+          )}
         </div>
       </div>
 
