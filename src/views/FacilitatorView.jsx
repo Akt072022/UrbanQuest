@@ -170,6 +170,11 @@ function DimTile({ active, color, label, iconSrc, dotGlyph, onClick }) {
             style={{
               width: '100%', height: '100%',
               objectFit: 'contain',
+              // Inactive: blend the PNG's white background into the
+              // CARD tile via multiply. Active: keep the brightness/
+              // invert filter that turns the icon solid white over
+              // the coloured tile (no blend so the white survives).
+              mixBlendMode: active ? 'normal' : 'multiply',
               filter: active ? 'brightness(0) invert(1)' : 'none',
               userSelect: 'none', pointerEvents: 'none',
             }} />

@@ -338,6 +338,10 @@ function PathNode({ stop, onClick, opn = 1 }) {
             style={{
               width: '95%', height: '95%',
               objectFit: 'contain',
+              // multiply blend mode drops the white PNG background
+              // into whatever tile colour sits behind, so the icon
+              // fuses with the page instead of showing a white square.
+              mixBlendMode: 'multiply',
               filter: locked ? 'grayscale(1) opacity(.55)' : 'none',
               userSelect: 'none', pointerEvents: 'none',
             }} />
