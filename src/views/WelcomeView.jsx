@@ -97,8 +97,14 @@ export function WelcomeView() {
     await runAnalysis({ pName, pDesc })
   }
 
-  const skipToBrowse = () => {
-    ensureDefaultTeam()
+  const skipToBrowse = (e) => {
+    e?.preventDefault?.()
+    e?.stopPropagation?.()
+    try {
+      ensureDefaultTeam()
+    } catch (err) {
+      console.warn('[welcome] ensureDefaultTeam failed:', err)
+    }
     goMap()
   }
 
@@ -251,7 +257,7 @@ export function WelcomeView() {
         <div style={{
           textAlign: 'center', marginTop: 6,
         }}>
-          <button onClick={skipToBrowse}
+          <button type="button" onClick={skipToBrowse}
             style={{
               background: 'transparent', border: 'none', cursor: 'pointer',
               fontFamily: 'Barlow Condensed, Impact, sans-serif',
@@ -259,11 +265,12 @@ export function WelcomeView() {
               color: '#5A5550', letterSpacing: '.05em',
               textTransform: 'uppercase',
               padding: '6px 12px',
+              position: 'relative', zIndex: 1,
             }}>
             Or browse all 133 methods →
           </button>
           {userEmail && (
-            <button onClick={() => { ensureDefaultTeam(); goDashboard() }}
+            <button type="button" onClick={() => { ensureDefaultTeam(); goDashboard() }}
               style={{
                 background: 'transparent', border: 'none', cursor: 'pointer',
                 fontFamily: 'Barlow Condensed, Impact, sans-serif',
