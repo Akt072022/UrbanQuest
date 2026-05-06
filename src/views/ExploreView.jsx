@@ -1675,15 +1675,43 @@ export function ExploreView() {
   // for ~700 ms so the user sees their choice land, then advances. The
   // 700 ms beat keeps the card-slide animation feeling like a response
   // to the tap rather than a jump cut.
-  const handleRating = (id) => {
-    setLastAction(id === 'new' ? 'skip' : 'practice')
+  // Source distinguishes a button tap from a swipe so we can apply
+  // the right rhythm to each: a tap gets a 700 ms beat (the button
+  // pulses, the card sits a moment, then a fresh card slides in)
+  // while a swipe advances right after its exit animation finishes
+  // (the SwipeWrap's 220 ms exit IS the 'choice landed' beat;
+  // adding another 700 ms felt like a freeze).
+  //
+  // Critically, lastAction is set together with nextCard inside the
+  // setTimeout, NOT synchronously up-front. Setting it before the
+  // key changes makes the wrapper's card-from-left keyframe run on
+  // the *old* card while its SwipeWrap is still translateX'd at the
+  // exit position; the two transforms compose into a stuck-looking
+  // offset. Setting both at once means the keyframe only ever runs
+  // on the new wrapper after the eIdx-key change.
+  const handleRating = (id, source = 'tap') => {
     try { window.speechSynthesis?.cancel() } catch { /* noop */ }
     if (id === 'new') {
       skipTool(tool.n)
     } else {
       practiceTool(tool.n, id)   // 'theory' | 'occasional' | 'regular'
     }
-    setTimeout(() => { nextCard() }, 700)
+    const advance = () => {
+      setLastAction(id === 'new' ? 'skip' : 'practice')
+      nextCard()
+    }
+    if (source === 'swipe') {
+      // Swipe path: advance synchronously so React batches the
+      // SwipeWrap's drag-reset, the lastAction set, and the
+      // nextCard advance into a single render. The old wrapper
+      // unmounts (key change) before any compositing artefact has
+      // a chance to flash on screen.
+      advance()
+    } else {
+      // Tap path: 700 ms beat lets the user see the rating button
+      // light up before the deck advances.
+      setTimeout(advance, 700)
+    }
   }
 
   return (
@@ -1769,7 +1797,7 @@ export function ExploreView() {
             enabled={!deepTool}
             onSwipe={(value) => {
               setPreviewLevel(null)
-              handleRating(value)
+              handleRating(value, 'swipe')
             }}
             onZoneChange={setPreviewLevel}
             leftZone={LEFT_ZONE}

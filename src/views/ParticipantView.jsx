@@ -332,17 +332,26 @@ function ToolDeck({ tools, gate, evals, skipped, onPick, onSkip, onDone }) {
   const tool = tools[idx]
 
   // Single-tap rating, same as the solo board. Banner flashes for
-  // ~700 ms before the deck advances so the user sees their choice
-  // land on the current card.
-  const handleRating = (id) => {
-    setLastAction(id === 'new' ? 'skip' : 'practice')
+  // Tap path: 700 ms beat so the user sees their choice land.
+  // Swipe path: 0 ms because the SwipeWrap's exit animation is the
+  // beat. lastAction is set together with the index advance inside
+  // the setTimeout so the wrapper's slide-in keyframe only ever
+  // applies to the new card; setting it before the key change
+  // would compose with the SwipeWrap's exit translate on the same
+  // node and leave the card stuck in a weird position.
+  const handleRating = (id, source = 'tap') => {
     try { window.speechSynthesis?.cancel() } catch { /* noop */ }
     if (id === 'new') {
       onSkip(tool)
     } else {
-      onPick(tool, id)   // 'theory' | 'occasional' | 'regular'
+      onPick(tool, id)
     }
-    setTimeout(() => { setIdx(i => i + 1) }, 700)
+    const advance = () => {
+      setLastAction(id === 'new' ? 'skip' : 'practice')
+      setIdx(i => i + 1)
+    }
+    if (source === 'swipe') advance()
+    else setTimeout(advance, 700)
   }
 
   return (
@@ -412,7 +421,7 @@ function ToolDeck({ tools, gate, evals, skipped, onPick, onSkip, onDone }) {
             enabled={!deepTool}
             onSwipe={(value) => {
               setPreviewLevel(null)
-              handleRating(value)
+              handleRating(value, 'swipe')
             }}
             onZoneChange={setPreviewLevel}
             leftZone={TRIAGE_LEFT_ZONE}
@@ -840,24 +849,31 @@ function FitDeck({ tools, gate, project, fits, evals, onPick, onDone }) {
   const tool = tools[idx]
   const priorCap = evals[tool.n] || null
 
-  const advance = () => {
+  // Setting lastAction together with the index advance keeps the
+  // wrapper's slide-in keyframe on the new card — see the comment
+  // in ToolDeck above for the full rationale.
+  const advanceTap = () => {
+    setTimeout(() => {
+      setLastAction('practice')
+      setIdx(i => i + 1)
+    }, 300)
+  }
+  const advanceSwipe = () => {
     setLastAction('practice')
-    setTimeout(() => setIdx(i => i + 1), 300)
+    setIdx(i => i + 1)
   }
 
-  const pickFit = (fitId) => {
-    // Skip = no priority for this project. We don't need a capability
-    // rating for a pure pass.
+  const pickFit = (fitId, source = 'tap') => {
     if (fitId === 'skip') {
       onPick(tool, 'skip', null)
-      advance()
+      if (source === 'swipe') advanceSwipe()
+      else advanceTap()
       return
     }
-    // If the user has already triaged this tool, capability is known.
-    // Otherwise pop a small modal to ask.
     if (priorCap) {
       onPick(tool, fitId, priorCap)
-      advance()
+      if (source === 'swipe') advanceSwipe()
+      else advanceTap()
       return
     }
     setPendingFit(fitId)
@@ -866,13 +882,13 @@ function FitDeck({ tools, gate, project, fits, evals, onPick, onDone }) {
   const commitWithCapability = (capability) => {
     onPick(tool, pendingFit, capability)
     setPendingFit(null)
-    advance()
+    advanceTap()
   }
 
   const currentFit = fits[tool.n] || null
   const onSwipeCommit = (value) => {
     setPreviewLevel(null)
-    pickFit(value)
+    pickFit(value, 'swipe')
   }
 
   return (
