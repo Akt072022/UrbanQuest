@@ -160,8 +160,16 @@ create policy teams_facilitator_update on public.teams
     )
   );
 
--- team_members: a user reads their own memberships; can add themselves
--- (= join), facilitators can manage their team's roster.
+-- team_members: a user reads their own memberships and can add
+-- themselves (= join). Cross-member roster reads + facilitator
+-- management are NOT done via RLS policies because any policy on
+-- team_members that itself queries team_members triggers Postgres
+-- error 42P17 ("infinite recursion detected in policy"). Instead:
+--   • Roster reads → public.list_team_members RPC (SECURITY DEFINER,
+--     gated to callers who are members themselves).
+--   • Facilitator management is currently unused by the client; if/
+--     when we need it, the safe form is another SECURITY DEFINER
+--     helper, not a recursive RLS policy.
 drop policy if exists team_members_self_read on public.team_members;
 create policy team_members_self_read on public.team_members
   for select using (auth.uid() = user_id);
@@ -170,15 +178,10 @@ drop policy if exists team_members_self_join on public.team_members;
 create policy team_members_self_join on public.team_members
   for insert with check (auth.uid() = user_id);
 
+-- Cleanup: drop the recursive policies if a previous schema run
+-- created them. They cause every membership-checking query to 500.
 drop policy if exists team_members_facilitator_manage on public.team_members;
-create policy team_members_facilitator_manage on public.team_members
-  for all using (
-    exists (
-      select 1 from public.team_members tm
-       where tm.team_id = team_members.team_id and tm.user_id = auth.uid()
-         and tm.role = 'facilitator'
-    )
-  );
+drop policy if exists team_members_team_read           on public.team_members;
 
 -- profiles: each user owns their profile.
 drop policy if exists profiles_self_rw on public.profiles;
@@ -186,19 +189,6 @@ create policy profiles_self_rw on public.profiles
   for all
   using      (auth.uid() = user_id)
   with check (auth.uid() = user_id);
-
--- ── Team membership UI policies ────────────────────────────────
--- A teammate must be able to see the *other* members of a team they
--- belong to (roster display). The default `team_members_self_read`
--- only exposes the user's own row.
-drop policy if exists team_members_team_read on public.team_members;
-create policy team_members_team_read on public.team_members
-  for select using (
-    exists (
-      select 1 from public.team_members me
-       where me.team_id = team_members.team_id and me.user_id = auth.uid()
-    )
-  );
 
 -- Looking up a team by invite code before joining is tricky: the
 -- caller is not yet a member, so `teams_member_read` denies them. We
