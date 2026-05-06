@@ -483,10 +483,17 @@ export function CardSynthesis({ tool, gate, onDive, alreadyLevel = null, already
   const [zoom, setZoom]       = useState(false)
   const [speaking, setSpeaking] = useState(false)
   const handleRef = useRef(null)
+  // null | 'desc' | 'tip' — accordion state for the body text. The
+  // card stays a fixed shape; tapping the def or the tip swaps which
+  // one is expanded so all the text is reachable without an internal
+  // scroll. Reset on tool change.
+  const [expanded, setExpanded] = useState(null)
 
   // Reset thumbnail load state whenever the displayed tool changes,
   // otherwise a previously-failed load would prevent the next image.
-  useEffect(() => { setThumbOk(true); setZoom(false) }, [toolNum])
+  useEffect(() => {
+    setThumbOk(true); setZoom(false); setExpanded(null)
+  }, [toolNum])
 
   // Stop speech when this card unmounts or the tool changes
   useEffect(() => () => {
@@ -521,15 +528,12 @@ export function CardSynthesis({ tool, gate, onDive, alreadyLevel = null, already
     ? `${why} — ${evidence}`
     : (why || evidence || tool.def || '')
 
-  // Auto-fit text scale — keeps the card a fixed shape but shrinks
-  // the def + tip type so all of it lands inside without an internal
-  // scroll. Roughly: ~600 chars fit comfortably at the default size,
-  // anything longer is scaled down by sqrt of the ratio (caps at
-  // 0.7 so text never gets too small to read).
-  const totalChars = (fullDef?.length || 0) + (tool.t?.length || 0)
-  const textScale = totalChars > 600
-    ? Math.max(0.7, Math.sqrt(600 / totalChars))
-    : 1
+  // Accordion line counts — only one of {desc, tip} is "expanded"
+  // at a time. The card stays a fixed shape; whatever isn't
+  // expanded gets line-clamped tightly. No internal scroll: a tap
+  // on the truncated section opens it (and collapses the other).
+  const descLines = expanded === 'desc' ? 12 : (expanded === 'tip'  ? 2 : 4)
+  const tipLines  = expanded === 'tip'  ? 8  : (expanded === 'desc' ? 1 : 2)
 
   return (
     <div style={{
@@ -540,15 +544,17 @@ export function CardSynthesis({ tool, gate, onDive, alreadyLevel = null, already
       boxShadow: 'none',
       display: 'flex', flexDirection: 'column',
     }}>
-      {/* Slide-3 preview banner — click opens a fullscreen image
-          lightbox so the canvas can be read in full. */}
+      {/* Canvas preview banner — slimmer than before and crop-
+          biased to the bottom so the heading printed on the
+          template image sits ABOVE the visible window. We see the
+          structured part of the canvas, not its title. */}
       {thumbSrc && thumbOk && (
         <button onClick={() => setZoom(true)}
           aria-label="View canvas full screen"
           title="Click to zoom"
           style={{
             width: '100%', flexShrink: 0,
-            aspectRatio: '16 / 9',
+            aspectRatio: '16 / 5',
             borderBottom: `2px solid ${INK}`,
             background: '#F2EDE4',
             overflow: 'hidden',
@@ -562,18 +568,19 @@ export function CardSynthesis({ tool, gate, onDive, alreadyLevel = null, already
             draggable={false}
             style={{
               width: '100%', height: '100%', objectFit: 'cover',
+              objectPosition: '50% 100%',
               userSelect: 'none', pointerEvents: 'none',
             }} />
           {/* Zoom-hint icon, top-right corner */}
           <div style={{
-            position: 'absolute', top: 8, right: 8,
-            width: 28, height: 28, borderRadius: '50%',
+            position: 'absolute', top: 6, right: 6,
+            width: 24, height: 24, borderRadius: '50%',
             background: 'rgba(255,255,255,0.9)',
             border: `2px solid ${INK}`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             pointerEvents: 'none',
           }}>
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none">
               <circle cx="10" cy="10" r="6" stroke={INK} strokeWidth="2" />
               <path d="M10 7v6M7 10h6M14.5 14.5l4 4"
                 stroke={INK} strokeWidth="2" strokeLinecap="round" />
@@ -621,11 +628,31 @@ export function CardSynthesis({ tool, gate, onDive, alreadyLevel = null, already
         overflow: 'hidden',
         display: 'flex', flexDirection: 'column',
       }}>
+        {/* Eyebrow — tool number, phase(s), AND dimensions all on
+            one line. The dim labels used to live in their own row;
+            inlining them frees a chunk of vertical space for the
+            body text. */}
         <div style={{
           fontFamily: 'Barlow Condensed, Impact, sans-serif',
-          fontSize: 10, color: '#9C958A', letterSpacing: '.06em', marginBottom: 4,
+          fontSize: 10, letterSpacing: '.06em', marginBottom: 4,
+          display: 'flex', flexWrap: 'wrap', columnGap: 8, rowGap: 2,
+          alignItems: 'baseline',
+          color: '#9C958A',
         }}>
-          #{String(toolNum).padStart(3,'0')} · {tool.g.map(g => GATE_LABEL[g]).join(' / ')}
+          <span>
+            #{String(toolNum).padStart(3,'0')} · {tool.g.map(g => GATE_LABEL[g]).join(' / ')}
+          </span>
+          {(tool.d || []).map((did) => {
+            const d = DIM_BY_ID[did]
+            if (!d) return null
+            return (
+              <span key={did} style={{
+                fontWeight: 900,
+                color: d.color,
+                textTransform: 'uppercase',
+              }}>· {d.label}</span>
+            )
+          })}
         </div>
         <div style={{
           display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 8,
@@ -644,7 +671,6 @@ export function CardSynthesis({ tool, gate, onDive, alreadyLevel = null, already
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
             {speaking ? (
-              // Pause icon — two ink bars, hand-drawn
               <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
                 <rect x="6.5" y="5" width="3.6" height="14" rx="1.2"
                   fill={INK} stroke={INK} strokeWidth="1.6" strokeLinejoin="round" />
@@ -652,7 +678,6 @@ export function CardSynthesis({ tool, gate, onDive, alreadyLevel = null, already
                   fill={INK} stroke={INK} strokeWidth="1.6" strokeLinejoin="round" />
               </svg>
             ) : (
-              // Speaker icon — black outline only
               <svg viewBox="0 0 24 24" width="24" height="24" fill="none">
                 <path d="M4 9.5 V14.5 H7.5 L12.5 18.5 V5.5 L7.5 9.5 H4 Z"
                   stroke={INK} strokeWidth="1.8" strokeLinejoin="round" fill="none" />
@@ -664,57 +689,34 @@ export function CardSynthesis({ tool, gate, onDive, alreadyLevel = null, already
             )}
           </button>
         </div>
-        {/* Dimensions — plain readable labels, coloured per dim */}
-        <div style={{
-          display: 'flex', flexWrap: 'wrap',
-          alignItems: 'center', gap: '4px 14px',
-          marginBottom: 10,
-        }}>
-          {(tool.d || []).map((did, i, arr) => {
-            const d = DIM_BY_ID[did]
-            if (!d) return null
-            return (
-              <span key={did} style={{ display: 'inline-flex', alignItems: 'center', gap: 14 }}>
-                <span style={{
-                  fontFamily: 'Barlow Condensed, Impact, sans-serif',
-                  fontWeight: 900,
-                  fontSize: 12,
-                  letterSpacing: '.05em',
-                  textTransform: 'uppercase',
-                  color: d.color,
-                }}>
-                  {d.label}
-                </span>
-                {i < arr.length - 1 && (
-                  <span style={{
-                    color: '#C8C0B5', fontSize: 14, lineHeight: 1,
-                    userSelect: 'none',
-                  }}>·</span>
-                )}
-              </span>
-            )
-          })}
-        </div>
-        {/* Definition — full text rebuilt from gu[gate] + evidence so
-            we don't render the truncated `tool.def` legacy field.
-            Font size scales with content length so long defs still
-            land inside the fixed card without an internal scroll. */}
-        <p style={{
-          fontFamily: '-apple-system, Helvetica Neue, sans-serif', fontWeight: 700,
-          fontSize: 14 * textScale, color: '#3F3A36', lineHeight: 1.5,
-          margin: `0 0 ${20 * textScale}px`,
-        }}>
+        {/* Definition — line-clamped accordion. Tap to expand /
+            collapse. When expanded, the tip below auto-collapses so
+            the card stays a fixed shape without an internal scroll. */}
+        <p
+          onClick={() => setExpanded(e => e === 'desc' ? null : 'desc')}
+          style={{
+            fontFamily: '-apple-system, Helvetica Neue, sans-serif', fontWeight: 700,
+            fontSize: 14, color: '#3F3A36', lineHeight: 1.5,
+            margin: '0 0 12px',
+            cursor: 'pointer',
+            display: '-webkit-box',
+            WebkitLineClamp: descLines,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+          }}>
           {fullDef}
         </p>
-        {/* Practitioner tip */}
+        {/* Practitioner tip — same accordion behaviour. Tap toggles. */}
         {tool.t && (
-          <div style={{
-            background: YELLOW + '40',
-            borderRadius: 12,
-            padding: `${14 * textScale}px 12px ${12 * textScale}px`,
-            marginBottom: 14 * textScale,
-            position: 'relative',
-          }}>
+          <div
+            onClick={() => setExpanded(e => e === 'tip' ? null : 'tip')}
+            style={{
+              background: YELLOW + '40',
+              borderRadius: 12, padding: '12px 12px 10px',
+              marginBottom: 4,
+              position: 'relative',
+              cursor: 'pointer',
+            }}>
             <div style={{
               position: 'absolute', top: -8, left: 10,
               padding: '1px 6px', background: YELLOW,
@@ -724,8 +726,12 @@ export function CardSynthesis({ tool, gate, onDive, alreadyLevel = null, already
             }}>TIP</div>
             <p style={{
               fontFamily: '-apple-system, Helvetica Neue, sans-serif', fontWeight: 700,
-              fontSize: 13 * textScale, color: '#3F3A36', lineHeight: 1.35, margin: 0,
+              fontSize: 13, color: '#3F3A36', lineHeight: 1.35, margin: 0,
               marginTop: 2,
+              display: '-webkit-box',
+              WebkitLineClamp: tipLines,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
             }}>{tool.t}</p>
           </div>
         )}
