@@ -127,16 +127,19 @@ export function SwipeWrap({
     activeTouchRef.current = null
 
     if (value) {
-      dragRef.current = { x: off.x, y: off.y }
-      setDrag({ x: off.x, y: off.y, exiting: true })
-      exitTimerRef.current = setTimeout(() => {
-        exitTimerRef.current = null
-        onSwipe?.(value)
-        if (mountedRef.current) {
-          dragRef.current = { x: 0, y: 0 }
-          setDrag({ x: 0, y: 0, exiting: false })
-        }
-      }, 220)
+      // No exit animation. The previous design translated the card
+      // off-screen to drag.x = ±700 over 220 ms before firing
+      // onSwipe — but during that window the card visibly hung off
+      // to the side (read as 'stuck on the screen edge') AND the
+      // liveValue calculation kept reporting the off-screen position
+      // as if it were a fresh drag, so onZoneChange flashed the
+      // wrong rating button green for the duration. Snap the card
+      // back to centre and advance immediately; the gesture release
+      // is its own feedback.
+      dragRef.current = { x: 0, y: 0 }
+      setDrag({ x: 0, y: 0, exiting: false })
+      onZoneChange?.(null)
+      onSwipe?.(value)
     } else {
       if (exitTimerRef.current) {
         clearTimeout(exitTimerRef.current)
@@ -144,6 +147,7 @@ export function SwipeWrap({
       }
       dragRef.current = { x: 0, y: 0 }
       setDrag({ x: 0, y: 0, exiting: false })
+      onZoneChange?.(null)
     }
   }
 
@@ -263,6 +267,15 @@ export function SwipeWrap({
   const dragging = startRef.current !== null
   const horizontalDrag = Math.abs(drag.x) > Math.abs(drag.y)
   const liveValue = (() => {
+    // Don't recompute the preview while a gesture is finalising —
+    // the rating row should hold steady on the committed value
+    // (or null), not recompute as if the off-screen drag.x were a
+    // fresh user drag.
+    if (drag.exiting) return null
+    // Only show a preview while the gesture is genuinely in flight
+    // (mouse / finger still down). Otherwise drag.x can lag behind
+    // the snap-back and briefly highlight the wrong button.
+    if (!dragging) return null
     if (!horizontalDrag) return null
     if (drag.x > 20 && rightZones) {
       const z = activeRightZone(rightZones, drag.x)
