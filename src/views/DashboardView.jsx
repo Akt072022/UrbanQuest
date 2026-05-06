@@ -588,12 +588,6 @@ function CapabilityCell({ title, subtitle, tone, tools, highlight = false }) {
     muted: { bg: '#F2EDE4', border: '#9C958A', label: '#5A5550' },
   }
   const t = tones[tone] || tones.muted
-  // Group tools by primary dimension for the per-dim color chip
-  const byDim = {}
-  for (const tl of tools) {
-    const did = tl.d?.[0] || 'other'
-    byDim[did] = (byDim[did] || 0) + 1
-  }
   return (
     <div style={{
       minHeight: 80,
@@ -619,21 +613,46 @@ function CapabilityCell({ title, subtitle, tone, tools, highlight = false }) {
       </div>
       <div style={{
         fontSize: 9, color: t.label, opacity: 0.85,
-        marginBottom: 6, lineHeight: 1.3,
+        marginBottom: 8, lineHeight: 1.3,
       }}>{subtitle}</div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-        {Object.entries(byDim).slice(0, 6).map(([did, n]) => {
-          const d = DIM_BY_ID[did]
-          if (!d) return null
+      {/* Method names — not just dim counts. The previous "Spatial · 11"
+          summary was abstract; readers couldn't tell WHICH 11 methods
+          they had mastered. Now we list the actual tools, with a
+          coloured dot for each one's primary dimension and a tail
+          link for any overflow. */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        {tools.slice(0, 8).map(tl => {
+          const d = DIM_BY_ID[tl.d?.[0]]
           return (
-            <span key={did} style={{
-              padding: '1px 5px', borderRadius: 5,
-              background: d.color + '22', color: d.color,
-              fontSize: 9, fontWeight: 800,
-              letterSpacing: '.04em',
-            }}>{d.short}·{n}</span>
+            <div key={tl.n} style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              fontSize: 11, color: t.label, lineHeight: 1.3,
+            }}>
+              {d && (
+                <span aria-hidden="true" style={{
+                  flexShrink: 0,
+                  width: 8, height: 8, borderRadius: '50%',
+                  background: d.color,
+                }} />
+              )}
+              <span style={{
+                fontFamily: 'Georgia, serif',
+                fontWeight: 700,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden', textOverflow: 'ellipsis',
+                minWidth: 0, flex: 1,
+              }}>{tl.n}</span>
+            </div>
           )
         })}
+        {tools.length > 8 && (
+          <div style={{
+            fontSize: 10, color: t.label, opacity: 0.7,
+            marginTop: 2, fontStyle: 'italic',
+          }}>
+            +{tools.length - 8} more
+          </div>
+        )}
       </div>
     </div>
   )
@@ -1062,10 +1081,11 @@ function RichColumn({ title, subtitle, tone, tools }) {
               if (!d) return null
               return (
                 <span key={did} style={{
-                  padding: '1px 5px', borderRadius: 5,
+                  padding: '2px 6px', borderRadius: 5,
                   background: d.color + '22', color: d.color,
                   fontSize: 9, fontWeight: 700,
-                }}>{d.short}</span>
+                  whiteSpace: 'nowrap',
+                }}>{d.label}</span>
               )
             })}
           </div>

@@ -317,17 +317,21 @@ function SuggestionCard({ index, tool, why }) {
           #{String(index).padStart(2, '0')} · {GATE_LABEL[gate]}
         </div>
         {tool.d?.length > 0 && (
-          <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+          <div style={{
+            display: 'flex', gap: 4, flexShrink: 0,
+            flexWrap: 'wrap', justifyContent: 'flex-end',
+          }}>
             {tool.d.slice(0, 3).map(did => {
               const d = DIM_BY_ID[did]
               if (!d) return null
               return (
                 <span key={did} style={{
-                  padding: '1px 6px', borderRadius: 5,
+                  padding: '2px 7px', borderRadius: 5,
                   background: d.color + '22', color: d.color,
                   fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 9,
                   letterSpacing: '.04em', textTransform: 'uppercase',
-                }}>{d.short}</span>
+                  whiteSpace: 'nowrap',
+                }}>{d.label}</span>
               )
             })}
           </div>

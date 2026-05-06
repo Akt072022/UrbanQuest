@@ -241,12 +241,9 @@ function DimPicker({ gate, sessionDim, evals, skipped, onPickDim, onFinish }) {
               }}>
               <div style={{
                 flexShrink: 0,
-                width: 30, height: 30, borderRadius: '50%',
-                background: d.color, color: '#FFFFFF',
-                border: `2px solid ${INK}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 12,
-              }}>{d.short}</div>
+                width: 18, height: 18, borderRadius: '50%',
+                background: d.color, border: `2px solid ${INK}`,
+              }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{
                   fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 15,
