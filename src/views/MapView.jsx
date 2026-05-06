@@ -700,49 +700,41 @@ export function MapView() {
 
   return (
     <div className="anim-fadein" style={{ position: 'relative' }}>
-      {/* ── Header strip — title, compact progress bar and primary CTA
-              fold into a single horizontal row on desktop / tablet so
-              the chrome above the journey takes ~80 px instead of
-              ~250 px. On mobile they keep the original stacked layout
-              because the column width is too narrow for one row. ── */}
+      {/* ── Header strip — three stacked rows:
+              1. "Browse methods" title, left-aligned.
+              2. Quest progress bar, centred (capped width so it
+                 doesn't sprawl on wide desktop layouts).
+              3. Primary CTA, centred. ──────────────────────────── */}
       <div style={{
-        display: 'flex',
-        flexDirection: isH ? 'row' : 'column',
-        alignItems: isH ? 'center' : 'stretch',
-        gap: isH ? 18 : 0,
-        marginBottom: isH ? 12 : 0,
+        display: 'flex', flexDirection: 'column',
+        gap: 12, marginBottom: 14,
       }}>
-        {/* Title */}
-        <div style={{
-          flexShrink: 0,
-          marginBottom: isH ? 0 : 8,
-        }}>
+        {/* Row 1 — title, left-aligned */}
+        <div style={{ alignSelf: 'stretch' }}>
           <div style={{
             fontFamily: 'Barlow Condensed, Impact, sans-serif',
             fontWeight: 900,
-            fontSize: isH ? 26 : 'clamp(28px,8vw,42px)',
+            fontSize: 'clamp(28px,6vw,42px)',
             color: INK, lineHeight: .95,
+            textAlign: 'left',
           }}>
             BROWSE METHODS
           </div>
           {!isH && (
-            <div style={{ fontSize: 12, color: '#5A5550', marginTop: 2 }}>
+            <div style={{ fontSize: 12, color: '#5A5550', marginTop: 4 }}>
               All 133 methods grouped by phase and dimension. Tap any rosette to dive in.
             </div>
           )}
         </div>
 
-        {/* Progress bar — flex:1 in horizontal so it stretches to fill
-            the remaining row width. */}
+        {/* Row 2 — progress bar, centred */}
         <div style={{
-          flex: isH ? 1 : 'initial',
-          marginBottom: isH ? 0 : 8,
-          padding: isH ? 0 : '4px 2px 6px',
+          width: '100%', maxWidth: 560,
+          marginLeft: 'auto', marginRight: 'auto',
         }}>
           <div style={{
             display: 'flex', justifyContent: 'space-between',
-            alignItems: 'baseline',
-            marginBottom: isH ? 4 : 6,
+            alignItems: 'baseline', marginBottom: 6,
           }}>
             <div style={{
               fontFamily: 'Barlow Condensed, Impact, sans-serif',
@@ -773,16 +765,12 @@ export function MapView() {
           </div>
         </div>
 
-        {/* Primary CTA — single, focused. Resumes at the active dim. */}
+        {/* Row 3 — primary CTA, centred */}
         <div style={{
-          flexShrink: 0,
-          width: isH ? 240 : '100%',
-          margin: isH ? 0 : '12px 0 14px',
+          display: 'flex', justifyContent: 'center',
           animation: 'bob-cta 1.8s ease-in-out infinite',
-          display: isH ? 'block' : 'flex',
-          justifyContent: 'center',
         }}>
-          <div style={{ width: isH ? '100%' : 240 }}>
+          <div style={{ width: 'min(100%, 320px)' }}>
             {resumeTarget ? (
               <ScrappyButton onClick={() => goExploreDim(resumeTarget.gate, resumeTarget.dim.id)}
                 color={YELLOW} size="md" full>
