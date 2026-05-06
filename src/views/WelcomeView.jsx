@@ -14,31 +14,9 @@ const YELLOW = '#FFC83D'
 const TEAL = '#14B8A6'
 const CORAL = '#FB7185'
 
-// ── Decorative ink strokes — kept; they're part of the brand. ──
-function InkCorners() {
-  return (
-    <>
-      <svg viewBox="0 0 220 220"
-        style={{
-          position: 'absolute', top: -20, left: -40,
-          width: 240, height: 240,
-          zIndex: 0, pointerEvents: 'none',
-        }}>
-        <path d="M -10 70 C 30 30, 90 60, 110 110 S 70 200, 30 220"
-          fill="none" stroke={INK} strokeWidth="14" strokeLinecap="round" />
-      </svg>
-      <svg viewBox="0 0 220 220"
-        style={{
-          position: 'absolute', bottom: -20, right: -40,
-          width: 240, height: 240,
-          zIndex: 0, pointerEvents: 'none',
-        }}>
-        <path d="M 230 150 C 190 190, 130 160, 110 110 S 150 20, 190 0"
-          fill="none" stroke={INK} strokeWidth="14" strokeLinecap="round" />
-      </svg>
-    </>
-  )
-}
+// (Decorative ink strokes removed — they were drawing curved
+// black lines in the page corners that competed with the chat UI
+// for visual weight.)
 
 export function WelcomeView() {
   const {
@@ -131,8 +109,6 @@ export function WelcomeView() {
       padding: '40px 22px 32px',
       overflow: 'hidden',
     }}>
-      <InkCorners />
-
       <div style={{
         position: 'relative', zIndex: 1,
         maxWidth: 460, margin: '0 auto',
