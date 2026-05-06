@@ -76,8 +76,8 @@ function classifyDashboard(scores, gates, practiced) {
         kind: 'workshop',
         title: `Run a 30-min team scan on ${GATE_LABEL[weakestGate.gate]}`,
         rationale:
-          `Get the team to rate the ${weakestGate.total} methods of this phase together — ` +
-          `the live heatmap surfaces convergence and blind spots in real time.`,
+          `Get the team to rate the ${weakestGate.total} methods of this phase together. ` +
+          `The live heatmap surfaces convergence and blind spots in real time.`,
         action: { type: 'facilitator' },
       })
     }
@@ -119,7 +119,7 @@ function classifyDashboard(scores, gates, practiced) {
       used.add(top.n)
       tools.push({
         dim, tool: top,
-        rationale: `${dim.label} is at ${dim.score}% — this method covers ${top.d.length} ` +
+        rationale: `${dim.label} is at ${dim.score}%. This method covers ${top.d.length} ` +
                    `dimension${top.d.length === 1 ? '' : 's'} and ${top.g.length} phase${top.g.length === 1 ? '' : 's'}.`,
       })
     }
@@ -837,7 +837,7 @@ function RecommendedActions({
           lineHeight: 1.45, marginTop: 4,
         }}>
           {recommendations.mode === 'sparse' &&
-            'Run a workshop or do a quick solo pass — both grow the diagnostic.'}
+            'Run a workshop or do a quick solo pass. Both grow the diagnostic.'}
           {recommendations.mode === 'mixed' &&
             'A few targeted evaluations now will unlock the rich-stage recommendations.'}
           {recommendations.mode === 'rich' &&
@@ -899,7 +899,7 @@ function RecommendedActions({
           gap: 12,
         }}>
           <RichColumn title="APPLY NOW"
-            subtitle="Methods you run regularly — go-to picks for the next project."
+            subtitle="Methods you run regularly. Go-to picks for the next project."
             tone="ok"
             tools={recommendations.apply} />
           <RichColumn title="LEARN NEXT"
@@ -1064,7 +1064,7 @@ function RichColumn({ title, subtitle, tone, tools }) {
         <div style={{
           fontSize: 11, color: t.label, opacity: 0.6,
           fontStyle: 'italic',
-        }}>—</div>
+        }}>none yet</div>
       )}
       {tools.map((tl, i) => (
         <div key={tl.n} style={{
@@ -1533,7 +1533,7 @@ function ProjectView({
           <ProjectActionRow
             icon="✏"
             title={`Rate ${untouched.length} untouched method${untouched.length === 1 ? '' : 's'}`}
-            desc={`${untouched.length} of the ${rows.length} recommended methods aren't rated yet — start with the first one's dim to make the gap reachable.`}
+            desc={`${untouched.length} of the ${rows.length} recommended methods aren't rated yet. Start with the first one's dim to make the gap reachable.`}
             onClick={() => goExploreDim(firstUntouchedDim.gate, firstUntouchedDim.dimId)} />
         )}
         <ProjectActionRow

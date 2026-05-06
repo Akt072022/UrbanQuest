@@ -94,7 +94,7 @@ export function WelcomeView() {
     e?.preventDefault?.()
     if (busy) return
     if (!descReady) {
-      setErr('A few sentences would help — what is the project about, where, who is it for?')
+      setErr('A few sentences would help. What is the project about, where, who is it for?')
       return
     }
     if (!hasMistral) {
@@ -142,7 +142,7 @@ export function WelcomeView() {
           <div style={{
             width: 'min(48vw, 190px)',
             aspectRatio: '6 / 5',
-            margin: '0 auto -22px',
+            margin: '0 auto -12px',
             overflow: 'hidden',
             // Explicit page-cream background so mix-blend-mode:
             // multiply has a backdrop to fuse into (parent wrapper
@@ -479,7 +479,7 @@ function ProjectInterview({ onAnalyse, onSwitchToForm, busyParent }) {
         setEditDesc(r.desc)
         setMessages(m => [...m, {
           role: 'assistant',
-          content: `Got it. Here's how I'd describe your project — you can tweak it below before we run the analysis.`,
+          content: `Got it. Here's how I'd describe your project. You can tweak it below before we run the analysis.`,
         }])
       }
     } catch (e) {
@@ -584,7 +584,7 @@ function ProjectInterview({ onAnalyse, onSwitchToForm, busyParent }) {
               onChange={e => setEditName(e.target.value)} />
           </div>
           <div>
-            <label style={LABEL}>Project brief — edit if needed</label>
+            <label style={LABEL}>Project brief (edit if needed)</label>
             <textarea
               value={editDesc}
               onChange={e => setEditDesc(e.target.value)}

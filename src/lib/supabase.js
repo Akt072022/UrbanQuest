@@ -148,7 +148,7 @@ export async function createTeam({ name, city, proj }) {
   // hang, and gives us the only field we actually need (user.id).
   const uid = await currentUserId()
   tag('session loaded')
-  if (!uid) throw new Error('Sign in first — no active session.')
+  if (!uid) throw new Error('Sign in first. No active session.')
 
   // Three-step dance because of the RLS gotcha:
   //   teams_create        → any authenticated user may INSERT
@@ -178,7 +178,7 @@ export async function createTeam({ name, city, proj }) {
   )
   tag('insert teams done')
   if (e1) {
-    const detail = `[${e1.code || '?'}] ${e1.message}${e1.details ? ' — ' + e1.details : ''}`
+    const detail = `[${e1.code || '?'}] ${e1.message}${e1.details ? ': ' + e1.details : ''}`
     console.error('[teams.create] insert team failed:', e1)
     throw new Error('Could not create team: ' + detail)
   }
@@ -190,7 +190,7 @@ export async function createTeam({ name, city, proj }) {
   )
   tag('insert team_members done')
   if (e2) {
-    const detail = `[${e2.code || '?'}] ${e2.message}${e2.details ? ' — ' + e2.details : ''}`
+    const detail = `[${e2.code || '?'}] ${e2.message}${e2.details ? ': ' + e2.details : ''}`
     console.error('[teams.create] insert membership failed:', e2)
     await supabase.from('teams').delete().eq('id', teamId)
     throw new Error('Could not add you to the team: ' + detail)
@@ -214,7 +214,7 @@ export async function joinTeamByCode(rawCode) {
   if (!code) throw new Error('Enter an invite code.')
 
   const uid = await currentUserId()
-  if (!uid) throw new Error('Sign in first — no active session.')
+  if (!uid) throw new Error('Sign in first. No active session.')
 
   // The RPC bypasses RLS inside its body and returns at most one row
   // matching the exact invite code, so we don't leak the team

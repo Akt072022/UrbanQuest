@@ -127,18 +127,18 @@ export function MethodfitMatrix({
           For each method, every participant rates two things:
           <ul style={{ margin: '6px 0 6px 18px', padding: 0 }}>
             <li>
-              <b>Priority</b> for the project — Essential (3) · Helpful (2) ·
+              <b>Priority</b> for the project: Essential (3) · Helpful (2) ·
               Optional (1) · Not for it (0).
             </li>
             <li>
-              <b>Capability</b> on the team — I run it (3) · I have run
+              <b>Capability</b> on the team: I run it (3) · I have run
               it sometimes (2) · I know it in theory only (1).
             </li>
           </ul>
           We average each across the team. Methods with a priority
           average ≥ 1.5 land in the right column; capability ≥ 1.5
           lands in the top row. <b>TRAIN / HIRE</b> (top-left) is the
-          most actionable cell — the team should either skill up or
+          most actionable cell: the team should either skill up or
           bring help in.
         </div>
       </details>
@@ -151,8 +151,8 @@ export function MethodfitMatrix({
           fontSize: 11, color: '#7B4A12', lineHeight: 1.4,
         }}>
           <b>{buckets.nocap.length}</b> method{buckets.nocap.length > 1 ? 's' : ''}{' '}
-          {buckets.nocap.length > 1 ? 'have' : 'has'} no capability data yet —
-          run a team scan in this session to populate the Y axis.
+          {buckets.nocap.length > 1 ? 'have' : 'has'} no capability data yet.
+          Run a team scan in this session to populate the Y axis.
         </div>
       )}
     </div>
@@ -188,7 +188,7 @@ function Quadrant({ title, hint, tone, tools, highlight = false }) {
         {tools.length === 0 && (
           <span style={{
             fontSize: 10, color: t.label, opacity: 0.5, fontStyle: 'italic',
-          }}>—</span>
+          }}>none yet</span>
         )}
         {tools.slice(0, 6).map(s => (
           <span key={s.name} style={{

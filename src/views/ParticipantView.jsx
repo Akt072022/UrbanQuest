@@ -145,7 +145,7 @@ function WaitingState({ status }) {
       }}>
         {isError
           ? 'Couldn\'t reach the realtime server. Check the Wi-Fi and reload the page. If the problem persists, ask the facilitator to verify their Supabase Realtime settings.'
-          : 'The session opens as soon as the facilitator launches it. You can leave this page open — your spot is reserved.'}
+          : 'The session opens as soon as the facilitator launches it. You can leave this page open. Your spot is reserved.'}
       </div>
       <style>{`
         @keyframes pulse-ink {
@@ -272,7 +272,7 @@ function DimPicker({ gate, sessionDim, evals, skipped, onPickDim, onFinish }) {
 
       {/* Submit / wrap-up */}
       <ScrappyButton onClick={onFinish} color={allDone ? '#10B981' : YELLOW} full>
-        {allDone ? 'SUBMIT MY ANSWERS →' : (totalTouched > 0 ? 'SUBMIT WHAT I HAVE →' : 'PASS — I HAVE NOTHING')}
+        {allDone ? 'SUBMIT MY ANSWERS →' : (totalTouched > 0 ? 'SUBMIT WHAT I HAVE →' : 'PASS, I HAVE NOTHING')}
       </ScrappyButton>
       <div style={{
         marginTop: 8, fontSize: 10, color: '#9C958A', textAlign: 'center', lineHeight: 1.45,

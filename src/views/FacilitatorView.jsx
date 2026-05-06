@@ -606,7 +606,7 @@ export function FacilitatorView() {
 
   const sliderAvg = responses.length
     ? (responses.reduce((a, r) => a + (Number(r.value) || 0), 0) / responses.length).toFixed(1)
-    : '—'
+    : 'n/a'
 
   const wordFreq = {}
   responses.forEach(r => {
@@ -660,13 +660,13 @@ export function FacilitatorView() {
             {[
               { id: 'methodfit',
                 title: 'Project method-fit',
-                desc:  'Pin a real project. Participants rate each method as Essential / Helpful / Optional — crossed with capability to surface train-vs-run gaps.' },
+                desc:  'Pin a real project. Participants rate each method as Essential / Helpful / Optional, crossed with capability to surface train-vs-run gaps.' },
               { id: 'triage',
                 title: 'Team scan',
                 desc:  'Each participant rates every method on their own phone. Live heatmap shows where the team converges or diverges.' },
               { id: 'question',
                 title: 'Live question',
-                desc:  'Pick one method at a time and broadcast a question. Free text / slider / 3-way vote — aggregated live.' },
+                desc:  'Pick one method at a time and broadcast a question. Free text / slider / 3-way vote, aggregated live.' },
             ].map(m => {
               const active = initialMode === m.id
               return (
@@ -724,7 +724,7 @@ export function FacilitatorView() {
             <textarea
               value={projectDesc}
               onChange={e => setProjectDesc(e.target.value)}
-              placeholder="One or two lines of context — site, ambition, key constraint."
+              placeholder="One or two lines of context: site, ambition, key constraint."
               rows={3}
               style={{
                 width: '100%', padding: '10px 12px',
@@ -1232,7 +1232,7 @@ export function FacilitatorView() {
                 cursor: 'pointer',
                 marginBottom: activeTool ? 12 : 0,
               }}>
-              <option value="">— Choose a tool —</option>
+              <option value="">Choose a tool…</option>
               {toolList.map(t => <option key={t.n} value={t.n}>{t.n}</option>)}
               {filterDim !== 'all' && <option disabled>── All tools ──</option>}
               {filterDim !== 'all' && TOOLS.filter(t => !toolList.find(tl => tl.n === t.n))
@@ -1342,7 +1342,7 @@ export function FacilitatorView() {
             <Eyebrow color={INK}>Or write your own</Eyebrow>
             <textarea value={customText}
               onChange={e => setCustomText(e.target.value)}
-              placeholder="Type your question — participants receive it instantly along with the tool context."
+              placeholder="Type your question. Participants receive it instantly along with the tool context."
               rows={3}
               style={{
                 width: '100%', padding: '10px 12px',

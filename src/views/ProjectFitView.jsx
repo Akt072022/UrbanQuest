@@ -64,7 +64,7 @@ export function ProjectFitView() {
         exclude,
       })
       if (!more.length) {
-        setMoreErr('No additional methods to suggest — try rephrasing the brief.')
+        setMoreErr('No additional methods to suggest. Try rephrasing the brief.')
       } else {
         const merged = [...aiSuggestions, ...more]
         // If a saved project is active, persist the appended list
@@ -91,7 +91,7 @@ export function ProjectFitView() {
     try {
       await sendMagicLink(authEmail.trim())
       setAuthStatus('sent')
-      setAuthMsg('Check your email — open the link to sign in.')
+      setAuthMsg('Check your email. Open the link to sign in.')
     } catch (err) {
       setAuthStatus('error')
       setAuthMsg(err?.message || 'Could not send link.')

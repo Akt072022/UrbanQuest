@@ -143,7 +143,7 @@ export function ProfileView() {
     const timeoutP = new Promise((_, reject) => {
       timer = setTimeout(() => {
         reject(new Error(`${label} timed out after ${ms / 1000}s. ` +
-          `Open the browser console — the per-step log will show ` +
+          `Open the browser console. The per-step log will show ` +
           `which call stalled (refresh / insert / select).`))
       }, ms)
     })
@@ -233,7 +233,7 @@ export function ProfileView() {
     try {
       await sendMagicLink(authEmail.trim())
       setAuthStatus('sent')
-      setAuthMsg('Check your email — open the link to sign in.')
+      setAuthMsg('Check your email. Open the link to sign in.')
     } catch (err) {
       setAuthStatus('error')
       setAuthMsg(err?.message || 'Could not send link.')
@@ -656,7 +656,7 @@ export function ProfileView() {
                         textDecoration: 'underline', cursor: 'pointer',
                       }}>
                       {activeTeam.invite_code}
-                    </button>{' '}— they paste it in <i>Profile → Join by code</i>.
+                    </button>{', '}they paste it in <i>Profile → Join by code</i>.
                   </div>
                 )
               })()}

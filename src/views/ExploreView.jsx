@@ -742,7 +742,7 @@ export function CardSynthesis({ tool, gate, onDive, alreadyLevel = null, already
   const why      = tool.gu?.[gate] || (tool.g?.[0] && tool.gu?.[tool.g[0]]) || null
   const evidence = tool.evidence || null
   const fullDef  = (why && evidence)
-    ? `${why} — ${evidence}`
+    ? `${why}. ${evidence}`
     : (why || evidence || tool.def || '')
 
   // Accordion line counts — only one of {desc, tip} is "expanded"
