@@ -680,12 +680,82 @@ function QuestionMode({ question, channel, answered, setAnswered, revealed }) {
 //   can you run it?" so the facilitator's matrix has both axes.
 //   If the user has already triaged the same tool earlier this
 //   session, the capability follow-up is skipped automatically.
+// Display order — least → most priority, left → right. Matches the
+// swipe direction (left swipe = skip, far-right swipe = essential)
+// so the row above the card reads as the same axis as the gesture.
 const FIT_OPTIONS = [
-  { id: 'essential', label: 'Essential',  hint: 'Must use',     col: '#10B981' },
-  { id: 'helpful',   label: 'Helpful',    hint: 'Good to use',  col: '#3B82F6' },
-  { id: 'optional',  label: 'Optional',   hint: 'Nice to have', col: '#F97316' },
-  { id: 'skip',      label: 'Not for it', hint: 'Skip',         col: '#9C958A' },
+  { id: 'skip',      label: 'Not for it', hint: 'Skip',          col: '#9C958A' },
+  { id: 'optional',  label: 'Optional',   hint: 'Nice to have',  col: '#F97316' },
+  { id: 'helpful',   label: 'Helpful',    hint: 'Good to use',   col: '#3B82F6' },
+  { id: 'essential', label: 'Essential',  hint: 'Must use',      col: '#10B981' },
 ]
+const FIT_LEFT_ZONE  = { threshold: 60, value: 'skip' }
+const FIT_RIGHT_ZONES = [
+  { threshold: 25,  label: 'OPTIONAL',  hint: 'Nice to have', color: '#F97316', value: 'optional' },
+  { threshold: 80,  label: 'HELPFUL',   hint: 'Good to use',  color: '#3B82F6', value: 'helpful' },
+  { threshold: 140, label: 'ESSENTIAL', hint: 'Must use',     color: '#10B981', value: 'essential' },
+]
+
+// Fit-row counterpart of the RatingRow used by Explore / ToolDeck.
+// 4 buttons above the card; the matching one highlights mid-drag
+// from the SwipeWrap below. previewLevel beats currentLevel
+// visually so a returning user can tell their previously-committed
+// fit apart from the live drop-target preview.
+function FitRatingRow({ show, currentLevel, onPick, previewLevel = null }) {
+  return (
+    <div style={{
+      display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6,
+      opacity: show ? 1 : 0,
+      transform: show ? 'translateY(0)' : 'translateY(12px)',
+      pointerEvents: show ? 'auto' : 'none',
+      transition: 'all .3s',
+    }}>
+      {FIT_OPTIONS.map(opt => {
+        const isCommitted = currentLevel === opt.id
+        const isPreview   = previewLevel === opt.id
+        const filled      = isCommitted || isPreview
+        return (
+          <button key={opt.id}
+            onClick={() => onPick(opt.id)}
+            title={opt.hint}
+            style={{
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'stretch', justifyContent: 'center',
+              padding: '8px 6px',
+              background: filled ? opt.col : '#FFFFFF',
+              color:      filled ? '#FFFFFF' : INK,
+              border: `${isPreview ? 3 : 2.5}px solid ${INK}`,
+              borderRadius: 12,
+              cursor: 'pointer',
+              boxShadow: isPreview
+                ? '3px 3px 0 ' + INK
+                : isCommitted
+                ? '2px 2px 0 ' + INK
+                : 'none',
+              transform: isPreview
+                ? 'translate(-1px,-2px) scale(1.04)'
+                : isCommitted
+                ? 'translate(-1px,-1px)'
+                : 'none',
+              transition: 'transform .08s, box-shadow .08s',
+            }}>
+            <span style={{
+              fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 12,
+              letterSpacing: '.04em', textTransform: 'uppercase',
+              lineHeight: 1.05,
+            }}>{opt.label}</span>
+            <span style={{
+              fontFamily: '-apple-system, Helvetica Neue, sans-serif',
+              fontWeight: 600, fontSize: 9,
+              color: filled ? 'rgba(255,255,255,.85)' : '#9C958A',
+              marginTop: 3, lineHeight: 1.2,
+            }}>{opt.hint}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
 
 function FitDeck({ tools, gate, project, fits, evals, onPick, onDone }) {
   const startIdx = tools.findIndex(t => !fits[t.n])
@@ -694,6 +764,10 @@ function FitDeck({ tools, gate, project, fits, evals, onPick, onDone }) {
   const [pendingFit, setPendingFit] = useState(null)   // 'essential' | …
   const [lastAction, setLastAction] = useState(null)
   const [descExpanded, setDescExpanded] = useState(false)
+  // Live drop-target during a horizontal drag — drives the
+  // FitRatingRow above the card (same pattern as RatingRow's
+  // previewLevel in ToolDeck and Explore).
+  const [previewLevel, setPreviewLevel] = useState(null)
 
   useEffect(() => { setFace('synth'); setPendingFit(null) }, [idx])
 
@@ -787,63 +861,99 @@ function FitDeck({ tools, gate, project, fits, evals, onPick, onDone }) {
     advance()
   }
 
+  const currentFit = fits[tool.n] || null
+  const onSwipeCommit = (value) => {
+    setPreviewLevel(null)
+    pickFit(value)
+  }
+
   return (
     <div style={{ padding: '14px 16px 24px' }}>
-      {/* Header — project name + counter */}
+      {/* Header — same shape as the personal Explore deck and the
+          Team-scan ToolDeck so the workshop's card-sorting flow
+          reads as one consistent interface. The gate-coloured
+          eyebrow names the workshop mode + parent phase, the title
+          is the project name. */}
       <div style={{
-        background: CARD, border: `2.5px solid ${INK}`,
-        borderRadius: 14, padding: '10px 12px',
-        boxShadow: '2px 2px 0 ' + INK, marginBottom: 12,
+        display: 'flex', alignItems: 'center', gap: 10,
+        marginBottom: 10,
       }}>
-        <div style={{
-          fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 10,
-          color: GATE_COL[gate] || '#5A5550', letterSpacing: '.08em',
-          textTransform: 'uppercase',
-        }}>
-          Method-fit · {GATE_LABEL[gate]}
+        <ScrappyButton onClick={onDone} color="#FFFFFF" size="sm">
+          ← DONE
+        </ScrappyButton>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{
+            fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 10,
+            color: GATE_COL[gate] || '#5A5550', letterSpacing: '.08em',
+            textTransform: 'uppercase', lineHeight: 1,
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>Method-fit · {GATE_LABEL[gate]}</div>
+          <div style={{
+            fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 18,
+            color: INK, letterSpacing: '.02em',
+            lineHeight: 1, marginTop: 3,
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>{project?.name || 'Project'}</div>
         </div>
         <div style={{
           fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 16,
-          color: INK, lineHeight: 1.1, marginTop: 2,
-        }}>{project?.name || 'Project'}</div>
-        {project?.desc && (() => {
-          const CAP = 280
-          const long = project.desc.length > CAP
-          const shown = !long || descExpanded
-            ? project.desc
-            : project.desc.slice(0, CAP).trimEnd() + '…'
-          return (
-            <div style={{ marginTop: 6 }}>
-              <div style={{
-                fontSize: 11, color: '#3F3A36', lineHeight: 1.4,
-              }}>{shown}</div>
-              {long && (
-                <button onClick={() => setDescExpanded(e => !e)}
-                  style={{
-                    marginTop: 4, padding: 0, background: 'transparent',
-                    border: 'none', cursor: 'pointer',
-                    fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 10,
-                    color: GATE_COL[gate] || INK,
-                    letterSpacing: '.06em', textTransform: 'uppercase',
-                  }}>
-                  {descExpanded ? '· show less' : '· show more'}
-                </button>
-              )}
-            </div>
-          )
-        })()}
+          color: INK, flexShrink: 0, minWidth: 44, textAlign: 'center',
+        }}>{idx + 1}/{tools.length}</div>
       </div>
-
       <ProgressDots tools={tools} idx={idx} />
 
-      {/* Card — wrapped in SwipeWrap so participants who try to swipe
-          (Tinder muscle memory) get a fast path to the two extremes:
-          left → "Not for it" (skip), right → "Essential". The four
-          buttons below remain the explicit/precision affordance. */}
+      {/* Project description — collapsible strip below the header
+          when there is one; mirrors the description chip in
+          ProjectFitView so the participant has full context. */}
+      {project?.desc && (() => {
+        const CAP = 200
+        const long = project.desc.length > CAP
+        const shown = !long || descExpanded
+          ? project.desc
+          : project.desc.slice(0, CAP).trimEnd() + '…'
+        return (
+          <div style={{
+            marginTop: 8,
+            padding: '8px 10px',
+            background: PAGE,
+            border: `1.5px dashed ${INK}33`, borderRadius: 10,
+            fontSize: 11, color: '#3F3A36', lineHeight: 1.4,
+          }}>
+            {shown}
+            {long && (
+              <button onClick={() => setDescExpanded(e => !e)}
+                style={{
+                  marginLeft: 6, padding: 0, background: 'transparent',
+                  border: 'none', cursor: 'pointer',
+                  fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 10,
+                  color: GATE_COL[gate] || INK,
+                  letterSpacing: '.06em', textTransform: 'uppercase',
+                }}>
+                {descExpanded ? 'less' : 'more'}
+              </button>
+            )}
+          </div>
+        )
+      })()}
+
+      {/* Fit-rating row ABOVE the card — also acts as drop-zone
+          previews while the user is mid-swipe. Same pattern as
+          the personal Explore deck and Team-scan ToolDeck. */}
+      <div style={{ marginTop: 12, marginBottom: 12 }}>
+        <FitRatingRow
+          show={face !== 'cover'}
+          currentLevel={currentFit}
+          previewLevel={previewLevel}
+          onPick={pickFit} />
+      </div>
+
+      {/* Card — multi-zone right swipe (optional / helpful /
+          essential), single left zone for "skip". Ghost cards behind
+          give the deck weight. */}
       <div style={{
         position: 'relative',
         display: 'flex', justifyContent: 'center',
-        marginTop: 14, marginBottom: 12,
+        marginBottom: 12,
       }}>
         {tools.length - idx > 2 && <GhostCard depth={2} />}
         {tools.length - idx > 1 && <GhostCard depth={1} />}
@@ -854,9 +964,11 @@ function FitDeck({ tools, gate, project, fits, evals, onPick, onDone }) {
             ? 'card-from-left .35s cubic-bezier(.4,1.4,.5,1)' : 'none',
         }}>
           <SwipeWrap
-            onSwipe={(dir) => pickFit(dir === 'right' ? 'essential' : 'skip')}
-            leftHint="NOT FOR IT" leftColor="#9C958A"
-            rightHint="ESSENTIAL"   rightColor="#10B981">
+            enabled={face !== 'cover'}
+            onSwipe={onSwipeCommit}
+            onZoneChange={setPreviewLevel}
+            leftZone={FIT_LEFT_ZONE}
+            rightZones={FIT_RIGHT_ZONES}>
             <CardStack
               tool={tool} gate={gate} face={face}
               onDive={() => setFace('deep')}
@@ -865,52 +977,6 @@ function FitDeck({ tools, gate, project, fits, evals, onPick, onDone }) {
             />
           </SwipeWrap>
         </div>
-      </div>
-
-      {/* Action prompt — explicit + visible. Tells the user this is
-          where the next move happens (the card itself isn't the
-          control). Names both the swipe shortcut and the tap option. */}
-      <div style={{
-        textAlign: 'center', marginBottom: 8,
-      }}>
-        <div style={{
-          fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 13,
-          color: INK, letterSpacing: '.04em', textTransform: 'uppercase',
-          lineHeight: 1.2,
-        }}>How important for {project?.name || 'this project'}?</div>
-        <div style={{
-          fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 10,
-          color: '#9C958A', letterSpacing: '.06em',
-          textTransform: 'uppercase', marginTop: 3,
-        }}>
-          ← Swipe skip · swipe essential → · or tap below
-        </div>
-      </div>
-
-      {/* 4-way priority picker */}
-      <div style={{
-        display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8,
-        marginBottom: 4,
-      }}>
-        {FIT_OPTIONS.map(o => (
-          <button key={o.id} onClick={() => pickFit(o.id)}
-            style={{
-              padding: '12px 12px',
-              background: CARD, color: o.col,
-              border: `2.5px solid ${INK}`, borderRadius: 12,
-              cursor: 'pointer',
-              boxShadow: '2px 2px 0 ' + INK,
-              fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 14,
-              letterSpacing: '.04em', textTransform: 'uppercase',
-              textAlign: 'left',
-            }}>
-            <div>{o.label}</div>
-            <div style={{
-              fontSize: 9, color: '#5A5550', fontWeight: 700,
-              marginTop: 2, letterSpacing: '.02em', textTransform: 'none',
-            }}>{o.hint}</div>
-          </button>
-        ))}
       </div>
 
       {/* Capability modal — opens when fit is picked but capability
