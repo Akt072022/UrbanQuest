@@ -179,40 +179,36 @@ function buildPathD(gates, orientation = 'v') {
   return `M ${CX} ${top.toFixed(1)} L ${CX} ${bot.toFixed(1)}`
 }
 
-// ── Per-gate elastic spring (0..1 with overshoot) ─────────────
-// Drives both the road's bezier "amp" (the bulge of each arc) and
-// the step nodes' scale/opacity, so opening a gate looks like a
-// dark arm stretching out while the previous one snaps shut.
+// ── Per-gate openness tween (0..1, asymptotic, no overshoot) ──
+// Drives both the spine's bezier "amp" and the step nodes' scale /
+// opacity. Each frame the value glides a fixed fraction of the
+// remaining distance toward its target, producing a smooth ease-out
+// with no spring physics — no velocity carried over, no oscillation.
 function useGateSprings(openGate, count = 4) {
   const initial = () =>
     Array.from({ length: count }, (_, i) => (i + 1 === openGate ? 1 : 0))
   const [values, setValues] = useState(initial)
-  const ref = useRef({ values: initial(), vels: new Array(count).fill(0) })
+  const ref = useRef({ values: initial() })
 
   useEffect(() => {
     const targets = Array.from(
       { length: count },
       (_, i) => (i + 1 === openGate ? 1 : 0),
     )
-    const stiffness = 0.16
-    const damping   = 0.9           // close to critical — smooth settle, only a hint of overshoot
+    // Fraction of remaining distance covered each frame. Higher =
+    // faster glide. 0.16 ≈ ~250 ms to settle within the snap epsilon.
+    const ease = 0.16
     let raf
     const tick = () => {
       const s = ref.current
       let settled = true
       for (let i = 0; i < count; i++) {
         const dx = targets[i] - s.values[i]
-        s.vels[i] = (s.vels[i] + dx * stiffness) * damping
-        s.values[i] += s.vels[i]
-        if (Math.abs(dx) > 0.0008 || Math.abs(s.vels[i]) > 0.0008) {
-          settled = false
-        }
+        s.values[i] += dx * ease
+        if (Math.abs(dx) > 0.0008) settled = false
       }
       if (settled) {
-        for (let i = 0; i < count; i++) {
-          s.values[i] = targets[i]
-          s.vels[i] = 0
-        }
+        for (let i = 0; i < count; i++) s.values[i] = targets[i]
         setValues(s.values.slice())
         return
       }
