@@ -354,33 +354,37 @@ function ToolDeck({ tools, gate, evals, skipped, onPick, onSkip, onDone }) {
 
   return (
     <div style={{ padding: '14px 16px 24px' }}>
-      {/* Header — back to picker + counter + progress dots */}
+      {/* Header — matches the personal Explore deck so the
+          workshop's card-sorting flow reads as the same interface
+          (back button, phase / dimension eyebrow, counter, dots). */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10,
-        marginBottom: 12,
+        marginBottom: 10,
       }}>
-        <ScrappyButton onClick={onDone} color={CARD} size="sm">
+        <ScrappyButton onClick={onDone} color="#FFFFFF" size="sm">
           ← DONE
         </ScrappyButton>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{
-            fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 16,
-            color: GATE_COL[gate], letterSpacing: '.04em',
-            textTransform: 'uppercase', lineHeight: 1,
+            fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 18,
+            color: GATE_COL[gate], letterSpacing: '.02em',
+            lineHeight: 1,
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>{GATE_LABEL[gate]}</div>
           {tool.d?.[0] && DIM_BY_ID[tool.d[0]] && (
             <div style={{
               fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
               color: DIM_BY_ID[tool.d[0]].color, marginTop: 3,
-              letterSpacing: '.04em', textTransform: 'uppercase',
-            }}>{tools[0].d?.[0] && DIM_BY_ID[tool.d[0]].label}</div>
+              letterSpacing: '.05em', textTransform: 'uppercase',
+              lineHeight: 1,
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            }}>{DIM_BY_ID[tool.d[0]].label}</div>
           )}
         </div>
         <div style={{
-          fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 14,
-          color: INK, flexShrink: 0,
-        }}>{idx + 1}<span style={{ color: '#9C958A' }}>/{tools.length}</span></div>
+          fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 16,
+          color: INK, flexShrink: 0, minWidth: 44, textAlign: 'center',
+        }}>{idx + 1}/{tools.length}</div>
       </div>
       <ProgressDots tools={tools} idx={idx} />
 
