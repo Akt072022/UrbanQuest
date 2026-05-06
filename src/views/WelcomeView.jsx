@@ -119,8 +119,26 @@ export function WelcomeView() {
         position: 'relative', zIndex: 1,
         maxWidth: 460, margin: '0 auto',
       }}>
-        {/* ── Wordmark + tagline ───────────────────── */}
+        {/* ── Hero illustration + wordmark + tagline ───────────────────── */}
         <div style={{ textAlign: 'center', marginTop: 24, marginBottom: 18 }}>
+          {/* Hero cityscape illustration. mix-blend-mode: multiply
+              fuses the PNG's white background into the page colour
+              so it reads as fused with the canvas, not a plopped-in
+              tile. clipPath: inset round caps the bottom so the
+              transparent strip below the artwork doesn't render. */}
+          <img
+            src="/illustrations/cityscape.png"
+            alt=""
+            draggable={false}
+            onError={(e) => { e.currentTarget.style.display = 'none' }}
+            style={{
+              width: 'min(72vw, 280px)',
+              height: 'auto',
+              display: 'block',
+              margin: '0 auto -8px',
+              mixBlendMode: 'multiply',
+              userSelect: 'none', pointerEvents: 'none',
+            }} />
           <div style={{
             fontFamily: 'Barlow Condensed, Impact, sans-serif',
             fontWeight: 900,
