@@ -10,6 +10,7 @@ import { ParticipantView } from './views/ParticipantView'
 import { ProfileView } from './views/ProfileView'
 import { ProjectFitView } from './views/ProjectFitView'
 import { LoginView } from './views/LoginView'
+import { BadgeToaster } from './components/BadgeToaster'
 
 class ErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { error: null } }
@@ -85,6 +86,11 @@ function AppInner() {
           {view === 'profile'     && <ProfileView />}
         </div>
       </div>
+      {/* Global spontaneous-badge toaster — pops a tile at the top
+          of the viewport whenever a rating tips a badge predicate
+          over its threshold. Mounted at App level (via portal) so
+          it's reachable from every view. */}
+      <BadgeToaster />
     </div>
   )
 }

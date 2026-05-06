@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { TOOLS, SKILL_LEVELS } from '../data/tools'
+import { computeBadges } from '../data/badges'
 
 const STORAGE_KEY = 'uq-v2'        // keep the storage slot stable; bump
                                    // schema version below for migrations
@@ -8,6 +9,21 @@ const SCHEMA_VERSION = 4
 const LEVEL_W = Object.fromEntries(
   Object.entries(SKILL_LEVELS).map(([k, v]) => [k, v.weight])
 )
+
+// Diff badge unlocks between two states. Returns the IDs that are
+// newly true in `next`, minus anything the user has already been
+// notified about (so a re-rated card on a tier they already cleared
+// doesn't re-pop the toast). Used by practiceTool / skipTool to
+// queue spontaneous celebrations.
+function badgesNewlyUnlocked(prevState, nextState, seenBadgeIds) {
+  const beforeIds = new Set(
+    computeBadges(prevState).filter(b => b.unlocked).map(b => b.id),
+  )
+  const seen = new Set(seenBadgeIds || [])
+  return computeBadges(nextState)
+    .filter(b => b.unlocked && !beforeIds.has(b.id) && !seen.has(b.id))
+    .map(b => b.id)
+}
 
 // First tool in `pool` that the user hasn't yet evaluated nor skipped.
 // Returns 0 when everything is done so the user can browse from the top.
@@ -35,6 +51,13 @@ export const useStore = create(
       // a reload. Computed-vs-seen diff drives the "you just earned"
       // surfaces on DimComplete / GateComplete.
       seenBadgeIds: [],
+      // FIFO queue of badge IDs that have just unlocked but haven't
+      // been shown to the user yet. Populated by practiceTool /
+      // skipTool when a rating tips a predicate over its threshold.
+      // The global <BadgeToaster /> consumes one at a time, animates
+      // it in, then calls dequeueBadgeToast() (which also marks the
+      // badge seen) so it never shows twice.
+      pendingBadgeToasts: [],
 
       // ── Explore cursor — persisted so CONTINUE resumes where left ─
       eGate: null,
@@ -146,10 +169,19 @@ export const useStore = create(
         const newSkipped = state.skipped.includes(name)
           ? state.skipped.filter(n => n !== name)
           : state.skipped
+        const nextPracticed = { ...state.practiced, [name]: level }
+        const popIds = badgesNewlyUnlocked(
+          { practiced: state.practiced, skipped: state.skipped },
+          { practiced: nextPracticed,    skipped: newSkipped },
+          state.seenBadgeIds,
+        )
         return {
-          practiced: { ...state.practiced, [name]: level },
+          practiced: nextPracticed,
           skipped:   newSkipped,
           xp:        state.xp + xpDelta,
+          pendingBadgeToasts: popIds.length
+            ? [...(state.pendingBadgeToasts || []), ...popIds]
+            : state.pendingBadgeToasts,
         }
       }),
 
@@ -157,7 +189,18 @@ export const useStore = create(
       // still surfaceable from the dashboard if the user wants to revisit.
       skipTool: (name) => set(state => {
         if (state.skipped.includes(name)) return {}
-        return { skipped: [...state.skipped, name] }
+        const nextSkipped = [...state.skipped, name]
+        const popIds = badgesNewlyUnlocked(
+          { practiced: state.practiced, skipped: state.skipped },
+          { practiced: state.practiced, skipped: nextSkipped },
+          state.seenBadgeIds,
+        )
+        return {
+          skipped: nextSkipped,
+          pendingBadgeToasts: popIds.length
+            ? [...(state.pendingBadgeToasts || []), ...popIds]
+            : state.pendingBadgeToasts,
+        }
       }),
 
       // Legacy — kept so callers compile, but no longer wired to UI.
@@ -188,6 +231,21 @@ export const useStore = create(
         return { seenBadgeIds: Array.from(cur) }
       }),
 
+      // Pop the head of the pending-toasts queue and mark it seen
+      // in one atomic update. The toaster calls this when the user
+      // dismisses or the auto-hide timer fires.
+      dequeueBadgeToast: () => set(state => {
+        const queue = state.pendingBadgeToasts || []
+        if (!queue.length) return {}
+        const [head, ...rest] = queue
+        const seen = new Set(state.seenBadgeIds || [])
+        seen.add(head)
+        return {
+          pendingBadgeToasts: rest,
+          seenBadgeIds: Array.from(seen),
+        }
+      }),
+
       // Team membership setters — populated by syncSupabase after auth
       // pulls / team CRUD calls in ProfileView.
       setTeams: (arr) => set({ teams: Array.isArray(arr) ? arr : [] }),
@@ -201,6 +259,7 @@ export const useStore = create(
         flagged: [],
         xp: 0,
         seenBadgeIds: [],
+        pendingBadgeToasts: [],
         eGate: null, eDim: null, eIdx: 0, eFlipped: false,
         dashboardGate: null,
         sessionId: null, sessionRole: null,

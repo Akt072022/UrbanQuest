@@ -191,6 +191,14 @@ function DimComplete({ gate, dim }) {
     return pool.some(t => !practiced[t.n] && !skipSet.has(t.n))
   })
 
+  // Slice stats — drives the always-visible reward chip below the
+  // headline. The user has finished the gate × dim intersection;
+  // show how many methods they've picked up in *this dim across all
+  // gates*, since that's what the dim badge tiers measure.
+  const dimToolsAll  = TOOLS.filter(t => t.d?.includes(dim))
+  const dimEvaluated = dimToolsAll.filter(t => practiced[t.n]).length
+  const dimRegular   = dimToolsAll.filter(t => practiced[t.n] === 'regular').length
+
   // Newly-earned badges — unlocked AND not in seenBadgeIds. Dismiss
   // by hitting either CTA, which marks them seen so they never
   // re-fire on a later visit.
@@ -200,6 +208,22 @@ function DimComplete({ gate, dim }) {
   const dismissBadges = () => {
     if (newBadges.length) markBadgesSeen(newBadges.map(b => b.id))
   }
+
+  // Next un-earned tier within *this dim* — when the dim-complete
+  // didn't itself trip a new badge (because the user already cleared
+  // the dim's curious/familiar tiers earlier, say), still show the
+  // ladder so the screen always has a reward signal: "you're 3 of 5
+  // toward Familiar". Returns null if the dim is fully mastered.
+  const dimTiers = [
+    { tier: 'Curious',      threshold: 1, current: dimEvaluated },
+    { tier: 'Familiar',     threshold: 5, current: dimEvaluated },
+    { tier: 'Practitioner', threshold: 3, current: dimRegular,
+      label: 'methods regularly practised' },
+    { tier: 'Master',       threshold: Math.ceil(dimToolsAll.length * 0.5),
+      current: dimRegular,
+      label: 'methods regularly practised' },
+  ]
+  const nextTier = dimTiers.find(t => t.current < t.threshold)
 
   return (
     <div className="anim-fadein" style={{ textAlign: 'center', padding: '40px 16px' }}>
@@ -231,6 +255,61 @@ function DimComplete({ gate, dim }) {
       </div>
 
       <BadgeReward badges={newBadges} />
+
+      {/* Fallback reward — guaranteed visual feedback when finishing
+          the slice didn't itself trip a new badge. Shows progress
+          toward the next un-reached tier of *this dim* so the user
+          always leaves the screen with a sense of "I moved the
+          needle". Hidden when a fresh badge already takes the spot. */}
+      {newBadges.length === 0 && nextTier && (
+        <div style={{
+          maxWidth: 360, margin: '0 auto 22px',
+          padding: '12px 14px',
+          background: '#FFFDF8',
+          border: `2.5px solid ${col}`,
+          borderRadius: 14,
+          boxShadow: '3px 3px 0 ' + col,
+        }}>
+          <div style={{
+            fontFamily: 'Barlow Condensed, Impact, sans-serif',
+            fontWeight: 900, fontSize: 10, color: col,
+            letterSpacing: '.1em', textTransform: 'uppercase',
+            textAlign: 'center', marginBottom: 6,
+          }}>
+            ✦ Next badge — {dimMeta?.label} · {nextTier.tier}
+          </div>
+          <div style={{
+            fontFamily: 'Barlow Condensed, Impact, sans-serif',
+            fontWeight: 900, fontSize: 22, color: INK,
+            textAlign: 'center', lineHeight: 1, marginBottom: 8,
+          }}>
+            {nextTier.current} / {nextTier.threshold}
+          </div>
+          {/* Progress bar — scrappy hand-drawn rectangle */}
+          <div style={{
+            position: 'relative',
+            height: 10, borderRadius: 6,
+            background: '#F2EDE4',
+            border: `2px solid ${INK}`,
+            overflow: 'hidden',
+          }}>
+            <div style={{
+              position: 'absolute', left: 0, top: 0, bottom: 0,
+              width: `${Math.min(100, Math.round(100 * nextTier.current / nextTier.threshold))}%`,
+              background: col,
+              transition: 'width .35s ease',
+            }} />
+          </div>
+          <div style={{
+            fontSize: 11, color: '#5A5550', lineHeight: 1.4,
+            textAlign: 'center', marginTop: 8,
+          }}>
+            {nextTier.threshold - nextTier.current === 1
+              ? 'One more to unlock it.'
+              : `${nextTier.threshold - nextTier.current} more to unlock it.`}
+          </div>
+        </div>
+      )}
 
       <div style={{
         display: 'flex', flexDirection: 'column', gap: 10,
