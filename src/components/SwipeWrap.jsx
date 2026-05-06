@@ -148,9 +148,15 @@ export function SwipeWrap({
 
     const onTouchStart = (e) => {
       if (!enabled) return
-      if (activeTouchRef.current !== null) return  // already tracking
       const t = e.changedTouches[0]
       if (!t) return
+      // Defensive reset: if a previous gesture was orphaned (touchend
+      // missed because of a fast unmount, OS interruption, or any
+      // other glitch), the activeTouchRef sentinel could be stuck on
+      // a stale identifier. That would silently swallow this new
+      // touch without ever calling begin(). Force-claim the new
+      // finger instead — the worst case is we ignore a still-down
+      // previous touch, which the user couldn't see anyway.
       activeTouchRef.current = t.identifier
       begin(t.clientX, t.clientY)
     }
