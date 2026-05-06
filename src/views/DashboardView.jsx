@@ -1522,7 +1522,7 @@ function ProjectView({
               tool, fit: v.fit, capability: v.capability,
               participantId: 'self',
             }))}
-            toolList={(suggestions || []).map(s => s.tool?.n).filter(Boolean)}
+            toolList={(suggestions || []).map(s => s.tool).filter(Boolean)}
             participantCount={1}
             doneCount={1} />
         </div>
