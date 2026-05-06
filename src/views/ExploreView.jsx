@@ -225,14 +225,20 @@ function DimComplete({ gate, dim }) {
   // the dim's curious/familiar tiers earlier, say), still show the
   // ladder so the screen always has a reward signal: "you're 3 of 5
   // toward Familiar". Returns null if the dim is fully mastered.
+  // Each tier carries the unit the user needs more of, so the
+  // progress card can spell out exactly what 'N more' means
+  // ('evaluate 3 more methods', 'run 3 more regularly') instead of
+  // an ambiguous '3 more to unlock it'.
   const dimTiers = [
-    { tier: 'Curious',      threshold: 1, current: dimEvaluated },
-    { tier: 'Familiar',     threshold: 5, current: dimEvaluated },
+    { tier: 'Curious',      threshold: 1, current: dimEvaluated,
+      unit: 'methods evaluated', verb: 'evaluate' },
+    { tier: 'Familiar',     threshold: 5, current: dimEvaluated,
+      unit: 'methods evaluated', verb: 'evaluate' },
     { tier: 'Practitioner', threshold: 3, current: dimRegular,
-      label: 'methods regularly practised' },
+      unit: 'methods you run regularly', verb: 'run regularly' },
     { tier: 'Master',       threshold: Math.ceil(dimToolsAll.length * 0.5),
       current: dimRegular,
-      label: 'methods regularly practised' },
+      unit: 'methods you run regularly', verb: 'run regularly' },
   ]
   const nextTier = dimTiers.find(t => t.current < t.threshold)
 
@@ -272,55 +278,73 @@ function DimComplete({ gate, dim }) {
           toward the next un-reached tier of *this dim* so the user
           always leaves the screen with a sense of "I moved the
           needle". Hidden when a fresh badge already takes the spot. */}
-      {newBadges.length === 0 && nextTier && (
-        <div style={{
-          maxWidth: 360, margin: '0 auto 22px',
-          padding: '12px 14px',
-          background: '#FFFDF8',
-          border: `2.5px solid ${col}`,
-          borderRadius: 14,
-          boxShadow: '3px 3px 0 ' + col,
-        }}>
+      {newBadges.length === 0 && nextTier && (() => {
+        const remaining = nextTier.threshold - nextTier.current
+        return (
           <div style={{
-            fontFamily: 'Barlow Condensed, Impact, sans-serif',
-            fontWeight: 900, fontSize: 10, color: col,
-            letterSpacing: '.1em', textTransform: 'uppercase',
-            textAlign: 'center', marginBottom: 6,
+            maxWidth: 360, margin: '0 auto 22px',
+            padding: '14px 16px',
+            background: '#FFFDF8',
+            border: `2.5px solid ${col}`,
+            borderRadius: 14,
+            boxShadow: '3px 3px 0 ' + col,
           }}>
-            ✦ Next badge — {dimMeta?.label} · {nextTier.tier}
-          </div>
-          <div style={{
-            fontFamily: 'Barlow Condensed, Impact, sans-serif',
-            fontWeight: 900, fontSize: 22, color: INK,
-            textAlign: 'center', lineHeight: 1, marginBottom: 8,
-          }}>
-            {nextTier.current} / {nextTier.threshold}
-          </div>
-          {/* Progress bar — scrappy hand-drawn rectangle */}
-          <div style={{
-            position: 'relative',
-            height: 10, borderRadius: 6,
-            background: '#F2EDE4',
-            border: `2px solid ${INK}`,
-            overflow: 'hidden',
-          }}>
+            {/* Eyebrow: 'You're working toward' so the panel reads
+                as a goal-tracker, not a stat. */}
             <div style={{
-              position: 'absolute', left: 0, top: 0, bottom: 0,
-              width: `${Math.min(100, Math.round(100 * nextTier.current / nextTier.threshold))}%`,
-              background: col,
-              transition: 'width .35s ease',
-            }} />
+              fontFamily: 'Barlow Condensed, Impact, sans-serif',
+              fontWeight: 900, fontSize: 10, color: '#5A5550',
+              letterSpacing: '.1em', textTransform: 'uppercase',
+              textAlign: 'center', marginBottom: 4,
+            }}>
+              ✦ Next badge to unlock
+            </div>
+            {/* Badge name — the actual reward. */}
+            <div style={{
+              fontFamily: 'Barlow Condensed, Impact, sans-serif',
+              fontWeight: 900, fontSize: 18, color: col,
+              textAlign: 'center', lineHeight: 1.1, marginBottom: 10,
+              textTransform: 'uppercase', letterSpacing: '.04em',
+            }}>
+              {dimMeta?.label} · {nextTier.tier}
+            </div>
+            {/* Progress label that actually names the unit, so
+                'N / M' isn't a riddle. */}
+            <div style={{
+              fontSize: 12, color: '#3F3A36', lineHeight: 1.4,
+              textAlign: 'center', marginBottom: 6,
+            }}>
+              <b style={{
+                fontFamily: 'Barlow Condensed, Impact, sans-serif',
+                fontSize: 16, color: INK,
+              }}>{nextTier.current} of {nextTier.threshold}</b>
+              {' '}{nextTier.unit}
+            </div>
+            <div style={{
+              position: 'relative',
+              height: 10, borderRadius: 6,
+              background: '#F2EDE4',
+              border: `2px solid ${INK}`,
+              overflow: 'hidden',
+            }}>
+              <div style={{
+                position: 'absolute', left: 0, top: 0, bottom: 0,
+                width: `${Math.min(100, Math.round(100 * nextTier.current / nextTier.threshold))}%`,
+                background: col,
+                transition: 'width .35s ease',
+              }} />
+            </div>
+            <div style={{
+              fontSize: 12, color: '#5A5550', lineHeight: 1.45,
+              textAlign: 'center', marginTop: 10,
+            }}>
+              {remaining === 1
+                ? `${nextTier.verb.charAt(0).toUpperCase()}${nextTier.verb.slice(1)} 1 more method to earn this badge.`
+                : `${nextTier.verb.charAt(0).toUpperCase()}${nextTier.verb.slice(1)} ${remaining} more methods to earn this badge.`}
+            </div>
           </div>
-          <div style={{
-            fontSize: 11, color: '#5A5550', lineHeight: 1.4,
-            textAlign: 'center', marginTop: 8,
-          }}>
-            {nextTier.threshold - nextTier.current === 1
-              ? 'One more to unlock it.'
-              : `${nextTier.threshold - nextTier.current} more to unlock it.`}
-          </div>
-        </div>
-      )}
+        )
+      })()}
 
       <div style={{
         display: 'flex', flexDirection: 'column', gap: 10,
@@ -337,7 +361,7 @@ function DimComplete({ gate, dim }) {
           <ScrappyButton
             onClick={() => { dismissBadges(); goReviewDim(gate, dim) }}
             color="#FFFFFF">
-            ↻ REVIEW ALREADY-RATED ({ratedCount})
+            REVIEW MY {ratedCount} RATED METHODS
           </ScrappyButton>
         )}
         <ScrappyButton onClick={() => { dismissBadges(); goMap() }} color="#FFFFFF">

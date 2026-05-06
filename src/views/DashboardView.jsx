@@ -877,7 +877,7 @@ function RecommendedActions({
             fontWeight: 900, fontSize: 10,
             color: INK, letterSpacing: '.06em',
           }}>
-          {aiLoading ? 'ANALYSING…' : aiResult ? '↻ RE-RUN' : '✨ AI INSIGHTS'}
+          {aiLoading ? 'ANALYSING…' : aiResult ? 'RE-RUN' : '✨ AI INSIGHTS'}
         </button>
       )}
     </div>
@@ -1525,7 +1525,7 @@ function ProjectView({
                 boxShadow: '2px 2px 0 ' + INK,
               }}>
               {Object.keys(methodfit).length > 0
-                ? '↻ Re-rate methodfit'
+                ? 'Re-rate methodfit'
                 : '✦ Rate methodfit'}
             </button>
           )}

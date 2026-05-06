@@ -774,7 +774,7 @@ export function FacilitatorView() {
                   }
                   size="md" full>
                   {aiLoading ? 'ANALYZING…'
-                    : aiSugg.length > 0 ? '↻ RE-ANALYZE'
+                    : aiSugg.length > 0 ? 'RE-ANALYZE'
                     : '✨ ANALYZE PROJECT'}
                 </ScrappyButton>
 
