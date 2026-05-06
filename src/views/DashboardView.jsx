@@ -1195,6 +1195,10 @@ export function DashboardView() {
   const recommendations = classifyDashboard(scores, gates, practiced)
 
   const tabs = [
+    // Project tab only shows when the user has a saved AI shortlist.
+    // It's the most action-oriented surface (recommended methods +
+    // gaps + workshop CTAs), so when it exists it leads.
+    ...(hasShortlist ? [{ id: 'project', label: 'Project', color: '#F97316' }] : []),
     { id: 'overall', label: 'Overall', color: INK },
     // Team tab only shows when the user is signed in *and* part of a
     // team. Hide it entirely otherwise — the overall tab already
@@ -1260,7 +1264,15 @@ export function DashboardView() {
       <TabStrip tabs={tabs} activeId={tab} onPick={setTab} />
 
       {/* Tab content */}
-      {tab === 'overall' ? (
+      {tab === 'project' ? (
+        <ProjectView
+          project={projectContext}
+          suggestions={aiSuggestions}
+          practiced={practiced}
+          goExploreDim={goExploreDim}
+          goFacilitator={goFacilitator}
+          goProjectFit={goProjectFit} />
+      ) : tab === 'overall' ? (
         <OverallView practiced={practiced} scores={scores} gates={gates}
           recommendations={recommendations}
           xp={xp}
@@ -1277,6 +1289,294 @@ export function DashboardView() {
           goExploreDim={goExploreDim} />
       )}
     </div>
+  )
+}
+
+// ──────────────────────────────────────────────────────────────
+// Project view — dashboard tab focused on the user's current
+// AI-analysed project. Pulls projectContext + aiSuggestions from
+// the store and crosses them with the user's mastery state to
+// surface (a) what's already covered, (b) what's still untouched
+// and worth rating, (c) the gates / dimensions the project's
+// recommended methods span, (d) workshop / action CTAs.
+// ──────────────────────────────────────────────────────────────
+const MASTERY_TONE = {
+  regular:    { label: 'Mastered',  col: '#10B981', tag: 'I run it' },
+  occasional: { label: 'In use',    col: '#3B82F6', tag: 'Tried it' },
+  theory:     { label: 'Studied',   col: '#7B4A12', tag: 'Read about' },
+  none:       { label: 'New',       col: '#9C958A', tag: 'Not yet rated' },
+}
+
+function ProjectView({
+  project, suggestions, practiced,
+  goExploreDim, goFacilitator, goProjectFit,
+}) {
+  // Per-tool mastery
+  const rows = (suggestions || []).map(s => {
+    const lvl  = practiced[s.tool.n] || null
+    const tone = MASTERY_TONE[lvl || 'none']
+    return { ...s, level: lvl, tone }
+  })
+  const counts = rows.reduce((acc, r) => {
+    const k = r.level || 'none'
+    acc[k] = (acc[k] || 0) + 1
+    return acc
+  }, {})
+  const untouched = rows.filter(r => !r.level)
+
+  // Phase / dimension coverage of the project's shortlist.
+  const phaseCount = {}
+  const dimCount   = {}
+  for (const r of rows) {
+    for (const g of (r.tool.g || [])) phaseCount[g] = (phaseCount[g] || 0) + 1
+    for (const did of (r.tool.d || [])) dimCount[did] = (dimCount[did] || 0) + 1
+  }
+
+  const firstUntouchedDim = (() => {
+    for (const r of untouched) {
+      const did = r.tool.d?.[0]
+      const g   = r.tool.g?.[0]
+      if (did && g) return { gate: g, dimId: did }
+    }
+    return null
+  })()
+
+  return (
+    <>
+      {/* Project header — name, description, "open shortlist" link */}
+      <div style={{
+        background: '#FFFDF8',
+        border: `2.5px solid ${INK}`, borderRadius: 14,
+        padding: '14px 16px', marginBottom: 16,
+        boxShadow: '2px 2px 0 ' + INK,
+      }}>
+        <div style={{
+          fontFamily: 'Barlow Condensed, Impact, sans-serif',
+          fontWeight: 900, fontSize: 11, letterSpacing: '.06em',
+          color: '#9C958A', textTransform: 'uppercase',
+        }}>Project method-fit</div>
+        <div style={{
+          fontFamily: 'Barlow Condensed, Impact, sans-serif',
+          fontWeight: 900, fontSize: 22, color: INK,
+          lineHeight: 1.1, marginTop: 2,
+        }}>{project?.name || 'Your project'}</div>
+        {project?.desc && (
+          <div style={{
+            fontSize: 12, color: '#3F3A36', lineHeight: 1.5,
+            marginTop: 8,
+          }}>{project.desc}</div>
+        )}
+        <button onClick={goProjectFit}
+          style={{
+            marginTop: 10, padding: '6px 12px',
+            background: 'transparent',
+            border: `1.5px dashed ${INK}55`, borderRadius: 999,
+            cursor: 'pointer',
+            fontFamily: 'Barlow Condensed, Impact, sans-serif',
+            fontWeight: 900, fontSize: 11,
+            color: INK, letterSpacing: '.06em',
+            textTransform: 'uppercase',
+          }}>↗ Open shortlist</button>
+      </div>
+
+      {/* Mastery breakdown — how much of the recommended toolkit the
+          user already runs. */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8,
+        marginBottom: 16,
+      }}>
+        {['regular', 'occasional', 'theory', 'none'].map(k => {
+          const tone = MASTERY_TONE[k]
+          const n    = counts[k] || 0
+          return (
+            <div key={k} style={{
+              background: tone.col + '12',
+              border: `1.5px solid ${tone.col}55`,
+              borderRadius: 10, padding: '10px 8px',
+              textAlign: 'center',
+            }}>
+              <div style={{
+                fontFamily: 'Barlow Condensed, Impact, sans-serif',
+                fontWeight: 900, fontSize: 22, color: tone.col,
+                lineHeight: 1,
+              }}>{n}</div>
+              <div style={{
+                fontFamily: 'Barlow Condensed, Impact, sans-serif',
+                fontWeight: 900, fontSize: 10, color: tone.col,
+                letterSpacing: '.06em', textTransform: 'uppercase',
+                marginTop: 4,
+              }}>{tone.label}</div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Recommended-method list with per-tool mastery */}
+      <div style={{
+        fontFamily: 'Barlow Condensed, Impact, sans-serif',
+        fontWeight: 900, fontSize: 11, letterSpacing: '.06em',
+        color: '#5A5550', textTransform: 'uppercase',
+        marginBottom: 8,
+      }}>{rows.length} methods picked for this project</div>
+      <div style={{
+        display: 'flex', flexDirection: 'column', gap: 8,
+        marginBottom: 18,
+      }}>
+        {rows.map(r => (
+          <button key={r.tool.n}
+            onClick={() => {
+              const did = r.tool.d?.[0]
+              const g   = r.tool.g?.[0]
+              if (did && g) goExploreDim(g, did)
+            }}
+            style={{
+              textAlign: 'left',
+              padding: '10px 12px',
+              background: '#FFFDF8',
+              border: `1.5px solid ${r.tone.col}55`,
+              borderRadius: 10, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 10,
+            }}>
+            <span aria-hidden="true" style={{
+              flexShrink: 0,
+              width: 10, height: 10, borderRadius: '50%',
+              background: r.tone.col,
+            }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{
+                fontFamily: 'Georgia, serif', fontWeight: 700,
+                fontSize: 13, color: INK,
+                lineHeight: 1.2,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden', textOverflow: 'ellipsis',
+              }}>{r.tool.n}</div>
+              <div style={{
+                fontSize: 10, color: '#5A5550', marginTop: 2,
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              }}>
+                {(r.tool.g || []).map(g => GATE_LABEL[g]).join(' / ')}
+                {r.tool.d?.[0] && DIM_BY_ID[r.tool.d[0]]
+                  ? ' · ' + DIM_BY_ID[r.tool.d[0]].label
+                  : ''}
+              </div>
+            </div>
+            <span style={{
+              flexShrink: 0,
+              padding: '3px 8px', borderRadius: 999,
+              background: r.tone.col, color: '#FFFFFF',
+              fontFamily: 'Barlow Condensed, Impact, sans-serif',
+              fontWeight: 900, fontSize: 10,
+              letterSpacing: '.04em', textTransform: 'uppercase',
+            }}>{r.tone.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Coverage — phases + dimensions the shortlist spans. */}
+      <div style={{
+        background: '#F2EDE4',
+        border: `1.5px dashed ${INK}33`, borderRadius: 12,
+        padding: '12px 14px', marginBottom: 18,
+      }}>
+        <div style={{
+          fontFamily: 'Barlow Condensed, Impact, sans-serif',
+          fontWeight: 900, fontSize: 11, letterSpacing: '.06em',
+          color: '#5A5550', textTransform: 'uppercase',
+          marginBottom: 8,
+        }}>Coverage</div>
+        <div style={{
+          display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8,
+        }}>
+          {[1,2,3,4].map(g => (
+            phaseCount[g] ? (
+              <span key={g} style={{
+                padding: '2px 8px', borderRadius: 999,
+                background: GATE_COL[g] + '22', color: GATE_COL[g],
+                fontFamily: 'Barlow Condensed, Impact, sans-serif',
+                fontWeight: 900, fontSize: 11,
+                letterSpacing: '.04em',
+              }}>{GATE_LABEL[g]} · {phaseCount[g]}</span>
+            ) : null
+          ))}
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {Object.entries(dimCount).map(([did, n]) => {
+            const d = DIM_BY_ID[did]
+            if (!d) return null
+            return (
+              <span key={did} style={{
+                padding: '2px 8px', borderRadius: 999,
+                background: d.color + '22', color: d.color,
+                fontFamily: 'Barlow Condensed, Impact, sans-serif',
+                fontWeight: 900, fontSize: 11,
+                letterSpacing: '.04em',
+              }}>{d.label} · {n}</span>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Recommended actions — workshops + rating prompts. */}
+      <div style={{
+        fontFamily: 'Barlow Condensed, Impact, sans-serif',
+        fontWeight: 900, fontSize: 11, letterSpacing: '.06em',
+        color: '#5A5550', textTransform: 'uppercase',
+        marginBottom: 8,
+      }}>Next steps</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <ProjectActionRow
+          icon="🗂"
+          title="Run a project method-fit workshop"
+          desc="Open the live workshop with this project's shortlist pre-loaded."
+          onClick={goFacilitator} />
+        {untouched.length > 0 && firstUntouchedDim && (
+          <ProjectActionRow
+            icon="✏"
+            title={`Rate ${untouched.length} untouched method${untouched.length === 1 ? '' : 's'}`}
+            desc={`${untouched.length} of the ${rows.length} recommended methods aren't rated yet — start with the first one's dim to make the gap reachable.`}
+            onClick={() => goExploreDim(firstUntouchedDim.gate, firstUntouchedDim.dimId)} />
+        )}
+        <ProjectActionRow
+          icon="✨"
+          title="Find more methods"
+          desc="Re-run the AI shortlist to extend the toolkit beyond the initial 12."
+          onClick={goProjectFit} />
+      </div>
+    </>
+  )
+}
+
+function ProjectActionRow({ icon, title, desc, onClick }) {
+  return (
+    <button onClick={onClick}
+      style={{
+        display: 'flex', alignItems: 'flex-start', gap: 12,
+        padding: '12px 14px',
+        background: '#F2EDE4',
+        border: `2px solid ${INK}33`, borderRadius: 12,
+        textAlign: 'left', cursor: 'pointer', width: '100%',
+        transition: 'border-color .15s',
+      }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = INK }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = INK + '33' }}>
+      <div style={{
+        flexShrink: 0, width: 32, height: 32, borderRadius: '50%',
+        background: '#FFFFFF', border: `2px solid ${INK}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 16,
+      }}>{icon}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontFamily: 'Barlow Condensed, Impact, sans-serif',
+          fontWeight: 900, fontSize: 14, color: INK,
+          letterSpacing: '.04em', textTransform: 'uppercase',
+          lineHeight: 1.15, marginBottom: 4,
+        }}>{title}</div>
+        <div style={{
+          fontSize: 11, color: '#5A5550', lineHeight: 1.4,
+        }}>{desc}</div>
+      </div>
+    </button>
   )
 }
 
