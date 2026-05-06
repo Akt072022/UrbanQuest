@@ -17,6 +17,19 @@
     width: 100%;
     min-height: 100vh;
   }
+  /* iOS Safari auto-zooms into any text input / textarea / select
+     whose font-size is < 16 px on focus, which throws the page off
+     and confuses the user. Force the minimum on phone-sized
+     viewports — !important is needed to win against the per-field
+     inline `fontSize: 14` styles sprinkled through the codebase.
+     Wider viewports keep the original design intent (smaller
+     inputs read better on desktop / tablet where there's no
+     auto-zoom). */
+  @media (max-width: 768px) {
+    input, textarea, select {
+      font-size: 16px !important;
+    }
+  }
 }
 
 @layer utilities {

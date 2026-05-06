@@ -574,7 +574,9 @@ function ProjectInterview({ onAnalyse, onSwitchToForm, busyParent }) {
                 resize: 'none',
                 lineHeight: 1.4,
                 flex: 1,
-                fontSize: 14,
+                // No fontSize override — INP already sets 16 px, the
+                // minimum that prevents iOS Safari from auto-zooming
+                // when the textarea takes focus.
               }} />
             <ScrappyButton type="button"
               onClick={send}
@@ -619,7 +621,8 @@ function ProjectInterview({ onAnalyse, onSwitchToForm, busyParent }) {
                 ...INP,
                 resize: 'vertical',
                 lineHeight: 1.5,
-                fontSize: 13,
+                // INP's 16 px wins — anything smaller triggers iOS
+                // auto-zoom on focus.
               }} />
           </div>
           <ScrappyButton type="button"
@@ -683,7 +686,11 @@ const INP = {
   borderRadius: 12,
   border: `2.5px solid ${INK}`,
   background: '#FFFFFF',
-  color: INK, fontSize: 14, outline: 'none',
+  // 16px minimum on form controls — iOS Safari auto-zooms into any
+  // input/textarea whose font-size is < 16 px on focus, which breaks
+  // the layout and confuses the user. 16 px keeps the on-screen
+  // keyboard from triggering the page zoom.
+  color: INK, fontSize: 16, outline: 'none',
   fontFamily: '-apple-system, Helvetica Neue, sans-serif', fontWeight: 600,
   boxSizing: 'border-box',
 }
