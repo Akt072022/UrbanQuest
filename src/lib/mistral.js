@@ -27,7 +27,7 @@ function compactCatalogue() {
   }).join('\n')
 }
 
-export async function suggestMethods({ name, desc }) {
+export async function suggestMethods({ name, desc, exclude = [] }) {
   const key = import.meta.env.VITE_MISTRAL_API_KEY
   if (!key) throw new Error('AI is not configured.')
 
@@ -38,10 +38,15 @@ export async function suggestMethods({ name, desc }) {
     'Output strict JSON only.',
   ].join(' ')
 
+  const excludeNames = (exclude || []).filter(Boolean)
+  const excludeBlock = excludeNames.length > 0
+    ? `\n\nThese methods have ALREADY been suggested and must NOT appear in your output:\n${excludeNames.map(n => `- ${n}`).join('\n')}\n\nPropose 10 to 12 DIFFERENT methods from the catalogue that complement those.`
+    : ''
+
   const user = `Project: ${name?.trim() || 'Unnamed project'}
 
 Description:
-${desc?.trim() || '(no description provided)'}
+${desc?.trim() || '(no description provided)'}${excludeBlock}
 
 From the catalogue below, recommend the 10 to 12 methods most likely to deliver value for THIS project. Spread your picks across gates and dimensions if it helps the team move forward. For each pick, give one short sentence (≈ 25 words max) explaining why it fits this specific project.
 
@@ -91,8 +96,10 @@ ${compactCatalogue()}`
   // Map names back to TOOLS entries. Models occasionally tweak casing
   // or add trailing punctuation, so we try exact, then case-insensitive
   // and ignore anything that doesn't match a real method.
+  // Pre-seed `seen` with any names the caller asked us to exclude
+  // (so even if the model re-suggests one, we drop it on the floor).
   const out = []
-  const seen = new Set()
+  const seen = new Set(excludeNames)
   for (const s of raw) {
     if (!s || typeof s.name !== 'string') continue
     let tool = TOOLS.find(t => t.n === s.name)

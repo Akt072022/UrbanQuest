@@ -216,7 +216,13 @@ export function SwipeWrap({
         transform: `translate(${drag.x}px, ${drag.y}px) rotate(${rot}deg)`,
         transition: dragging ? 'none' : 'transform .22s ease-out',
         cursor: enabled ? 'grab' : 'default',
-        touchAction: 'pan-y',
+        // touch-action: none — own every gesture on the card. The
+        // previous "pan-y" let mobile browsers claim near-vertical
+        // swipes before our pointer events could fire, leaving the
+        // user wondering why their angled swipe did nothing. With the
+        // tap-to-expand body the card has no native scroll anyway,
+        // so handing all gestures to SwipeWrap is the right default.
+        touchAction: 'none',
         userSelect: 'none',
       }}>
       {children}

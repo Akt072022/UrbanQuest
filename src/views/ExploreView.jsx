@@ -568,7 +568,11 @@ export function CardSynthesis({ tool, gate, onDive, alreadyLevel = null, already
             draggable={false}
             style={{
               width: '100%', height: '100%', objectFit: 'cover',
-              objectPosition: '50% 100%',
+              // Centred crop — the canvas template's heading sits in
+              // the top ~20% so a slim 16:5 window centred on the
+              // image already trims it off, while keeping the
+              // structured part of the canvas visible.
+              objectPosition: '50% 50%',
               userSelect: 'none', pointerEvents: 'none',
             }} />
           {/* Zoom-hint icon, top-right corner */}

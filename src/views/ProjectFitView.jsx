@@ -12,6 +12,7 @@ import {
   TOOLS, GATE_LABEL, GATE_COLOR, DIM_BY_ID,
 } from '../data/tools'
 import { hasSupabase, sendMagicLink } from '../lib/supabase'
+import { suggestMethods, hasMistral } from '../lib/mistral'
 
 const INK    = '#1C2530'
 const YELLOW = '#FFC83D'
@@ -25,7 +26,7 @@ export function ProjectFitView() {
     projectContext, aiSuggestions,
     userEmail,
     goWelcome, goMap, goFacilitator, goDashboard,
-    setProjectContext,
+    setProjectContext, setAiSuggestions,
   } = useStore(useShallow(s => ({
     projectContext: s.projectContext,
     aiSuggestions: s.aiSuggestions,
@@ -35,6 +36,7 @@ export function ProjectFitView() {
     goFacilitator:  s.goFacilitator,
     goDashboard:    s.goDashboard,
     setProjectContext: s.setProjectContext,
+    setAiSuggestions:  s.setAiSuggestions,
   })))
 
   // Magic-link sign-in is offered AFTER the user has seen value,
@@ -43,6 +45,32 @@ export function ProjectFitView() {
   const [authEmail, setAuthEmail] = useState('')
   const [authStatus, setAuthStatus] = useState('idle')
   const [authMsg, setAuthMsg] = useState('')
+
+  // "Find more methods" — second pass on the AI shortlist that
+  // appends 10-12 fresh picks excluding what's already shown.
+  const [moreBusy, setMoreBusy] = useState(false)
+  const [moreErr,  setMoreErr]  = useState('')
+  const findMoreMethods = async () => {
+    if (moreBusy || !projectContext) return
+    setMoreBusy(true); setMoreErr('')
+    try {
+      const exclude = aiSuggestions.map(s => s.tool?.n).filter(Boolean)
+      const more = await suggestMethods({
+        name: projectContext.name,
+        desc: projectContext.desc,
+        exclude,
+      })
+      if (!more.length) {
+        setMoreErr('No additional methods to suggest — try rephrasing the brief.')
+      } else {
+        setAiSuggestions([...aiSuggestions, ...more])
+      }
+    } catch (err) {
+      setMoreErr(err?.message || 'Could not fetch more methods.')
+    } finally {
+      setMoreBusy(false)
+    }
+  }
 
   const submitMagicLink = async (e) => {
     e.preventDefault()
@@ -192,13 +220,43 @@ export function ProjectFitView() {
       </div>
       <div style={{
         display: 'flex', flexDirection: 'column', gap: 10,
-        marginBottom: 22,
+        marginBottom: 14,
       }}>
         {aiSuggestions.map(({ tool, why }, i) => (
           <SuggestionCard key={tool.n} index={i + 1}
             tool={tool} why={why} />
         ))}
       </div>
+
+      {/* ── Find-more — appends another 10-12 picks that don't
+              overlap with what's already on the list. Hidden when
+              Mistral isn't configured (the initial call would have
+              failed too in that case). */}
+      {hasMistral && (
+        <div style={{ marginBottom: 18 }}>
+          <button onClick={findMoreMethods}
+            disabled={moreBusy}
+            style={{
+              width: '100%',
+              padding: '12px 14px',
+              background: moreBusy ? '#E0DAD2' : 'transparent',
+              border: `1.5px dashed ${INK}55`, borderRadius: 12,
+              cursor: moreBusy ? 'default' : 'pointer',
+              fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 12,
+              color: moreBusy ? '#9C958A' : INK,
+              letterSpacing: '.06em', textTransform: 'uppercase',
+            }}>
+            {moreBusy ? '✨ Finding more methods…' : '+ Find more methods'}
+          </button>
+          {moreErr && (
+            <div style={{
+              marginTop: 8, padding: '6px 10px',
+              background: '#FCE8E2', border: `1.5px solid #C0452A`,
+              borderRadius: 8, fontSize: 11, color: '#7A1F0E', lineHeight: 1.4,
+            }}>{moreErr}</div>
+          )}
+        </div>
+      )}
 
       {/* ── Big "use these in a workshop" CTA ──────────── */}
       <ScrappyButton
