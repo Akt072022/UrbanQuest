@@ -1220,16 +1220,20 @@ export function DashboardView() {
 
   return (
     <div className="anim-fadein" style={{ paddingBottom: 32 }}>
-      {/* Nav row — quiet back-link only. The Live Workshop entry is
-          consolidated into the dashboard's primary CTA below
-          (Phase 2b: one CTA per screen). */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+      {/* Nav row — quiet back-links only. */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
         <button onClick={goMap}
           style={{
             padding: '5px 12px', borderRadius: 8, cursor: 'pointer',
             background: '#FFFFFF', border: '1px solid #E0DAD2',
             color: '#6B6460', fontSize: 11, fontWeight: 800,
           }}>← MAP</button>
+        <button onClick={goWelcome}
+          style={{
+            padding: '5px 12px', borderRadius: 8, cursor: 'pointer',
+            background: '#FFFFFF', border: '1px solid #E0DAD2',
+            color: '#6B6460', fontSize: 11, fontWeight: 800,
+          }}>← MY PROJECTS</button>
       </div>
 
       {/* Title + primary CTA — the dashboard's job after Phase 1 is to
