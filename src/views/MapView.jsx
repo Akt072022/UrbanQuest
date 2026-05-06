@@ -255,7 +255,7 @@ function RibbonPath({ gates, totalSize, orientation = 'v' }) {
         zIndex: 0, pointerEvents: 'none',
         overflow: 'visible',
       }}>
-      <path d={d} fill="none" stroke={INK} strokeWidth="22"
+      <path d={d} fill="none" stroke={INK} strokeWidth="6"
         strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
