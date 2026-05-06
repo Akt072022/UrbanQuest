@@ -80,8 +80,17 @@ export function SwipeWrap({
     const dy = cy - startRef.current.y
     if (modeRef.current === 'pending') {
       if (Math.max(Math.abs(dx), Math.abs(dy)) < LOCK_PX) return
-      modeRef.current = 'swipe'
+      // Direction lock. Vertical-dominant gestures fall through to
+      // the browser's native scroll (touch-action: pan-y allows it),
+      // so the user can scroll the page without the card following
+      // their finger. Horizontal-dominant ones become our swipe.
+      if (Math.abs(dy) > Math.abs(dx)) {
+        modeRef.current = 'scroll'
+      } else {
+        modeRef.current = 'swipe'
+      }
     }
+    if (modeRef.current !== 'swipe') return
     dragRef.current = { x: dx, y: dy }
     setDrag({ x: dx, y: dy, exiting: false })
   }
@@ -283,10 +292,12 @@ export function SwipeWrap({
         transform: `translate(${drag.x}px, ${yOff}px) rotate(${rot}deg)`,
         transition: dragging ? 'none' : 'transform .22s ease-out',
         cursor: enabled ? 'grab' : 'default',
-        // touchAction:none claims every touch so the browser doesn't
-        // try to scroll / zoom mid-gesture. Pair this with the
-        // non-passive touchmove above for full coverage.
-        touchAction: 'none',
+        // touch-action: pan-y leaves vertical scroll to the browser
+        // (so the user can scroll the page past the card without
+        // the gesture being captured) while we handle horizontal
+        // swipes ourselves. Direction is decided in move() — see
+        // the 'scroll' vs 'swipe' branch.
+        touchAction: 'pan-y',
         userSelect: 'none',
         WebkitTapHighlightColor: 'transparent',
         WebkitTouchCallout: 'none',

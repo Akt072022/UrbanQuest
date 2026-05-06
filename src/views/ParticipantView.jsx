@@ -7,7 +7,7 @@ import {
   scoreForGateDim,
 } from '../data/tools'
 import {
-  CardStack, ProgressDots, RatingRow, GhostCard, DeckFooter,
+  CardStack, CardDeepModal, ProgressDots, RatingRow, GhostCard, DeckFooter,
   playTTS, stopTTS,
 } from './ExploreView'
 import { ScrappyButton, ScrappyChip } from '../components/ScrappyButton'
@@ -289,12 +289,15 @@ function ToolDeck({ tools, gate, evals, skipped, onPick, onSkip, onDone }) {
   // Resume at the first tool the user hasn't yet evaluated nor skipped.
   const startIdx = tools.findIndex(t => !evals[t.n] && !skipped.includes(t.n))
   const [idx, setIdx]               = useState(Math.max(0, startIdx))
-  const [face, setFace]             = useState('synth')
+  // Dive-deeper opens a full-screen modal now (see CardDeepModal),
+  // not a back-of-card flip. deepTool is null when closed.
+  const [deepTool, setDeepTool]     = useState(null)
   const [lastAction, setLastAction] = useState(null)
   const [previewLevel, setPreviewLevel] = useState(null)
 
-  // Reset card flip state when card changes
-  useEffect(() => { setFace('synth') }, [idx])
+  // Close the modal on card change so a stale one doesn't sit over
+  // the next tool.
+  useEffect(() => { setDeepTool(null) }, [idx])
 
   // Done with this dim's deck → bubble back up
   if (idx >= tools.length || tools.length === 0) {
@@ -377,7 +380,7 @@ function ToolDeck({ tools, gate, evals, skipped, onPick, onSkip, onDone }) {
           previews during a right-swipe. */}
       <div style={{ marginTop: 12, marginBottom: 12 }}>
         <RatingRow
-          show={face !== 'cover'}
+          show={true}
           currentLevel={evals[tool.n] || null}
           currentSkipped={skipped.includes(tool.n)}
           previewLevel={previewLevel}
@@ -406,7 +409,7 @@ function ToolDeck({ tools, gate, evals, skipped, onPick, onSkip, onDone }) {
                 : 'none',
           }}>
           <SwipeWrap
-            enabled={face !== 'cover'}
+            enabled={!deepTool}
             onSwipe={(value) => {
               setPreviewLevel(null)
               handleRating(value)
@@ -415,9 +418,8 @@ function ToolDeck({ tools, gate, evals, skipped, onPick, onSkip, onDone }) {
             leftZone={TRIAGE_LEFT_ZONE}
             rightZones={TRIAGE_RIGHT_ZONES}>
             <CardStack
-              tool={tool} gate={gate} face={face}
-              onDive={() => setFace('deep')}
-              onBack={() => setFace('synth')}
+              tool={tool} gate={gate}
+              onDive={() => setDeepTool(tool)}
               alreadyLevel={evals[tool.n] || null}
               alreadySkipped={skipped.includes(tool.n)}
             />
@@ -443,6 +445,12 @@ function ToolDeck({ tools, gate, evals, skipped, onPick, onSkip, onDone }) {
           to   { transform: translateX(0)     rotate(0);     opacity: 1; }
         }
       `}</style>
+
+      {deepTool && (
+        <CardDeepModal
+          tool={deepTool} gate={gate}
+          onClose={() => setDeepTool(null)} />
+      )}
     </div>
   )
 }
@@ -560,10 +568,11 @@ function QuestionMode({ question, channel, answered, setAnswered, revealed }) {
     )
   }
 
-  // Local card-face state — lets the participant flip to the
-  // "Dive deeper" face for full details / references / canvas DL.
-  const [cardFace, setCardFace] = useState('synth')
-  useEffect(() => { setCardFace('synth') }, [tool?.n])
+  // Dive-deeper opens a full-screen modal now (see CardDeepModal),
+  // which has its own internal scroll so the question screen below
+  // can still be scrolled with the page.
+  const [deepTool, setDeepTool] = useState(null)
+  useEffect(() => { setDeepTool(null) }, [tool?.n])
 
   return (
     <div style={{ padding: '20px 16px' }}>
@@ -595,12 +604,16 @@ function QuestionMode({ question, channel, answered, setAnswered, revealed }) {
             marginBottom: 18,
           }}>
             <CardStack
-              tool={tool} gate={gate || 1} face={cardFace}
-              onDive={() => setCardFace('deep')}
-              onBack={() => setCardFace('synth')}
+              tool={tool} gate={gate || 1}
+              onDive={() => setDeepTool(tool)}
             />
           </div>
         </>
+      )}
+      {deepTool && (
+        <CardDeepModal
+          tool={deepTool} gate={gate || 1}
+          onClose={() => setDeepTool(null)} />
       )}
 
       {question.type === 'slider' && (
@@ -755,7 +768,7 @@ function FitRatingRow({ show, currentLevel, onPick, previewLevel = null }) {
 function FitDeck({ tools, gate, project, fits, evals, onPick, onDone }) {
   const startIdx = tools.findIndex(t => !fits[t.n])
   const [idx, setIdx]               = useState(Math.max(0, startIdx))
-  const [face, setFace]             = useState('synth')
+  const [deepTool, setDeepTool]     = useState(null)
   const [pendingFit, setPendingFit] = useState(null)   // 'essential' | …
   const [lastAction, setLastAction] = useState(null)
   const [descExpanded, setDescExpanded] = useState(false)
@@ -764,7 +777,7 @@ function FitDeck({ tools, gate, project, fits, evals, onPick, onDone }) {
   // previewLevel in ToolDeck and Explore).
   const [previewLevel, setPreviewLevel] = useState(null)
 
-  useEffect(() => { setFace('synth'); setPendingFit(null) }, [idx])
+  useEffect(() => { setDeepTool(null); setPendingFit(null) }, [idx])
 
   if (!tools.length) {
     return (
@@ -922,7 +935,7 @@ function FitDeck({ tools, gate, project, fits, evals, onPick, onDone }) {
           previews while the user is mid-swipe. */}
       <div style={{ marginTop: 12, marginBottom: 12 }}>
         <FitRatingRow
-          show={face !== 'cover'}
+          show={true}
           currentLevel={currentFit}
           previewLevel={previewLevel}
           onPick={pickFit} />
@@ -949,15 +962,14 @@ function FitDeck({ tools, gate, project, fits, evals, onPick, onDone }) {
               : 'none',
         }}>
           <SwipeWrap
-            enabled={face !== 'cover'}
+            enabled={!deepTool && !pendingFit}
             onSwipe={onSwipeCommit}
             onZoneChange={setPreviewLevel}
             leftZone={FIT_LEFT_ZONE}
             rightZones={FIT_RIGHT_ZONES}>
             <CardStack
-              tool={tool} gate={gate} face={face}
-              onDive={() => setFace('deep')}
-              onBack={() => setFace('synth')}
+              tool={tool} gate={gate}
+              onDive={() => setDeepTool(tool)}
               alreadyLevel={priorCap || null}
             />
           </SwipeWrap>
@@ -981,6 +993,13 @@ function FitDeck({ tools, gate, project, fits, evals, onPick, onDone }) {
           fit={pendingFit}
           onPick={commitWithCapability}
           onCancel={() => setPendingFit(null)} />
+      )}
+
+      {/* Dive-deeper modal */}
+      {deepTool && (
+        <CardDeepModal
+          tool={deepTool} gate={gate}
+          onClose={() => setDeepTool(null)} />
       )}
     </div>
   )

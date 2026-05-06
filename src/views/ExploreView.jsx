@@ -1294,6 +1294,79 @@ export function CardDeep({ tool, gate, onBack }) {
   )
 }
 
+// ── Dive-deeper modal — full-screen portal that wraps CardDeep
+// with a flip-in animation, internal scroll, and an explicit close
+// affordance (× button, backdrop tap, Escape key). Lives outside
+// the swipe deck so its scroll never fights the horizontal-swipe
+// gesture; the deck's `touch-action: pan-y` sees only the deck
+// itself, and the modal owns its own scroll container.
+export function CardDeepModal({ tool, gate, onClose }) {
+  // Esc to close
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  return createPortal((
+    <div
+      onClick={onClose}
+      role="dialog" aria-modal="true" aria-label="Method details"
+      style={{
+        position: 'fixed', inset: 0, zIndex: 9998,
+        background: 'rgba(28, 37, 48, 0.62)',
+        display: 'flex', alignItems: 'stretch', justifyContent: 'center',
+        padding: 0,
+        animation: 'cd-fade .18s ease-out',
+      }}>
+      <button onClick={onClose}
+        aria-label="Close"
+        style={{
+          position: 'absolute', top: 14, right: 14, zIndex: 2,
+          width: 40, height: 40, borderRadius: '50%',
+          background: '#FFFFFF', color: INK,
+          border: `2.5px solid ${INK}`,
+          fontFamily: 'Barlow Condensed, Impact, sans-serif',
+          fontWeight: 900, fontSize: 22, lineHeight: 1,
+          cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '2px 2px 0 ' + INK,
+        }}>×</button>
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: '100%', maxWidth: 560,
+          margin: '24px 12px',
+          // The card-deep component itself already has a border /
+          // background / overflow:hidden card frame, so we let it
+          // own its presentation. We just give it a stable size
+          // and the flip-in animation.
+          animation: 'cd-flip .42s cubic-bezier(.2, .9, .25, 1) both',
+          transformOrigin: 'center',
+          // Take whatever vertical room is available — CardDeep
+          // has its own inner scroll container.
+          minHeight: 'min(640px, calc(100vh - 48px))',
+          maxHeight: 'calc(100vh - 48px)',
+          display: 'flex',
+        }}>
+        <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
+          <CardDeep tool={tool} gate={gate} onBack={onClose} />
+        </div>
+      </div>
+      <style>{`
+        @keyframes cd-fade {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        @keyframes cd-flip {
+          from { transform: perspective(1100px) rotateY(-90deg) scale(.92); opacity: 0; }
+          to   { transform: perspective(1100px) rotateY(0)     scale(1);    opacity: 1; }
+        }
+      `}</style>
+    </div>
+  ), document.body)
+}
+
 function Section({ label, emoji, children }) {
   return (
     <div style={{ marginBottom: 22 }}>
@@ -1347,28 +1420,23 @@ export function GhostCard({ depth = 1 }) {
   )
 }
 
-export function CardStack({ tool, gate, face, onDive, onBack, alreadyLevel, alreadySkipped }) {
-  const flipped = face !== 'cover'
+export function CardStack({ tool, gate, onDive, alreadyLevel, alreadySkipped }) {
+  // The 3D flip wrapper that used to live here is gone. The 'cover'
+  // face was dead code (face only ever toggled between 'synth' and
+  // 'deep', never 'cover'), so the rotateY animation never actually
+  // played — it was just a permanently-flipped 3D structure that
+  // confused mobile WebKit's hit-testing and broke the swipe
+  // gesture on some paths. CardSynthesis renders directly now;
+  // 'dive deeper' opens CardDeep as a full-screen portal modal
+  // (see CardDeepModal below) with its own internal scroll.
   return (
-    <div className="perspective-900" style={{
+    <div style={{
       width: 'min(95vw, 460px)',
       aspectRatio: CARD_ASPECT,
+      position: 'relative',
     }}>
-      <div className="preserve-3d" style={{
-        position: 'relative', width: '100%', height: '100%',
-        transition: 'transform .8s cubic-bezier(.7,0,.3,1)',
-        transform: flipped ? 'rotateY(180deg)' : 'rotateY(0)',
-      }}>
-        <div className="backface-hidden" style={{ position: 'absolute', inset: 0 }}>
-          <CardCover tool={tool} gate={gate} />
-        </div>
-        <div className="backface-hidden rotate-y-180" style={{ position: 'absolute', inset: 0 }}>
-          {face !== 'deep'
-            ? <CardSynthesis tool={tool} gate={gate} onDive={onDive}
-                alreadyLevel={alreadyLevel} alreadySkipped={alreadySkipped} />
-            : <CardDeep tool={tool} gate={gate} onBack={onBack} />}
-        </div>
-      </div>
+      <CardSynthesis tool={tool} gate={gate} onDive={onDive}
+        alreadyLevel={alreadyLevel} alreadySkipped={alreadySkipped} />
     </div>
   )
 }
@@ -1564,9 +1632,12 @@ export function ExploreView() {
       prevCard:     s.prevCard,
     })))
 
-  // Local card-face state (synth ↔ deep). No more cover-flip
-  // between cards — synthesis appears immediately on each new card.
-  const [face, setFace] = useState('synth')
+  // 'Dive deeper' is now a full-screen modal rather than a back-of-
+  // card swap, so its scroll surface can't fight the swipe gesture
+  // and we can hand the deck back its simple touch-action: pan-y
+  // contract. deepTool is null when the modal is closed, the active
+  // tool when it's open.
+  const [deepTool, setDeepTool] = useState(null)
   // Last action drives the conveyor-belt animation: 'new' = old card
   // flew left, new one slides in from the right; otherwise inverse.
   const [lastAction, setLastAction] = useState(null)
@@ -1586,9 +1657,10 @@ export function ExploreView() {
   const col   = isPool ? '#F97316' : GATE_COL[gate]
   const dim   = (!isPool && eDim) ? DIM_BY_ID[eDim] : null
 
-  // When the active card changes, snap back to synth (in case user
-  // was reading dive-deeper details on the previous card).
-  useEffect(() => { setFace('synth') }, [eIdx, eGate, eDim, isPool])
+  // Close the dive-deeper modal whenever the active card changes,
+  // so a leftover modal from the previous card doesn't appear over
+  // the new one.
+  useEffect(() => { setDeepTool(null) }, [eIdx, eGate, eDim, isPool])
 
   if (eIdx >= tools.length) {
     if (isPool) return <PoolComplete label={ePoolLabel} returnTo={ePoolReturn} count={tools.length} />
@@ -1662,7 +1734,7 @@ export function ExploreView() {
           threshold. */}
       <div style={{ marginBottom: 12 }}>
         <RatingRow
-          show={face !== 'cover'}
+          show={true}
           currentLevel={practiced[tool.n] || null}
           currentSkipped={skipped.includes(tool.n)}
           previewLevel={previewLevel}
@@ -1694,10 +1766,8 @@ export function ExploreView() {
                 : 'none',
           }}>
           <SwipeWrap
-            enabled={face !== 'cover'}
+            enabled={!deepTool}
             onSwipe={(value) => {
-              // Both leftZone and rightZones report their level
-              // value directly — no mapping needed.
               setPreviewLevel(null)
               handleRating(value)
             }}
@@ -1705,9 +1775,8 @@ export function ExploreView() {
             leftZone={LEFT_ZONE}
             rightZones={RIGHT_ZONES}>
             <CardStack
-              tool={tool} gate={gate} face={face}
-              onDive={() => setFace('deep')}
-              onBack={() => setFace('synth')}
+              tool={tool} gate={gate}
+              onDive={() => setDeepTool(tool)}
               alreadyLevel={practiced[tool.n] || null}
               alreadySkipped={skipped.includes(tool.n)}
             />
@@ -1731,6 +1800,14 @@ export function ExploreView() {
         idx={eIdx} total={tools.length}
         onPrev={() => { setLastAction('prev'); prevCard() }}
         onNext={() => { setLastAction('next'); nextCard() }} />
+
+      {/* Dive-deeper modal — full-screen, scrolls inside itself,
+          dismissable with the × button or by tapping the backdrop. */}
+      {deepTool && (
+        <CardDeepModal
+          tool={deepTool} gate={gate}
+          onClose={() => setDeepTool(null)} />
+      )}
     </div>
   )
 }
