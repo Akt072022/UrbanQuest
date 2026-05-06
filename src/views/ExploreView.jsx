@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore } from '../store/useStore'
@@ -617,6 +617,16 @@ export function CardSynthesis({ tool, gate, onDive, alreadyLevel = null, already
   // scroll. Reset on tool change.
   const [expanded, setExpanded] = useState(null)
 
+  // Detect whether the def / tip actually need clamping at their
+  // default sizes. Short methods often fit in the card without any
+  // truncation — making them tappable in that case is misleading
+  // (the user clicks expecting "more" and gets nothing). We only
+  // turn a section into an accordion when it actually overflows.
+  const descRef = useRef(null)
+  const tipRef  = useRef(null)
+  const [descOverflows, setDescOverflows] = useState(false)
+  const [tipOverflows,  setTipOverflows]  = useState(false)
+
   // Reset thumbnail load state whenever the displayed tool changes,
   // otherwise a previously-failed load would prevent the next image.
   useEffect(() => {
@@ -660,8 +670,49 @@ export function CardSynthesis({ tool, gate, onDive, alreadyLevel = null, already
   // at a time. The card stays a fixed shape; whatever isn't
   // expanded gets line-clamped tightly. No internal scroll: a tap
   // on the truncated section opens it (and collapses the other).
-  const descLines = expanded === 'desc' ? 12 : (expanded === 'tip'  ? 2 : 4)
-  const tipLines  = expanded === 'tip'  ? 8  : (expanded === 'desc' ? 1 : 2)
+  //
+  // `null` clamp = render natural (no -webkit-line-clamp at all).
+  // We use that when the text actually fits, so short methods don't
+  // get a false "tap to read more" affordance.
+  let descLines, tipLines
+  if (expanded === 'desc') {
+    descLines = 12
+    tipLines  = tipOverflows ? 1 : null
+  } else if (expanded === 'tip') {
+    descLines = descOverflows ? 2 : null
+    tipLines  = 8
+  } else {
+    descLines = descOverflows ? 4 : null
+    tipLines  = tipOverflows  ? 2 : null
+  }
+  const descInteractive = descOverflows
+  const tipInteractive  = tipOverflows
+
+  // Measure overflow against the *default* clamp values (4 for def,
+  // 2 for tip). Re-runs when the displayed tool or the body text
+  // changes, and on resize via ResizeObserver so a card that fits
+  // at desktop width but overflows on mobile rotates correctly.
+  // Guards on `expanded === null` because measurement only makes
+  // sense in the collapsed state — once expanded, the clamp values
+  // change and the comparison is meaningless.
+  useLayoutEffect(() => {
+    if (expanded !== null) return
+    const measure = () => {
+      if (descRef.current) {
+        const el = descRef.current
+        setDescOverflows(el.scrollHeight > el.clientHeight + 1)
+      }
+      if (tipRef.current) {
+        const el = tipRef.current
+        setTipOverflows(el.scrollHeight > el.clientHeight + 1)
+      }
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    if (descRef.current) ro.observe(descRef.current)
+    if (tipRef.current)  ro.observe(tipRef.current)
+    return () => ro.disconnect()
+  }, [fullDef, tool.t, tool.n, expanded])
 
   return (
     <div style={{
@@ -821,33 +872,42 @@ export function CardSynthesis({ tool, gate, onDive, alreadyLevel = null, already
             )}
           </button>
         </div>
-        {/* Definition — line-clamped accordion. Tap to expand /
-            collapse. When expanded, the tip below auto-collapses so
-            the card stays a fixed shape without an internal scroll. */}
+        {/* Definition — accordion only when the text actually
+            overflows the default clamp. Short methods render at
+            their natural height with no cursor: pointer and no
+            click handler, so the user isn't tricked into tapping
+            for "more" that doesn't exist. */}
         <p
-          onClick={() => setExpanded(e => e === 'desc' ? null : 'desc')}
+          ref={descRef}
+          onClick={descInteractive
+            ? () => setExpanded(e => e === 'desc' ? null : 'desc')
+            : undefined}
           style={{
             fontFamily: '-apple-system, Helvetica Neue, sans-serif', fontWeight: 700,
             fontSize: 14, color: '#3F3A36', lineHeight: 1.5,
             margin: '0 0 12px',
-            cursor: 'pointer',
-            display: '-webkit-box',
-            WebkitLineClamp: descLines,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
+            cursor: descInteractive ? 'pointer' : 'default',
+            ...(descLines != null ? {
+              display: '-webkit-box',
+              WebkitLineClamp: descLines,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+            } : null),
           }}>
           {fullDef}
         </p>
-        {/* Practitioner tip — same accordion behaviour. Tap toggles. */}
+        {/* Practitioner tip — same conditional accordion. */}
         {tool.t && (
           <div
-            onClick={() => setExpanded(e => e === 'tip' ? null : 'tip')}
+            onClick={tipInteractive
+              ? () => setExpanded(e => e === 'tip' ? null : 'tip')
+              : undefined}
             style={{
               background: YELLOW + '40',
               borderRadius: 12, padding: '12px 12px 10px',
               marginBottom: 4,
               position: 'relative',
-              cursor: 'pointer',
+              cursor: tipInteractive ? 'pointer' : 'default',
             }}>
             <div style={{
               position: 'absolute', top: -8, left: 10,
@@ -856,15 +916,19 @@ export function CardSynthesis({ tool, gate, onDive, alreadyLevel = null, already
               fontFamily: 'Barlow Condensed, Impact, sans-serif',
               fontSize: 8, color: INK, letterSpacing: '.04em',
             }}>TIP</div>
-            <p style={{
-              fontFamily: '-apple-system, Helvetica Neue, sans-serif', fontWeight: 700,
-              fontSize: 13, color: '#3F3A36', lineHeight: 1.35, margin: 0,
-              marginTop: 2,
-              display: '-webkit-box',
-              WebkitLineClamp: tipLines,
-              WebkitBoxOrient: 'vertical',
-              overflow: 'hidden',
-            }}>{tool.t}</p>
+            <p
+              ref={tipRef}
+              style={{
+                fontFamily: '-apple-system, Helvetica Neue, sans-serif', fontWeight: 700,
+                fontSize: 13, color: '#3F3A36', lineHeight: 1.35, margin: 0,
+                marginTop: 2,
+                ...(tipLines != null ? {
+                  display: '-webkit-box',
+                  WebkitLineClamp: tipLines,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                } : null),
+              }}>{tool.t}</p>
           </div>
         )}
       </div>
