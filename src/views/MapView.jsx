@@ -109,22 +109,32 @@ function buildGates(opennessByGate, orientation = 'v') {
   return gates
 }
 
-function buildStops(gates, practiced, orientation = 'v') {
+function buildStops(gates, practiced, skipped, orientation = 'v') {
   const stops = []
   const angles = orientation === 'h' ? DIM_ANGLES_H : DIM_ANGLES_V
+  // "Done" on the map = the user has made a decision about the
+  // tool, whether that's a skill level (practiced) or "new to me"
+  // (skipped). Counting only `practiced` made the dim node read
+  // "15/17" after the user had reviewed every card, because the
+  // 2 cards they marked "new to me" landed in `skipped` and never
+  // came back.
+  const skipSet = skipped instanceof Set ? skipped : new Set(skipped || [])
+  const isEvaluated = (toolName) =>
+    !!practiced[toolName] || skipSet.has(toolName)
+  const evaluatedForGateDim = (g, did) =>
+    toolsForGateDim(g, did).filter(t => isEvaluated(t.n)).length
+  const evaluatedForGate    = (g) =>
+    toolsForGate(g).filter(t => isEvaluated(t.n)).length
+
   for (const gate of gates) {
-    const gateStarted = practicedForGate(gate.g, practiced) > 0
-    // No more progression locks — every gate and every dim is open
-    // from the start. The user picks where to begin; the previous
-    // "you have to clear gate 1 first" gating just slowed people who
-    // already knew which phase mattered to their project.
+    const gateStarted = evaluatedForGate(gate.g) > 0
 
     DIMENSIONS.forEach((dim, i) => {
       const a = angles[i]
       const nx = gate.cx + gate.radius * Math.sin(a)
       const ny = gate.cy - gate.radius * Math.cos(a)
       const total = toolsForGateDim(gate.g, dim.id).length
-      const done  = practicedForGateDim(gate.g, dim.id, practiced)
+      const done  = evaluatedForGateDim(gate.g, dim.id)
       stops.push({
         kind: 'node', gate: gate.g, dim,
         x: nx, y: ny,
@@ -136,14 +146,14 @@ function buildStops(gates, practiced, orientation = 'v') {
       })
     })
     const gT = toolsForGate(gate.g).length
-    const gD = practicedForGate(gate.g, practiced)
+    const gD = evaluatedForGate(gate.g)
     // Per-dimension done/score — drives the radar gauge polygon.
     // `score` is the weighted depth (0..1 per tool) while `done` is
-    // the raw evaluation count.
+    // the raw evaluated count (practiced or skipped).
     const dims = DIMENSIONS.map(dim => ({
       id:    dim.id,
       total: toolsForGateDim(gate.g, dim.id).length,
-      done:  practicedForGateDim(gate.g, dim.id, practiced),
+      done:  evaluatedForGateDim(gate.g, dim.id),
       score: scoreForGateDim(gate.g, dim.id, practiced),
     }))
     stops.push({
@@ -564,10 +574,17 @@ export function MapView() {
     goWelcome:      s.goWelcome,
   })))
 
-  const tp = Object.keys(practiced).length
+  // Counts use the same "evaluated = practiced or skipped" rule as
+  // the per-dim counters below, so the progress bar and the gate-
+  // cleared count match what the user sees on each rosette node.
+  const evalSet = skipped instanceof Set ? skipped : new Set(skipped || [])
+  const isEvaluated = (n) => !!practiced[n] || evalSet.has(n)
+  const tp = TOOLS.filter(t => isEvaluated(t.n)).length
   const total = TOOLS.length
   const tpPct = Math.round((tp / total) * 100)
-  const tg = [1,2,3,4].filter(g => practicedForGate(g, practiced) === toolsForGate(g).length).length
+  const tg = [1,2,3,4].filter(g =>
+    toolsForGate(g).every(t => isEvaluated(t.n)),
+  ).length
 
   // Layout orientation — vertical on mobile, horizontal on desktop /
   // tablet. The hook re-renders on viewport resize.
@@ -581,8 +598,8 @@ export function MapView() {
   // (matters for the auto-scroll-to-active effect below).
   const staticGates = useMemo(() => buildGates([1, 1, 1, 1], orientation), [orientation])
   const staticStops = useMemo(
-    () => buildStops(staticGates, practiced, orientation),
-    [staticGates, practiced, orientation],
+    () => buildStops(staticGates, practiced, skipped, orientation),
+    [staticGates, practiced, skipped, orientation],
   )
   const activeIdx   = useMemo(() => findActiveIdx(staticStops), [staticStops])
   const activeGate  = staticStops[activeIdx]?.gate ?? 1
@@ -615,7 +632,7 @@ export function MapView() {
   // scale with openness, so closed gates physically pull toward each
   // other along whichever axis the spine runs.
   const gatesAnim = buildGates(opennessByGate, orientation)
-  const stops     = buildStops(gatesAnim, practiced, orientation)
+  const stops     = buildStops(gatesAnim, practiced, skipped, orientation)
 
   const lastGate = gatesAnim[gatesAnim.length - 1]
   // Total span along the spine direction. In vertical layout the
