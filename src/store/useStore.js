@@ -30,6 +30,11 @@ export const useStore = create(
       skipped:   [],       // [toolName] — explicitly passed-over for now
       flagged:   [],       // legacy bucket (no new writes); kept for migration
       xp: 0,
+      // Badge IDs the user has already been notified about. Persisted
+      // so a badge popup never re-fires for an old achievement after
+      // a reload. Computed-vs-seen diff drives the "you just earned"
+      // surfaces on DimComplete / GateComplete.
+      seenBadgeIds: [],
 
       // ── Explore cursor — persisted so CONTINUE resumes where left ─
       eGate: null,
@@ -164,6 +169,16 @@ export const useStore = create(
 
       setSession: (id, role) => set({ sessionId: id, sessionRole: role }),
 
+      // Append badge IDs to the seen list (deduplicated). Called when
+      // the user dismisses a "you just earned" surface — once seen,
+      // the badge disappears from the celebration UI but remains
+      // unlocked on Profile forever.
+      markBadgesSeen: (ids) => set(state => {
+        const cur = new Set(state.seenBadgeIds || [])
+        for (const id of (ids || [])) cur.add(id)
+        return { seenBadgeIds: Array.from(cur) }
+      }),
+
       // Team membership setters — populated by syncSupabase after auth
       // pulls / team CRUD calls in ProfileView.
       setTeams: (arr) => set({ teams: Array.isArray(arr) ? arr : [] }),
@@ -176,6 +191,7 @@ export const useStore = create(
         skipped: [],
         flagged: [],
         xp: 0,
+        seenBadgeIds: [],
         eGate: null, eDim: null, eIdx: 0, eFlipped: false,
         dashboardGate: null,
         sessionId: null, sessionRole: null,

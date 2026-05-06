@@ -9,6 +9,7 @@ import {
   scoreForGateDim,
 } from '../data/tools'
 import { canvasUrl, canvasThumbUrl, CANVAS_FILES } from '../data/canvas'
+import { computeBadges } from '../data/badges'
 import { GateSymbol, stageFromRatio } from '../components/GateSymbol'
 import { ScrappyButton, ScrappyChip } from '../components/ScrappyButton'
 import { SwipeWrap } from '../components/SwipeWrap'
@@ -167,12 +168,16 @@ export function playTTS(tool, { onStart, onEnd } = {}) {
 // finished one slice of it. We surface a small, accurate summary +
 // two clear next steps instead. ────────────────────────────────
 function DimComplete({ gate, dim }) {
-  const { goMap, goExploreDim, goExplore, practiced, skipped } = useStore(useShallow(s => ({
-    goMap:         s.goMap,
-    goExploreDim:  s.goExploreDim,
-    goExplore:     s.goExplore,
-    practiced:     s.practiced,
-    skipped:       s.skipped,
+  const {
+    goMap, goExploreDim,
+    practiced, skipped, seenBadgeIds, markBadgesSeen,
+  } = useStore(useShallow(s => ({
+    goMap:           s.goMap,
+    goExploreDim:    s.goExploreDim,
+    practiced:       s.practiced,
+    skipped:         s.skipped,
+    seenBadgeIds:    s.seenBadgeIds,
+    markBadgesSeen:  s.markBadgesSeen,
   })))
   const dimMeta = DIM_BY_ID[dim]
   const col     = dimMeta?.color || GATE_COL[gate]
@@ -184,6 +189,16 @@ function DimComplete({ gate, dim }) {
     const pool = toolsForGateDim(gate, d.id)
     return pool.some(t => !practiced[t.n] && !skipSet.has(t.n))
   })
+
+  // Newly-earned badges — unlocked AND not in seenBadgeIds. Dismiss
+  // by hitting either CTA, which marks them seen so they never
+  // re-fire on a later visit.
+  const seenSet  = new Set(seenBadgeIds || [])
+  const newBadges = computeBadges({ practiced, skipped })
+    .filter(b => b.unlocked && !seenSet.has(b.id))
+  const dismissBadges = () => {
+    if (newBadges.length) markBadgesSeen(newBadges.map(b => b.id))
+  }
 
   return (
     <div className="anim-fadein" style={{ textAlign: 'center', padding: '40px 16px' }}>
@@ -213,18 +228,21 @@ function DimComplete({ gate, dim }) {
       }}>
         DONE FOR {GATE_LABEL[gate].toUpperCase()}
       </div>
+
+      <BadgeReward badges={newBadges} />
+
       <div style={{
         display: 'flex', flexDirection: 'column', gap: 10,
         maxWidth: 320, margin: '0 auto',
       }}>
         {nextDim && (
           <ScrappyButton
-            onClick={() => goExploreDim(gate, nextDim.id)}
+            onClick={() => { dismissBadges(); goExploreDim(gate, nextDim.id) }}
             color={YELLOW}>
             ▼ NEXT: {nextDim.label.toUpperCase()} →
           </ScrappyButton>
         )}
-        <ScrappyButton onClick={goMap} color="#FFFFFF">
+        <ScrappyButton onClick={() => { dismissBadges(); goMap() }} color="#FFFFFF">
           ← BACK TO MAP
         </ScrappyButton>
       </div>
@@ -232,13 +250,104 @@ function DimComplete({ gate, dim }) {
   )
 }
 
+// ── Reward strip — celebrates badges the user has unlocked but
+//   not yet been notified about. Compact "trophy + name" tiles
+//   under the celebration headline. Hides when there's nothing
+//   newly earned. ────────────────────────────────────────────────
+function BadgeReward({ badges }) {
+  if (!badges?.length) return null
+  return (
+    <div style={{
+      maxWidth: 360, margin: '0 auto 22px',
+      padding: '12px 14px',
+      background: '#FFFDF8',
+      border: `2.5px solid ${INK}`, borderRadius: 14,
+      boxShadow: '3px 3px 0 ' + INK,
+    }}>
+      <div style={{
+        fontFamily: 'Barlow Condensed, Impact, sans-serif',
+        fontWeight: 900, fontSize: 11, color: '#5A5550',
+        letterSpacing: '.08em', textTransform: 'uppercase',
+        marginBottom: 8, textAlign: 'center',
+      }}>
+        ✦ {badges.length} new badge{badges.length === 1 ? '' : 's'}
+      </div>
+      <div style={{
+        display: 'flex', flexDirection: 'column', gap: 8,
+      }}>
+        {badges.map(b => (
+          <div key={b.id} style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '8px 10px',
+            background: b.col + '18',
+            border: `2px solid ${b.col}`,
+            borderRadius: 10,
+            animation: 'badge-pop .35s cubic-bezier(.4,1.4,.5,1)',
+          }}>
+            <div style={{
+              flexShrink: 0,
+              width: 36, height: 36, borderRadius: '50%',
+              background: '#FFFFFF',
+              border: `2px solid ${b.col}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 18,
+              overflow: 'hidden',
+            }}>
+              {b.iconSrc ? (
+                <img src={b.iconSrc} alt=""
+                  draggable={false}
+                  style={{
+                    width: '88%', height: '88%', objectFit: 'contain',
+                    clipPath: 'circle(50%)',
+                    mixBlendMode: 'multiply',
+                  }} />
+              ) : b.icon}
+            </div>
+            <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+              <div style={{
+                fontFamily: 'Barlow Condensed, Impact, sans-serif',
+                fontWeight: 900, fontSize: 14, color: INK,
+                letterSpacing: '.02em',
+                lineHeight: 1.05,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden', textOverflow: 'ellipsis',
+              }}>{b.name}</div>
+              <div style={{
+                fontSize: 11, color: '#5A5550', marginTop: 2, lineHeight: 1.3,
+              }}>{b.desc}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <style>{`
+        @keyframes badge-pop {
+          from { transform: scale(.7); opacity: 0; }
+          to   { transform: scale(1);  opacity: 1; }
+        }
+      `}</style>
+    </div>
+  )
+}
+
 // ── Gate complete celebration ─────────────────────────────────
 function GateComplete({ gate }) {
-  const { goMap, practiced } = useStore(useShallow(s => ({
-    goMap: s.goMap, practiced: s.practiced,
+  const {
+    goMap, practiced, skipped, seenBadgeIds, markBadgesSeen,
+  } = useStore(useShallow(s => ({
+    goMap:           s.goMap,
+    practiced:       s.practiced,
+    skipped:         s.skipped,
+    seenBadgeIds:    s.seenBadgeIds,
+    markBadgesSeen:  s.markBadgesSeen,
   })))
   const tools = toolsForGate(gate)
   const pr    = practicedForGate(gate, practiced)
+  const seenSet  = new Set(seenBadgeIds || [])
+  const newBadges = computeBadges({ practiced, skipped })
+    .filter(b => b.unlocked && !seenSet.has(b.id))
+  const dismissBadges = () => {
+    if (newBadges.length) markBadgesSeen(newBadges.map(b => b.id))
+  }
   const col   = GATE_COL[gate]
 
   // Per-dim scores → drive the same radar polygon as the map.
@@ -301,7 +410,7 @@ function GateComplete({ gate }) {
         display: 'inline-flex', alignItems: 'center', gap: 8,
         padding: '10px 20px', borderRadius: 999,
         background: '#FFFFFF', border: `2.5px solid ${INK}`,
-        boxShadow: 'none', marginBottom: 28,
+        boxShadow: 'none', marginBottom: 22,
       }}>
         <span style={{ fontFamily: 'Barlow Condensed, Impact, sans-serif', fontSize: 26, color: col }}>
           {pr}/{tools.length}
@@ -310,8 +419,10 @@ function GateComplete({ gate }) {
           methods evaluated
         </span>
       </div>
-      <br />
-      <ScrappyButton onClick={goMap} color={YELLOW}>
+
+      <BadgeReward badges={newBadges} />
+
+      <ScrappyButton onClick={() => { dismissBadges(); goMap() }} color={YELLOW}>
         BACK TO MAP →
       </ScrappyButton>
     </div>
