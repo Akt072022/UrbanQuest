@@ -22,6 +22,8 @@ export function WelcomeView() {
   const {
     userEmail,
     setProjectContext, setAiSuggestions,
+    addProject, selectProject, deleteProject,
+    projects, currentProjectId,
     goProjectFit, goMap, goDashboard, goLogin,
     ensureDefaultTeam,
     aiSuggestions, projectContext,
@@ -29,6 +31,11 @@ export function WelcomeView() {
     userEmail:         s.userEmail,
     setProjectContext: s.setProjectContext,
     setAiSuggestions:  s.setAiSuggestions,
+    addProject:        s.addProject,
+    selectProject:     s.selectProject,
+    deleteProject:     s.deleteProject,
+    projects:          s.projects,
+    currentProjectId:  s.currentProjectId,
     goProjectFit:      s.goProjectFit,
     goMap:             s.goMap,
     goDashboard:       s.goDashboard,
@@ -69,7 +76,11 @@ export function WelcomeView() {
     try {
       const out = await suggestMethods({ name: pName, desc: pDesc })
       if (!out.length) throw new Error('No matching methods returned. Try rephrasing.')
-      setAiSuggestions(out)
+      // Persist as a saved project so it shows up in the list +
+      // syncs to Supabase when signed in. addProject also sets it
+      // active, so the rest of the app reads through projectContext
+      // and aiSuggestions transparently.
+      addProject({ name: pName, desc: pDesc, suggestions: out })
       ensureDefaultTeam()
       goProjectFit()
     } catch (e2) {
@@ -250,26 +261,79 @@ export function WelcomeView() {
           </>
         )}
 
-        {/* If a previous shortlist exists, surface it explicitly */}
-        {aiSuggestions.length > 0 && projectContext && (
-          <button onClick={goProjectFit}
-            style={{
-              width: '100%', padding: '10px 12px', marginBottom: 16,
-              background: 'transparent',
-              border: `1.5px dashed ${INK}55`, borderRadius: 10,
-              cursor: 'pointer', textAlign: 'left',
-            }}>
+        {/* Saved projects — all the analyses the user has run.
+            Tap one to load its shortlist into ProjectFitView; the
+            "×" deletes (with a confirm). The list is sorted most-
+            recently-updated first so the project the user just
+            created surfaces at the top. */}
+        {projects && projects.length > 0 && (
+          <div style={{ marginBottom: 16 }}>
             <div style={{
               fontFamily: 'Barlow Condensed, Impact, sans-serif',
               fontWeight: 900, fontSize: 10, color: '#5A5550',
-              letterSpacing: '.06em', textTransform: 'uppercase',
-            }}>Continue your last project</div>
-            <div style={{
-              fontFamily: 'Barlow Condensed, Impact, sans-serif',
-              fontWeight: 900, fontSize: 14, color: INK,
-              marginTop: 2,
-            }}>{projectContext.name} — {aiSuggestions.length} methods picked →</div>
-          </button>
+              letterSpacing: '.08em', textTransform: 'uppercase',
+              marginBottom: 8, paddingLeft: 4,
+            }}>
+              Your projects · {projects.length}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {[...projects]
+                .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''))
+                .map(p => {
+                  const active = p.id === currentProjectId
+                  return (
+                    <div key={p.id} style={{
+                      display: 'flex', alignItems: 'stretch',
+                      background: active ? '#FFFDF8' : 'transparent',
+                      border: `1.5px ${active ? 'solid' : 'dashed'} ${INK}${active ? '' : '55'}`,
+                      borderRadius: 10,
+                      overflow: 'hidden',
+                    }}>
+                      <button type="button"
+                        onClick={() => { selectProject(p.id); goProjectFit() }}
+                        style={{
+                          flex: 1, minWidth: 0, padding: '10px 12px',
+                          background: 'transparent', border: 'none',
+                          cursor: 'pointer', textAlign: 'left',
+                          font: 'inherit', color: 'inherit',
+                        }}>
+                        <div style={{
+                          fontFamily: 'Barlow Condensed, Impact, sans-serif',
+                          fontWeight: 900, fontSize: 14, color: INK,
+                          letterSpacing: '.02em',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden', textOverflow: 'ellipsis',
+                        }}>{p.name}</div>
+                        <div style={{
+                          fontSize: 11, color: '#5A5550', marginTop: 2,
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden', textOverflow: 'ellipsis',
+                        }}>
+                          {(p.suggestions?.length || 0)} methods
+                          {p.desc ? ` · ${p.desc.slice(0, 60)}${p.desc.length > 60 ? '…' : ''}` : ''}
+                        </div>
+                      </button>
+                      <button type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (confirm(`Delete "${p.name}"? This can't be undone.`)) {
+                            deleteProject(p.id)
+                          }
+                        }}
+                        title="Delete this project"
+                        style={{
+                          flexShrink: 0,
+                          padding: '0 10px',
+                          background: 'transparent', border: 'none',
+                          borderLeft: `1.5px ${active ? 'solid' : 'dashed'} ${INK}${active ? '' : '55'}`,
+                          cursor: 'pointer',
+                          fontSize: 14, color: '#9C958A', fontWeight: 900,
+                        }}>×</button>
+                    </div>
+                  )
+                })}
+            </div>
+          </div>
         )}
 
         {/* ── Secondary doors ─────────────────────── */}

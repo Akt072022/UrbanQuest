@@ -119,10 +119,102 @@ export const useStore = create(
       goWelcome:     () => set({ view: 'welcome' }),
       goLogin:       () => set({ view: 'login' }),
 
-      // Persist whatever the user typed about their project + the
-      // AI shortlist that came back. Both shared with the workshop
-      // wizard so "use these methods in a workshop" is a one-tap
-      // hand-off instead of a re-prompt.
+      // ── Project actions ─────────────────────────────────────
+      // Create a new saved project from a fresh AI analysis. Sets
+      // it as the active one so the rest of the app (ProjectFit,
+      // workshop wizard) reads through projectContext / aiSuggestions
+      // without needing to know about the projects array.
+      addProject: ({ name, desc, suggestions }) => set(state => {
+        const id = (typeof crypto?.randomUUID === 'function')
+          ? crypto.randomUUID()
+          : `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+        const now = new Date().toISOString()
+        const newProject = {
+          id,
+          name: name || 'Untitled project',
+          desc: desc || '',
+          suggestions: Array.isArray(suggestions) ? suggestions : [],
+          createdAt: now, updatedAt: now,
+        }
+        return {
+          projects: [...(state.projects || []), newProject],
+          currentProjectId: id,
+          projectContext: { name: newProject.name, desc: newProject.desc },
+          aiSuggestions:  newProject.suggestions,
+        }
+      }),
+
+      // Switch to a previously-saved project. Loads its data into
+      // the projectContext / aiSuggestions mirrors the rest of the
+      // app reads from.
+      selectProject: (id) => set(state => {
+        const p = (state.projects || []).find(p => p.id === id)
+        if (!p) return {}
+        return {
+          currentProjectId: id,
+          projectContext:   { name: p.name, desc: p.desc },
+          aiSuggestions:    p.suggestions || [],
+        }
+      }),
+
+      // Patch the *current* project (e.g. when "Find more methods"
+      // appends to the suggestion list, or the user renames it).
+      // Bumps updatedAt and refreshes the mirror state.
+      updateCurrentProject: (patch) => set(state => {
+        if (!state.currentProjectId) return {}
+        const projects = (state.projects || []).map(p =>
+          p.id === state.currentProjectId
+            ? { ...p, ...patch, updatedAt: new Date().toISOString() }
+            : p,
+        )
+        const cur = projects.find(p => p.id === state.currentProjectId)
+        return {
+          projects,
+          projectContext: cur ? { name: cur.name, desc: cur.desc } : state.projectContext,
+          aiSuggestions:  cur?.suggestions || state.aiSuggestions,
+        }
+      }),
+
+      // Remove a project. If it was the active one, fall back to
+      // the most recently updated remaining entry (or null if none).
+      deleteProject: (id) => set(state => {
+        const projects = (state.projects || []).filter(p => p.id !== id)
+        const wasCurrent = state.currentProjectId === id
+        if (!wasCurrent) return { projects }
+        const fallback = [...projects].sort((a, b) =>
+          (b.updatedAt || '').localeCompare(a.updatedAt || ''))[0] || null
+        return {
+          projects,
+          currentProjectId: fallback?.id || null,
+          projectContext:   fallback ? { name: fallback.name, desc: fallback.desc } : null,
+          aiSuggestions:    fallback?.suggestions || [],
+        }
+      }),
+
+      // Replace the entire projects list (called by syncSupabase
+      // after an auth pull). Tries to preserve the active selection
+      // if its id survives the pull, otherwise lands on the most
+      // recent project so reload-then-continue works.
+      setProjects: (arr) => set(state => {
+        const projects = Array.isArray(arr) ? arr : []
+        const stillActive = projects.find(p => p.id === state.currentProjectId)
+        const fallback = stillActive
+          || [...projects].sort((a, b) =>
+              (b.updatedAt || '').localeCompare(a.updatedAt || ''))[0]
+          || null
+        return {
+          projects,
+          currentProjectId: fallback?.id || null,
+          projectContext:   fallback ? { name: fallback.name, desc: fallback.desc } : state.projectContext,
+          aiSuggestions:    fallback?.suggestions || state.aiSuggestions,
+        }
+      }),
+
+      // Legacy mirror setters — kept so existing callers (the chat
+      // welcome flow that runs the AI before deciding to save, the
+      // "find more methods" appender) keep working. They write only
+      // to the mirror state, never to the projects array. Callers
+      // that *should* persist now use addProject / updateCurrentProject.
       setProjectContext: (ctx) => set({ projectContext: ctx }),
       setAiSuggestions:  (arr) => set({ aiSuggestions: Array.isArray(arr) ? arr : [] }),
 

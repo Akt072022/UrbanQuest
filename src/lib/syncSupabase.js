@@ -6,7 +6,10 @@
 //                  upsert to the cloud. Deletes are propagated too.
 //   • On sign-out: clear the user pointer in the store; local data
 //                  stays in localStorage as before.
-import { supabase, hasSupabase, listMyTeams } from './supabase'
+import {
+  supabase, hasSupabase, listMyTeams,
+  listProjects, upsertProject, deleteProjectRow,
+} from './supabase'
 import { useStore } from '../store/useStore'
 import { SKILL_LEVELS } from '../data/tools'
 
@@ -137,6 +140,42 @@ async function pullFull(userId) {
   schedulePush()
 }
 
+// Pull the user's saved projects + populate the store. Called on
+// auth state change, and exported so views can refresh manually
+// after a create / delete / rename.
+async function refreshProjects() {
+  try {
+    const projects = await listProjects()
+    useStore.getState().setProjects(projects)
+  } catch (err) {
+    console.warn('[sync] refreshProjects failed:', err?.message || err)
+  }
+}
+
+// Diff-and-push the projects list. We track the last-synced snapshot
+// so we know which projects were created (push), updated (push), or
+// deleted (remove from cloud). A simple "upsert all + delete missing"
+// is fine because the row count is tiny (typically <20 per user).
+let lastPushedProjects = []
+async function pushProjects() {
+  if (!ENABLED) return
+  if (!useStore.getState().userId) return
+  const projects = useStore.getState().projects || []
+  // Upsert every current project — Supabase upsert is idempotent on
+  // the primary key, so unchanged rows are no-ops at the DB level.
+  for (const p of projects) {
+    await upsertProject(p)
+  }
+  // Delete anything that *was* in the cloud last sync but is gone now.
+  const currentIds = new Set(projects.map(p => p.id))
+  for (const old of lastPushedProjects) {
+    if (!currentIds.has(old.id)) {
+      await deleteProjectRow(old.id)
+    }
+  }
+  lastPushedProjects = projects.map(p => ({ id: p.id }))
+}
+
 async function refreshTeams() {
   try {
     const teams = await listMyTeams()
@@ -171,13 +210,19 @@ export function initSupabaseSync() {
       await Promise.all([
         pullFull(session.user.id),
         refreshTeams(),
+        refreshProjects(),
       ])
+      // Snapshot what was pulled so subsequent pushProjects() runs
+      // can compute deletes accurately.
+      lastPushedProjects = (useStore.getState().projects || []).map(p => ({ id: p.id }))
     } else {
       useStore.setState({
         userId: null, userEmail: null,
         teams: [], currentTeamId: null,
+        projects: [], currentProjectId: null,
       })
       lastPushed = { practiced: {}, skipped: [] }
+      lastPushedProjects = []
     }
   })
 
@@ -190,6 +235,9 @@ export function initSupabaseSync() {
       })
       pullFull(data.session.user.id)
       refreshTeams()
+      refreshProjects().then(() => {
+        lastPushedProjects = (useStore.getState().projects || []).map(p => ({ id: p.id }))
+      })
     }
   })
 
@@ -203,6 +251,13 @@ export function initSupabaseSync() {
      || state.currentTeamId !== prev.currentTeamId) {
       schedulePush()
     }
+    // Projects: push whenever the array reference changes (any
+    // add / update / delete). Cheap reference-equality check; the
+    // store's project actions always return a fresh array so this
+    // fires reliably.
+    if (state.projects !== prev.projects) {
+      pushProjects()
+    }
   })
 
   return () => {
@@ -212,5 +267,6 @@ export function initSupabaseSync() {
 }
 
 // Allow ProfileView to refresh the teams cache after a create/join/
-// leave without waiting for the next auth event.
-export { refreshTeams }
+// leave without waiting for the next auth event. Same for projects
+// after a manual create / delete.
+export { refreshTeams, refreshProjects }

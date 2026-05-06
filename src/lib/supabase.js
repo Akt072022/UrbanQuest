@@ -279,3 +279,78 @@ export async function fetchTeamRoster(teamId) {
   }
   return data || []
 }
+
+// ── Project (AI shortlist) helpers ────────────────────────────
+// Each user's saved analyses. Each row is { id, name, desc,
+// suggestions: [{tool_name, why}], createdAt, updatedAt }. The DB
+// column is `description` (since `desc` is a SQL keyword in some
+// dialects); we translate at the boundary so the rest of the JS
+// keeps using the friendlier `desc` field name.
+
+// Strip the hydrated `tool` reference before persisting so the row
+// stays small + portable. We keep the tool_name + why; the client
+// re-hydrates the full method object from TOOLS at render time.
+function dehydrateSuggestions(arr) {
+  return (arr || []).map(s => ({
+    tool_name: s.tool_name || s.tool?.n || s.name || null,
+    why: s.why || '',
+  })).filter(s => s.tool_name)
+}
+
+function rowToProject(row) {
+  return {
+    id:          row.id,
+    name:        row.name,
+    desc:        row.description || '',
+    suggestions: Array.isArray(row.suggestions) ? row.suggestions : [],
+    createdAt:   row.created_at,
+    updatedAt:   row.updated_at,
+  }
+}
+
+export async function listProjects() {
+  if (!supabase) return []
+  const uid = await currentUserId()
+  if (!uid) return []
+  const { data, error } = await supabase
+    .from('projects')
+    .select('id, name, description, suggestions, created_at, updated_at')
+    .eq('user_id', uid)
+    .order('updated_at', { ascending: false })
+  if (error) {
+    console.warn('[projects] list failed:', error.message)
+    return []
+  }
+  return (data || []).map(rowToProject)
+}
+
+export async function upsertProject(project) {
+  if (!supabase) return null
+  const uid = await currentUserId()
+  if (!uid) return null
+  const row = {
+    id:          project.id,
+    user_id:     uid,
+    name:        project.name || 'Untitled project',
+    description: project.desc || '',
+    suggestions: dehydrateSuggestions(project.suggestions),
+    updated_at:  new Date().toISOString(),
+  }
+  const { error } = await supabase
+    .from('projects')
+    .upsert(row, { onConflict: 'id' })
+  if (error) {
+    console.warn('[projects] upsert failed:', error.message)
+    return null
+  }
+  return project
+}
+
+export async function deleteProjectRow(id) {
+  if (!supabase) return
+  const { error } = await supabase
+    .from('projects')
+    .delete()
+    .eq('id', id)
+  if (error) console.warn('[projects] delete failed:', error.message)
+}

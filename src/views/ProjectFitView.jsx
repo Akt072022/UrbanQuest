@@ -24,12 +24,15 @@ const FONT_HEAD = 'Barlow Condensed, Impact, sans-serif'
 export function ProjectFitView() {
   const {
     projectContext, aiSuggestions,
+    currentProjectId, updateCurrentProject,
     userEmail,
     goWelcome, goMap, goFacilitator, goDashboard,
     setProjectContext, setAiSuggestions,
   } = useStore(useShallow(s => ({
     projectContext: s.projectContext,
     aiSuggestions: s.aiSuggestions,
+    currentProjectId:     s.currentProjectId,
+    updateCurrentProject: s.updateCurrentProject,
     userEmail:      s.userEmail,
     goWelcome:      s.goWelcome,
     goMap:          s.goMap,
@@ -63,7 +66,16 @@ export function ProjectFitView() {
       if (!more.length) {
         setMoreErr('No additional methods to suggest — try rephrasing the brief.')
       } else {
-        setAiSuggestions([...aiSuggestions, ...more])
+        const merged = [...aiSuggestions, ...more]
+        // If a saved project is active, persist the appended list
+        // through it so the bigger shortlist syncs to Supabase and
+        // survives a reload. Falls back to the legacy mirror setter
+        // for the unsaved-browse path (no current project yet).
+        if (currentProjectId) {
+          updateCurrentProject({ suggestions: merged })
+        } else {
+          setAiSuggestions(merged)
+        }
       }
     } catch (err) {
       setMoreErr(err?.message || 'Could not fetch more methods.')
@@ -109,9 +121,9 @@ export function ProjectFitView() {
         marginBottom: 18,
       }}>
         <ScrappyButton
-          onClick={() => { setProjectContext(null); goWelcome() }}
+          onClick={goWelcome}
           color="#FFFFFF" size="sm">
-          ← NEW PROJECT
+          ← MY PROJECTS
         </ScrappyButton>
         <div style={{ flex: 1 }} />
         {!userEmail && hasSupabase && !authOpen && (
