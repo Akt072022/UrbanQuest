@@ -76,6 +76,16 @@ export const useStore = create(
       // Where to go when the user clears all cards in the override
       // pool (project name + suggestions, etc). Defaults to projectFit.
       ePoolReturn: null,
+      // Filter applied to the gate/dim deck.
+      //   'unreviewed' (default): only tools the user hasn't yet rated
+      //                           or skipped. Rated cards aren't shown
+      //                           up-front so the swipe deck stays
+      //                           focused on what's actually new.
+      //   'reviewed':             only tools the user has already
+      //                           rated. Used by the dim-complete
+      //                           'Review already-rated' option.
+      // null is treated as 'unreviewed'.
+      eMode: 'unreviewed',
 
       // ── Dashboard target gate (set when clicking a gate radar) ────
       dashboardGate: null,
@@ -269,25 +279,33 @@ export const useStore = create(
         : { team: { name: 'My team', city: '', proj: 'mixed' } }),
 
       // Resume at the first un-touched tool of the gate (or dim).
-      goExplore: (gate) => set(state => {
-        const pool = TOOLS.filter(t => t.g.includes(gate))
-        return {
-          view: 'explore',
-          eGate: gate, eDim: null,
-          eIdx: resumeIdx(pool, state.practiced, state.skipped),
-          eFlipped: false,
-          ePoolNames: null, ePoolLabel: null, ePoolReturn: null,
-        }
-      }),
-      goExploreDim: (gate, dim) => set(state => {
-        const pool = TOOLS.filter(t => t.g.includes(gate) && t.d?.includes(dim))
-        return {
-          view: 'explore',
-          eGate: gate, eDim: dim,
-          eIdx: resumeIdx(pool, state.practiced, state.skipped),
-          eFlipped: false,
-          ePoolNames: null, ePoolLabel: null, ePoolReturn: null,
-        }
+      goExplore: (gate) => set(state => ({
+        view: 'explore',
+        eGate: gate, eDim: null,
+        eIdx: 0,
+        eFlipped: false,
+        ePoolNames: null, ePoolLabel: null, ePoolReturn: null,
+        eMode: 'unreviewed',
+      })),
+      goExploreDim: (gate, dim) => set(state => ({
+        view: 'explore',
+        eGate: gate, eDim: dim,
+        eIdx: 0,
+        eFlipped: false,
+        ePoolNames: null, ePoolLabel: null, ePoolReturn: null,
+        eMode: 'unreviewed',
+      })),
+
+      // Open the same gate/dim deck but filtered to ALREADY-rated
+      // tools. Used by DimComplete's 'Review already-rated' option
+      // so the user can revisit and update past evaluations.
+      goReviewDim: (gate, dim) => set({
+        view: 'explore',
+        eGate: gate, eDim: dim,
+        eIdx: 0,
+        eFlipped: false,
+        ePoolNames: null, ePoolLabel: null, ePoolReturn: null,
+        eMode: 'reviewed',
       }),
 
       // Custom-pool explore: take an explicit list of tool names
@@ -308,6 +326,9 @@ export const useStore = create(
           ePoolNames: names || [],
           ePoolLabel: label,
           ePoolReturn: returnTo,
+          // Pool mode shows the explicit list as-is — ordering is
+          // the caller's responsibility (e.g. AI shortlist order).
+          eMode: 'all',
         }
       }),
 
@@ -419,6 +440,7 @@ export const useStore = create(
         pendingBadgeToasts: [],
         eGate: null, eDim: null, eIdx: 0, eFlipped: false,
         ePoolNames: null, ePoolLabel: null, ePoolReturn: null,
+        eMode: 'unreviewed',
         dashboardGate: null, dashboardTab: null,
         sessionId: null, sessionRole: null,
         // Note: teams/currentTeamId are not reset — they belong to the

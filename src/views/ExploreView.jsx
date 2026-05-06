@@ -169,12 +169,14 @@ export function playTTS(tool, { onStart, onEnd } = {}) {
 // two clear next steps instead. ────────────────────────────────
 function DimComplete({ gate, dim }) {
   const {
-    goMap, goExploreDim, goCard,
+    goMap, goExploreDim, goReviewDim, goCard, eMode,
     practiced, skipped, seenBadgeIds, markBadgesSeen,
   } = useStore(useShallow(s => ({
     goMap:           s.goMap,
     goExploreDim:    s.goExploreDim,
+    goReviewDim:     s.goReviewDim,
     goCard:          s.goCard,
+    eMode:           s.eMode,
     practiced:       s.practiced,
     skipped:         s.skipped,
     seenBadgeIds:    s.seenBadgeIds,
@@ -190,6 +192,15 @@ function DimComplete({ gate, dim }) {
     const pool = toolsForGateDim(gate, d.id)
     return pool.some(t => !practiced[t.n] && !skipSet.has(t.n))
   })
+
+  // Are there already-rated tools in this slice that the user
+  // could revisit? Only surface the 'Review already-rated' CTA
+  // when there's something to review — and only on the unreviewed
+  // pass (after a 'reviewed' pass we'd just loop).
+  const dimSlice = TOOLS.filter(t => t.g.includes(gate) && t.d?.includes(dim))
+  const ratedCount = dimSlice.filter(t =>
+    practiced[t.n] || skipSet.has(t.n)).length
+  const showReviewCTA = eMode !== 'reviewed' && ratedCount > 0
 
   // Slice stats — drives the always-visible reward chip below the
   // headline. The user has finished the gate × dim intersection;
@@ -322,11 +333,13 @@ function DimComplete({ gate, dim }) {
             ▼ NEXT: {nextDim.label.toUpperCase()} →
           </ScrappyButton>
         )}
-        <ScrappyButton
-          onClick={() => { dismissBadges(); goCard(0) }}
-          color="#FFFFFF">
-          REVIEW MY ANSWERS
-        </ScrappyButton>
+        {showReviewCTA && (
+          <ScrappyButton
+            onClick={() => { dismissBadges(); goReviewDim(gate, dim) }}
+            color="#FFFFFF">
+            ↻ REVIEW ALREADY-RATED ({ratedCount})
+          </ScrappyButton>
+        )}
         <ScrappyButton onClick={() => { dismissBadges(); goMap() }} color="#FFFFFF">
           ← BACK TO MAP
         </ScrappyButton>
@@ -1615,7 +1628,7 @@ export function DeckFooter({ idx, total, onPrev, onNext }) {
 
 // ── Main Explore view ──────────────────────────────────────────
 export function ExploreView() {
-  const { eGate, eDim, eIdx, ePoolNames, ePoolLabel, ePoolReturn,
+  const { eGate, eDim, eIdx, ePoolNames, ePoolLabel, ePoolReturn, eMode,
           practiced, skipped,
           goMap, practiceTool, skipTool, nextCard, prevCard } =
     useStore(useShallow(s => ({
@@ -1623,6 +1636,7 @@ export function ExploreView() {
       ePoolNames:   s.ePoolNames,
       ePoolLabel:   s.ePoolLabel,
       ePoolReturn:  s.ePoolReturn,
+      eMode:        s.eMode,
       practiced:    s.practiced,
       skipped:      s.skipped,
       goMap:        s.goMap,
@@ -1651,16 +1665,45 @@ export function ExploreView() {
   // dim filters.
   const isPool = Array.isArray(ePoolNames) && ePoolNames.length > 0
   const gate  = eGate
-  const tools = isPool
+  // The base tool set for this deck (gate × dim or pool). Filtering
+  // by eMode happens AFTER we lock this in so the user's progress
+  // doesn't shrink the deck mid-session.
+  const baseTools = isPool
     ? ePoolNames.map(n => TOOLS.find(t => t.n === n)).filter(Boolean)
     : (eDim ? toolsForGateDim(gate, eDim) : toolsForGate(gate))
+  // The deck is filtered by eMode at session-start and locked into
+  // a ref so subsequent rates don't reshape the array under the
+  // user's feet (every rating would otherwise drop the just-rated
+  // card from the unreviewed pool, making eIdx point at the wrong
+  // card). Re-filter only when the session boundary changes
+  // (gate / dim / mode / pool).
+  const lockedToolsRef = useRef(null)
+  const sessionKey = `${eGate}|${eDim}|${eMode}|${isPool ? ePoolNames?.join(',') : ''}`
+  const lastSessionKeyRef = useRef(null)
+  if (lastSessionKeyRef.current !== sessionKey) {
+    lastSessionKeyRef.current = sessionKey
+    if (eMode === 'reviewed') {
+      // Already-rated only.
+      lockedToolsRef.current = baseTools.filter(t =>
+        practiced[t.n] || skipped.includes(t.n))
+    } else if (eMode === 'unreviewed' && !isPool) {
+      // Default deck: only un-touched cards. Pool mode bypasses
+      // because the caller curated the order on purpose.
+      lockedToolsRef.current = baseTools.filter(t =>
+        !practiced[t.n] && !skipped.includes(t.n))
+    } else {
+      // 'all' or pool mode → no further filtering.
+      lockedToolsRef.current = baseTools
+    }
+  }
+  const tools = lockedToolsRef.current
   const col   = isPool ? '#F97316' : GATE_COL[gate]
   const dim   = (!isPool && eDim) ? DIM_BY_ID[eDim] : null
 
   // Close the dive-deeper modal whenever the active card changes,
   // so a leftover modal from the previous card doesn't appear over
   // the new one.
-  useEffect(() => { setDeepTool(null) }, [eIdx, eGate, eDim, isPool])
+  useEffect(() => { setDeepTool(null) }, [eIdx, eGate, eDim, isPool, eMode])
 
   if (eIdx >= tools.length) {
     if (isPool) return <PoolComplete label={ePoolLabel} returnTo={ePoolReturn} count={tools.length} />
