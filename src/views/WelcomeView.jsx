@@ -144,10 +144,10 @@ export function WelcomeView() {
             draggable={false}
             onError={(e) => { e.currentTarget.style.display = 'none' }}
             style={{
-              width: 'min(72vw, 280px)',
+              width: 'min(50vw, 200px)',
               height: 'auto',
               display: 'block',
-              margin: '0 auto -8px',
+              margin: '0 auto -4px',
               mixBlendMode: 'multiply',
               userSelect: 'none', pointerEvents: 'none',
             }} />

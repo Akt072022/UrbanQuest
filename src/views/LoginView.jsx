@@ -90,10 +90,10 @@ export function LoginView() {
             draggable={false}
             onError={(e) => { e.currentTarget.style.display = 'none' }}
             style={{
-              width: 'min(60vw, 220px)',
+              width: 'min(42vw, 160px)',
               height: 'auto',
               display: 'block',
-              margin: '0 auto -8px',
+              margin: '0 auto -4px',
               mixBlendMode: 'multiply',
               userSelect: 'none', pointerEvents: 'none',
             }} />
