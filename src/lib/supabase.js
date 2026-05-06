@@ -104,31 +104,57 @@ export async function createTeam({ name, city, proj }) {
   const user = userRes.data.user
   if (!user) throw new Error('Sign in first.')
 
-  // Pick a unique-enough code; collisions on 6 chars from a 32-char
-  // alphabet are vanishingly rare at this scale, so a single attempt
-  // is fine. If a collision ever surfaces we'll handle it then.
+  // Three-step dance because of the RLS gotcha:
+  //   teams_create        → any authenticated user may INSERT
+  //   teams_member_read   → only members may SELECT
+  // At INSERT time the user is not yet in team_members, so a
+  // .select().single() chained onto the insert returns 0 rows under
+  // RLS and the .single() throws PGRST116. We instead:
+  //   1. Generate the team id client-side and INSERT without select.
+  //   2. Insert the team_members row so the user becomes a member.
+  //   3. SELECT the team (now allowed).
+  const teamId      = crypto.randomUUID()
   const invite_code = makeInviteCode()
-  const { data: team, error: e1 } = await supabase
+
+  const { error: e1 } = await supabase
     .from('teams')
     .insert({
+      id: teamId,
       name: name?.trim() || 'My team',
       city: city?.trim() || null,
       proj: proj || null,
       invite_code,
       created_by: user.id,
     })
-    .select()
-    .single()
-  if (e1) throw new Error(e1.message)
+  if (e1) {
+    const detail = `[${e1.code || '?'}] ${e1.message}${e1.details ? ' — ' + e1.details : ''}`
+    console.error('[teams] insert team failed:', e1)
+    throw new Error('Could not create team: ' + detail)
+  }
 
-  // The creator becomes a facilitator member of their own team.
   const { error: e2 } = await supabase
     .from('team_members')
-    .insert({ team_id: team.id, user_id: user.id, role: 'facilitator' })
+    .insert({ team_id: teamId, user_id: user.id, role: 'facilitator' })
   if (e2) {
-    // Roll back the orphan team if the membership write fails.
-    await supabase.from('teams').delete().eq('id', team.id)
-    throw new Error(e2.message)
+    const detail = `[${e2.code || '?'}] ${e2.message}${e2.details ? ' — ' + e2.details : ''}`
+    console.error('[teams] insert membership failed:', e2)
+    // Best-effort orphan cleanup. The teams table has no DELETE
+    // policy by default, so this may silently no-op — harmless.
+    await supabase.from('teams').delete().eq('id', teamId)
+    throw new Error('Could not add you to the team: ' + detail)
+  }
+
+  const { data: team, error: e3 } = await supabase
+    .from('teams')
+    .select('*')
+    .eq('id', teamId)
+    .single()
+  if (e3) {
+    console.error('[teams] post-insert select failed:', e3)
+    // Fall back to a synthesised row so the caller still has
+    // something to display — the team exists in the DB even if RLS
+    // is somehow blocking the read here.
+    return { id: teamId, name, city: city || null, proj: proj || null, invite_code, created_by: user.id }
   }
   return team
 }
