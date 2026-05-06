@@ -141,9 +141,17 @@ export function WelcomeView() {
               as part of the canvas, not a plopped-in tile. */}
           <div style={{
             width: 'min(48vw, 190px)',
-            aspectRatio: '5 / 3',
+            aspectRatio: '6 / 5',
             margin: '0 auto -4px',
             overflow: 'hidden',
+            // Explicit page-cream background. The parent welcome
+            // wrapper sets `position:relative; z-index:1` which
+            // creates a stacking context — without an explicit
+            // backdrop here the img's mix-blend-mode: multiply has
+            // nothing to mix against and the white in the PNG
+            // renders solid. Repeating the page colour gives
+            // multiply a cream backdrop to fuse into.
+            background: '#F2EDE4',
           }}>
             <img
               src={`${import.meta.env.BASE_URL}illustrations/cityscape.png`}
@@ -153,7 +161,7 @@ export function WelcomeView() {
               style={{
                 width: '100%', height: '100%',
                 objectFit: 'cover',
-                objectPosition: '50% 58%',
+                objectPosition: '50% 55%',
                 display: 'block',
                 mixBlendMode: 'multiply',
                 userSelect: 'none', pointerEvents: 'none',
@@ -162,7 +170,7 @@ export function WelcomeView() {
           <div style={{
             fontFamily: 'Barlow Condensed, Impact, sans-serif',
             fontWeight: 900,
-            fontSize: 'clamp(56px,18vw,88px)',
+            fontSize: 'clamp(40px,13vw,64px)',
             color: INK, lineHeight: .92,
             letterSpacing: '.005em',
           }}>

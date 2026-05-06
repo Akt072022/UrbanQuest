@@ -84,23 +84,31 @@ export function LoginView() {
             illustration as the Welcome screen, so the two sign-in
             entry points read as the same brand surface. */}
         <div style={{ textAlign: 'center', marginTop: 20 }}>
-          <img
-            src={`${import.meta.env.BASE_URL}illustrations/cityscape.png`}
-            alt=""
-            draggable={false}
-            onError={(e) => { e.currentTarget.style.display = 'none' }}
-            style={{
-              width: 'min(42vw, 160px)',
-              height: 'auto',
-              display: 'block',
-              margin: '0 auto -4px',
-              mixBlendMode: 'multiply',
-              userSelect: 'none', pointerEvents: 'none',
-            }} />
+          <div style={{
+            width: 'min(40vw, 150px)',
+            aspectRatio: '6 / 5',
+            margin: '0 auto -4px',
+            overflow: 'hidden',
+            background: '#F2EDE4',
+          }}>
+            <img
+              src={`${import.meta.env.BASE_URL}illustrations/cityscape.png`}
+              alt=""
+              draggable={false}
+              onError={(e) => { e.currentTarget.style.display = 'none' }}
+              style={{
+                width: '100%', height: '100%',
+                objectFit: 'cover',
+                objectPosition: '50% 55%',
+                display: 'block',
+                mixBlendMode: 'multiply',
+                userSelect: 'none', pointerEvents: 'none',
+              }} />
+          </div>
           <div style={{
             fontFamily: 'Barlow Condensed, Impact, sans-serif',
             fontWeight: 900,
-            fontSize: 'clamp(48px,15vw,72px)',
+            fontSize: 'clamp(36px,11vw,56px)',
             color: INK, lineHeight: .92,
           }}>ReCity</div>
           <div style={{
