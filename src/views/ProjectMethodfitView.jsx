@@ -15,23 +15,19 @@ import { useStore } from '../store/useStore'
 import { ScrappyButton } from '../components/ScrappyButton'
 import { FitDeck } from './ParticipantView'
 
-const INK = '#1C2530'
-const FONT_HEAD = 'Barlow Condensed, Impact, sans-serif'
-
 export function ProjectMethodfitView() {
   const {
     projects, currentProjectId,
     practiced,
     practiceTool,
     recordProjectMethodfit,
-    goProjectFit, goDashboard, goWelcome,
+    goDashboard, goWelcome,
   } = useStore(useShallow(s => ({
     projects:               s.projects,
     currentProjectId:       s.currentProjectId,
     practiced:              s.practiced,
     practiceTool:           s.practiceTool,
     recordProjectMethodfit: s.recordProjectMethodfit,
-    goProjectFit:           s.goProjectFit,
     goDashboard:            s.goDashboard,
     goWelcome:              s.goWelcome,
   })))
@@ -86,27 +82,13 @@ export function ProjectMethodfitView() {
   // the first tool — most projects have a leading phase anyway.
   const gate = tools[0]?.g?.[0] || 1
 
+  // Focused-screen layout: no top nav, no escape hatches mid-deck.
+  // The user finishes the swipe deck (or backs out via FitDeck's own
+  // 'SUBMIT MY FIT' which fires onDone) and lands on the project
+  // dashboard where the next steps live. App.jsx hides the global
+  // Navbar on this view for the same reason.
   return (
     <div style={{ paddingBottom: 24 }}>
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 8,
-        padding: '12px 16px 0',
-      }}>
-        <ScrappyButton onClick={goProjectFit} color="#FFFFFF" size="sm">
-          ← SHORTLIST
-        </ScrappyButton>
-        <div style={{ flex: 1 }} />
-        <button onClick={() => goDashboard(null, 'project')}
-          style={{
-            padding: '5px 12px', borderRadius: 999,
-            background: 'transparent', border: `1.5px solid ${INK}33`,
-            color: INK, cursor: 'pointer',
-            fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 10,
-            letterSpacing: '.06em', textTransform: 'uppercase',
-          }}>
-          See dashboard →
-        </button>
-      </div>
       <FitDeck
         tools={tools}
         gate={gate}

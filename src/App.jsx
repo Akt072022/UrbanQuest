@@ -63,11 +63,14 @@ function AppInner() {
       background: '#F2EDE4', minHeight: '100vh',
       display: 'flex', flexDirection: 'column',
     }}>
-      {/* Navbar hidden on welcome / login (no nav before sign-in) and
-          on explore (the card view already has its own ← MAP button +
-          counter; the global bar would just steal vertical space
-          from the card without adding navigation value). */}
-      {view !== 'welcome' && view !== 'login' && view !== 'explore' && <Navbar />}
+      {/* Navbar hidden on the focused, gesture-driven screens: welcome
+          / login (no nav before sign-in) and the card-sorting decks
+          (explore, projectMethodfit) where the global bar would steal
+          vertical space without adding navigation value — the user
+          completes the deck, then the deck's own complete-screen
+          surfaces the next steps. */}
+      {view !== 'welcome' && view !== 'login'
+        && view !== 'explore' && view !== 'projectMethodfit' && <Navbar />}
       <div style={{
         flex: 1, overflowY: 'auto',
         display: 'flex', flexDirection: 'column',
