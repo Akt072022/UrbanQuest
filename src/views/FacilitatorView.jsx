@@ -1031,9 +1031,23 @@ export function FacilitatorView() {
             fontWeight: 900, fontSize: 18,
             color: INK, letterSpacing: '.06em', lineHeight: 1,
           }}>SESSION {roomId}</div>
-          <div style={{ fontSize: 10, color: '#5A5550', fontWeight: 700, marginTop: 3 }}>
-            {participants.length} connected
-            {triageDone.length > 0 ? ' · ' + triageDone.length + ' completed' : ''}
+          <div style={{
+            fontSize: 10, color: '#5A5550', fontWeight: 700, marginTop: 3,
+            display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+          }}>
+            <span>
+              {participants.length} connected
+              {triageDone.length > 0 ? ' · ' + triageDone.length + ' completed' : ''}
+            </span>
+            <button onClick={() => setStarted(false)}
+              style={{
+                background: 'transparent', border: 'none',
+                padding: 0, cursor: 'pointer',
+                fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 10,
+                color: '#5A5550', letterSpacing: '.06em',
+                textTransform: 'uppercase',
+                textDecoration: 'underline',
+              }}>← Change setup</button>
           </div>
         </div>
         <div style={{
@@ -1104,31 +1118,10 @@ export function FacilitatorView() {
         </div>
       </SectionCard>
 
-      {/* Tabs (scrappy pills) */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
-        {[
-          ['triage',    'TEAM SCAN'],
-          ['question',  'LIVE Q'],
-          ['methodfit', 'METHOD-FIT'],
-        ].map(([id, label]) => {
-          const active = tab === id
-          return (
-            <button key={id} onClick={() => setTab(id)}
-              style={{
-                flex: 1, padding: '9px 8px',
-                background: active ? INK : CARD,
-                color:      active ? '#FFFFFF' : INK,
-                border: `2.5px solid ${INK}`,
-                borderRadius: 999,
-                fontFamily: FONT_HEAD,
-                fontWeight: 900, fontSize: 12,
-                letterSpacing: '.06em', textTransform: 'uppercase',
-                cursor: 'pointer',
-                boxShadow: active ? '2px 2px 0 ' + INK : 'none',
-              }}>{label}</button>
-          )
-        })}
-      </div>
+      {/* Tabs strip removed — the workshop mode is locked to whatever
+          was picked on the setup screen. To switch modes, the
+          facilitator uses the "← Change setup" link in the header
+          which rewinds to the pre-launch wizard. */}
 
       {/* ── TAB TRIAGE ────────────────────────────────────────── */}
       {tab === 'triage' && (
