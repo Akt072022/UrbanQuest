@@ -169,11 +169,12 @@ export function playTTS(tool, { onStart, onEnd } = {}) {
 // two clear next steps instead. ────────────────────────────────
 function DimComplete({ gate, dim }) {
   const {
-    goMap, goExploreDim,
+    goMap, goExploreDim, goCard,
     practiced, skipped, seenBadgeIds, markBadgesSeen,
   } = useStore(useShallow(s => ({
     goMap:           s.goMap,
     goExploreDim:    s.goExploreDim,
+    goCard:          s.goCard,
     practiced:       s.practiced,
     skipped:         s.skipped,
     seenBadgeIds:    s.seenBadgeIds,
@@ -242,6 +243,11 @@ function DimComplete({ gate, dim }) {
             ▼ NEXT: {nextDim.label.toUpperCase()} →
           </ScrappyButton>
         )}
+        <ScrappyButton
+          onClick={() => { dismissBadges(); goCard(0) }}
+          color="#FFFFFF">
+          ↺ REVIEW MY ANSWERS
+        </ScrappyButton>
         <ScrappyButton onClick={() => { dismissBadges(); goMap() }} color="#FFFFFF">
           ← BACK TO MAP
         </ScrappyButton>
@@ -332,9 +338,10 @@ function BadgeReward({ badges }) {
 // ── Gate complete celebration ─────────────────────────────────
 function GateComplete({ gate }) {
   const {
-    goMap, practiced, skipped, seenBadgeIds, markBadgesSeen,
+    goMap, goCard, practiced, skipped, seenBadgeIds, markBadgesSeen,
   } = useStore(useShallow(s => ({
     goMap:           s.goMap,
+    goCard:          s.goCard,
     practiced:       s.practiced,
     skipped:         s.skipped,
     seenBadgeIds:    s.seenBadgeIds,
@@ -422,9 +429,19 @@ function GateComplete({ gate }) {
 
       <BadgeReward badges={newBadges} />
 
-      <ScrappyButton onClick={() => { dismissBadges(); goMap() }} color={YELLOW}>
-        BACK TO MAP →
-      </ScrappyButton>
+      <div style={{
+        display: 'flex', flexDirection: 'column', gap: 10,
+        maxWidth: 320, margin: '0 auto',
+      }}>
+        <ScrappyButton onClick={() => { dismissBadges(); goMap() }} color={YELLOW}>
+          BACK TO MAP →
+        </ScrappyButton>
+        <ScrappyButton
+          onClick={() => { dismissBadges(); goCard(0) }}
+          color="#FFFFFF">
+          ↺ REVIEW MY ANSWERS
+        </ScrappyButton>
+      </div>
     </div>
   )
 }
