@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore } from '../store/useStore'
 import { getLevel, TOOLS, DIMENSIONS, GATE_LABEL, SKILL_LEVELS } from '../data/tools'
@@ -82,6 +82,13 @@ export function ProfileView() {
   const [joinCode, setJoinCode] = useState('')
   const [teamBusy, setTeamBusy] = useState(false)
   const [teamErr,  setTeamErr]  = useState('')
+  // Ref-based re-entry guard. setState updates aren't synchronous,
+  // so two near-simultaneous submits (e.g. button click + form
+  // submit) both see teamBusy as `false` and race two INSERTs,
+  // leaving the UI stuck on "CREATING…" while one of them fails
+  // silently. The ref flips synchronously and shuts the second
+  // call down before it touches Supabase.
+  const teamBusyRef = useRef(false)
   const [memberCounts, setMemberCounts] = useState({})  // { teamId: n }
   // After a successful create, show a "share invite code" panel
   // instead of dropping the user back into the team list with no
@@ -102,20 +109,38 @@ export function ProfileView() {
     return () => { cancelled = true }
   }, [teams, userEmail])
 
+  // Wrap a Supabase op in a 20 s timeout so we never sit on
+  // "CREATING…" / "JOINING…" forever when the network or RLS gets
+  // weird. Logs the original error to the console with full detail
+  // so the user can copy-paste it back to us if needed.
+  const withTimeout = async (promise, ms = 20000, label = 'op') => {
+    let timer
+    const timeoutP = new Promise((_, reject) => {
+      timer = setTimeout(() => {
+        reject(new Error(`${label} timed out after ${ms / 1000}s — try again. ` +
+          `If it keeps timing out, check your Supabase project (RLS, network).`))
+      }, ms)
+    })
+    try {
+      return await Promise.race([promise, timeoutP])
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+
   const submitCreateTeam = async (e) => {
     e?.preventDefault?.()
-    // Guard against double-fire — the submit button is type="submit"
-    // inside a <form onSubmit=...>, so a click can otherwise trigger
-    // both the click handler and the form submission, racing two
-    // INSERTs and leaving the UI stuck on "CREATING…".
-    if (teamBusy) return
+    // Synchronous re-entry guard, see teamBusyRef declaration.
+    if (teamBusyRef.current) return
     if (!teamName.trim()) return
+    teamBusyRef.current = true
     setTeamBusy(true); setTeamErr('')
     try {
-      const created = await createTeam({
-        name: teamName, city: teamCity, proj: teamProj,
-      })
-      await refreshTeams()
+      const created = await withTimeout(
+        createTeam({ name: teamName, city: teamCity, proj: teamProj }),
+        20000, 'Create team',
+      )
+      await withTimeout(refreshTeams(), 10000, 'Refresh teams')
       setCurrentTeamId(created.id)
       // Land on a success panel showing the invite code so the user
       // can immediately share it with teammates.
@@ -123,23 +148,37 @@ export function ProfileView() {
       setTeamFormOpen(null)
       setTeamName(''); setTeamCity('')
     } catch (err) {
-      setTeamErr(err?.message || 'Could not create team.')
-    } finally { setTeamBusy(false) }
+      console.error('[team] createTeam failed:', err)
+      const detail = err?.code ? `[${err.code}] ` : ''
+      setTeamErr(detail + (err?.message || 'Could not create team.'))
+    } finally {
+      teamBusyRef.current = false
+      setTeamBusy(false)
+    }
   }
+
   const submitJoinTeam = async (e) => {
     e?.preventDefault?.()
-    if (teamBusy) return
+    if (teamBusyRef.current) return
     if (!joinCode.trim()) return
+    teamBusyRef.current = true
     setTeamBusy(true); setTeamErr('')
     try {
-      const joined = await joinTeamByCode(joinCode)
-      await refreshTeams()
+      const joined = await withTimeout(
+        joinTeamByCode(joinCode), 20000, 'Join team',
+      )
+      await withTimeout(refreshTeams(), 10000, 'Refresh teams')
       setCurrentTeamId(joined.id)
       setTeamFormOpen(null)
       setJoinCode('')
     } catch (err) {
-      setTeamErr(err?.message || 'Could not join team.')
-    } finally { setTeamBusy(false) }
+      console.error('[team] joinTeamByCode failed:', err)
+      const detail = err?.code ? `[${err.code}] ` : ''
+      setTeamErr(detail + (err?.message || 'Could not join team.'))
+    } finally {
+      teamBusyRef.current = false
+      setTeamBusy(false)
+    }
   }
   const copyInviteCode = async (code) => {
     try {
