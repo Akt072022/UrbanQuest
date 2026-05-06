@@ -246,7 +246,7 @@ function DimComplete({ gate, dim }) {
         <ScrappyButton
           onClick={() => { dismissBadges(); goCard(0) }}
           color="#FFFFFF">
-          ↺ REVIEW MY ANSWERS
+          REVIEW MY ANSWERS
         </ScrappyButton>
         <ScrappyButton onClick={() => { dismissBadges(); goMap() }} color="#FFFFFF">
           ← BACK TO MAP
@@ -439,7 +439,7 @@ function GateComplete({ gate }) {
         <ScrappyButton
           onClick={() => { dismissBadges(); goCard(0) }}
           color="#FFFFFF">
-          ↺ REVIEW MY ANSWERS
+          REVIEW MY ANSWERS
         </ScrappyButton>
       </div>
     </div>
