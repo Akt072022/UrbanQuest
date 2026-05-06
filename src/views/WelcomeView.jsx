@@ -309,6 +309,10 @@ function ProjectInterview({ onAnalyse, onSwitchToForm, busyParent }) {
   // Final brief from the AI: { name, desc }. When set, the input
   // disappears and the "Analyse my project" CTA takes over.
   const [done, setDone] = useState(null)
+  // Editable brief once the AI finalises — the user can tweak the
+  // name + desc before launching the analysis.
+  const [editName, setEditName] = useState('')
+  const [editDesc, setEditDesc] = useState('')
   const scrollRef = useRef(null)
   const inputRef  = useRef(null)
 
@@ -342,9 +346,11 @@ function ProjectInterview({ onAnalyse, onSwitchToForm, busyParent }) {
         setMessages(m => [...m, { role: 'assistant', content: r.question }])
       } else {
         setDone({ name: r.name, desc: r.desc })
+        setEditName(r.name)
+        setEditDesc(r.desc)
         setMessages(m => [...m, {
           role: 'assistant',
-          content: `Got it. Here's how I'd describe your project:\n\n**${r.name}**\n\n${r.desc}\n\nIf this looks right, hit "Analyse my project" below.`,
+          content: `Got it. Here's how I'd describe your project — you can tweak it below before we run the analysis.`,
         }])
       }
     } catch (e) {
@@ -437,12 +443,53 @@ function ProjectInterview({ onAnalyse, onSwitchToForm, busyParent }) {
           </button>
         </>
       ) : (
-        <ScrappyButton type="button"
-          onClick={() => onAnalyse({ pName: done.name, pDesc: done.desc })}
-          color={busyParent ? '#E0DAD2' : YELLOW}
-          size="lg" full>
-          {busyParent ? '✨ ANALYSING…' : '✨ ANALYSE MY PROJECT →'}
-        </ScrappyButton>
+        <div style={{
+          display: 'flex', flexDirection: 'column', gap: 10,
+          paddingTop: 4,
+          borderTop: `1px dashed ${INK}33`,
+        }}>
+          <div>
+            <label style={LABEL}>Project name</label>
+            <input style={INP}
+              value={editName}
+              onChange={e => setEditName(e.target.value)} />
+          </div>
+          <div>
+            <label style={LABEL}>Project brief — edit if needed</label>
+            <textarea
+              value={editDesc}
+              onChange={e => setEditDesc(e.target.value)}
+              rows={8}
+              style={{
+                ...INP,
+                resize: 'vertical',
+                lineHeight: 1.5,
+                fontSize: 13,
+              }} />
+          </div>
+          <ScrappyButton type="button"
+            onClick={() => onAnalyse({
+              pName: editName.trim() || done.name,
+              pDesc: editDesc.trim() || done.desc,
+            })}
+            color={busyParent || !editDesc.trim() ? '#E0DAD2' : YELLOW}
+            size="lg" full>
+            {busyParent ? '✨ ANALYSING…' : '✨ ANALYSE MY PROJECT →'}
+          </ScrappyButton>
+          <button type="button"
+            onClick={() => { setDone(null); setEditName(''); setEditDesc('') }}
+            style={{
+              background: 'transparent', border: 'none',
+              cursor: 'pointer', padding: '4px 0',
+              fontFamily: 'Barlow Condensed, Impact, sans-serif',
+              fontWeight: 900, fontSize: 11,
+              color: '#5A5550', letterSpacing: '.06em',
+              textTransform: 'uppercase',
+              alignSelf: 'center',
+            }}>
+            ↩ Add more context
+          </button>
+        </div>
       )}
     </div>
   )
