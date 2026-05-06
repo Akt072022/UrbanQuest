@@ -86,18 +86,16 @@ export function SwipeWrap({
     const dy = cy - startRef.current.y
     if (modeRef.current === 'pending') {
       if (Math.max(Math.abs(dx), Math.abs(dy)) < LOCK_PX) return
-      if (Math.abs(dy) > Math.abs(dx)) {
-        // Vertical drag → drop the gesture entirely so native
-        // scroll inside the card can take over. We never captured
-        // the pointer, so nothing to release.
-        modeRef.current  = 'scroll'
-        startRef.current = null
-        pointerRef.current = null
-        return
-      }
+      // Always lock to 'swipe' once we cross the threshold. The
+      // earlier code locked vertical-dominant moves to a 'scroll'
+      // mode that just dropped the gesture, which made any swipe
+      // whose first 10 px happened to bias slightly vertical (very
+      // common on mobile) silently die. With touch-action: none
+      // there's no native scroll fallback anyway — just follow the
+      // finger and let end() decide on release whether the gesture
+      // committed (horizontal-dominant past threshold) or snaps
+      // back (everything else).
       modeRef.current = 'swipe'
-      // Now that we own the gesture, capture so up / cancel still
-      // reach us if the cursor leaves the wrapper bounds.
       const p = pointerRef.current
       if (p && p.target) {
         try { p.target.setPointerCapture(p.id) } catch { /* noop */ }
