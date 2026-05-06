@@ -23,13 +23,26 @@ export function LoginView() {
   const [busy,  setBusy]    = useState(false)
   const [sent,  setSent]    = useState(false)
   const [err,   setErr]     = useState('')
+  // When the user is already signed in (e.g. landed here from a
+  // magic-link callback, or hit goLogin while still authed), we
+  // hide the email form behind a "switch account" toggle. Prevents
+  // the closed loop where the page says "✓ Signed in" *and* asks
+  // you to sign in again.
+  const [switching, setSwitching] = useState(false)
   const inputRef = useRef(null)
-  useEffect(() => { inputRef.current?.focus?.() }, [])
+  // Auto-focus only when the form is actually visible (not when the
+  // "you're signed in, continue" panel is showing).
+  useEffect(() => {
+    if (!userEmail || switching) inputRef.current?.focus?.()
+  }, [userEmail, switching])
 
-  // If the user is somehow already signed in (auth listener resolved
-  // mid-render), surface a "switch account" UX rather than locking
-  // them out of the welcome flow.
   const validEmail = /\S+@\S+\.\S+/.test(email.trim())
+  // What the form should be doing right now:
+  //   • signed in + not switching → show the "Continue / switch" panel
+  //   • signed in + switching     → show the email form (so they can
+  //                                 send a link to a different inbox)
+  //   • not signed in             → show the email form
+  const showForm = !userEmail || switching
 
   const submit = async (e) => {
     e?.preventDefault?.()
@@ -83,22 +96,53 @@ export function LoginView() {
           </div>
         </div>
 
-        {/* If signed in: show whose session is active. */}
-        {userEmail && !sent && (
+        {/* Already signed in — primary action is "Continue", with
+            a quiet toggle to swap accounts. Hides the email form
+            entirely so the user can't end up on a screen that says
+            "you're signed in" *and* demands an email at the same
+            time. */}
+        {userEmail && !switching && !sent && (
           <div style={{
-            padding: '8px 12px',
-            background: '#FFFDF8',
-            border: `1.5px solid ${INK}33`, borderRadius: 10,
-            fontFamily: 'Barlow Condensed, Impact, sans-serif',
-            fontSize: 11, color: '#5A5550',
-            letterSpacing: '.06em', textTransform: 'uppercase',
-            textAlign: 'center',
+            background: '#FFFFFF', borderRadius: 16, padding: 18,
+            border: `2.5px solid ${INK}`,
+            display: 'flex', flexDirection: 'column', gap: 12,
           }}>
-            ✓ Signed in as {userEmail}
+            <div style={{
+              padding: '10px 12px',
+              background: '#E6F4EC',
+              border: `1.5px solid #10B981`, borderRadius: 10,
+              fontFamily: 'Barlow Condensed, Impact, sans-serif',
+              fontSize: 12, color: '#1F4E32',
+              letterSpacing: '.04em',
+              textAlign: 'center',
+              wordBreak: 'break-all',
+            }}>
+              ✓ Signed in as <b>{userEmail}</b>
+            </div>
+            <ScrappyButton
+              onClick={goWelcome}
+              color={YELLOW} size="lg" full>
+              CONTINUE TO RECITY →
+            </ScrappyButton>
+            <button type="button"
+              onClick={() => { setSwitching(true); setEmail('') }}
+              style={{
+                background: 'transparent', border: 'none',
+                cursor: 'pointer', padding: '4px 0',
+                fontFamily: 'Barlow Condensed, Impact, sans-serif',
+                fontWeight: 900, fontSize: 11,
+                color: '#5A5550', letterSpacing: '.06em',
+                textTransform: 'uppercase',
+                textAlign: 'center',
+              }}>
+              · Or sign in with a different email
+            </button>
           </div>
         )}
 
-        {/* Form */}
+        {/* Form — visible when nobody's signed in OR the signed-in
+            user explicitly clicked "switch account". */}
+        {showForm && (
         <form onSubmit={submit}
           style={{
             background: '#FFFFFF', borderRadius: 16, padding: 18,
@@ -167,6 +211,7 @@ export function LoginView() {
             </>
           )}
         </form>
+        )}
 
         {/* Quiet exit — go back to anonymous use. */}
         <div style={{ textAlign: 'center' }}>
