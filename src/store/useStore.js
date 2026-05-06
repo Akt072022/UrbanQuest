@@ -64,6 +64,18 @@ export const useStore = create(
       eDim:  null,
       eIdx:  0,
       eFlipped: false,
+      // Optional override of the gate/dim filter: an explicit list of
+      // tool names to swipe through. Used by 'Rate this project's
+      // methods' so the user can land directly on the AI shortlist
+      // instead of hunting them down across the whole catalogue.
+      // null = no override, fall back to gate/dim selection.
+      // ePoolLabel is what the explore screen shows above the deck
+      // when in pool mode (e.g. the project name).
+      ePoolNames: null,
+      ePoolLabel: null,
+      // Where to go when the user clears all cards in the override
+      // pool (project name + suggestions, etc). Defaults to projectFit.
+      ePoolReturn: null,
 
       // ── Dashboard target gate (set when clicking a gate radar) ────
       dashboardGate: null,
@@ -234,6 +246,7 @@ export const useStore = create(
           eGate: gate, eDim: null,
           eIdx: resumeIdx(pool, state.practiced, state.skipped),
           eFlipped: false,
+          ePoolNames: null, ePoolLabel: null, ePoolReturn: null,
         }
       }),
       goExploreDim: (gate, dim) => set(state => {
@@ -243,6 +256,28 @@ export const useStore = create(
           eGate: gate, eDim: dim,
           eIdx: resumeIdx(pool, state.practiced, state.skipped),
           eFlipped: false,
+          ePoolNames: null, ePoolLabel: null, ePoolReturn: null,
+        }
+      }),
+
+      // Custom-pool explore: take an explicit list of tool names
+      // (typically a project's AI shortlist) and walk the swipe
+      // deck through ONLY those, in order. ePoolReturn is the view
+      // string the complete-screen routes back to when the deck is
+      // cleared (defaults to projectFit so a project flow loops
+      // back to its shortlist).
+      goExplorePool: (names, { label = null, returnTo = 'projectFit' } = {}) => set(state => {
+        const pool = (names || [])
+          .map(n => TOOLS.find(t => t.n === n))
+          .filter(Boolean)
+        return {
+          view: 'explore',
+          eGate: null, eDim: null,
+          eIdx: resumeIdx(pool, state.practiced, state.skipped),
+          eFlipped: false,
+          ePoolNames: names || [],
+          ePoolLabel: label,
+          ePoolReturn: returnTo,
         }
       }),
 
@@ -353,6 +388,7 @@ export const useStore = create(
         seenBadgeIds: [],
         pendingBadgeToasts: [],
         eGate: null, eDim: null, eIdx: 0, eFlipped: false,
+        ePoolNames: null, ePoolLabel: null, ePoolReturn: null,
         dashboardGate: null,
         sessionId: null, sessionRole: null,
         // Note: teams/currentTeamId are not reset — they belong to the

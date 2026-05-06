@@ -26,7 +26,7 @@ export function ProjectFitView() {
     projectContext, aiSuggestions,
     currentProjectId, updateCurrentProject,
     userEmail,
-    goWelcome, goMap, goFacilitator, goDashboard,
+    goWelcome, goMap, goFacilitator, goDashboard, goExplorePool,
     setProjectContext, setAiSuggestions,
   } = useStore(useShallow(s => ({
     projectContext: s.projectContext,
@@ -38,6 +38,7 @@ export function ProjectFitView() {
     goMap:          s.goMap,
     goFacilitator:  s.goFacilitator,
     goDashboard:    s.goDashboard,
+    goExplorePool:  s.goExplorePool,
     setProjectContext: s.setProjectContext,
     setAiSuggestions:  s.setAiSuggestions,
   })))
@@ -270,17 +271,33 @@ export function ProjectFitView() {
         </div>
       )}
 
-      {/* ── Big "use these in a workshop" CTA ──────────── */}
+      {/* ── Primary CTAs ──────────────────────────────── */}
+      <ScrappyButton
+        onClick={() => goExplorePool(
+          aiSuggestions.map(s => s.tool.n),
+          { label: projectContext.name, returnTo: 'projectFit' },
+        )}
+        color={YELLOW} size="lg" full>
+        ▼ RATE THESE METHODS MYSELF →
+      </ScrappyButton>
+      <div style={{
+        fontSize: 11, color: '#5A5550',
+        textAlign: 'center', marginTop: 6, marginBottom: 12, lineHeight: 1.5,
+      }}>
+        Walks you through this shortlist as a swipe deck. Your
+        ratings flow into the project's capability map.
+      </div>
+
       <ScrappyButton
         onClick={goFacilitator}
-        color={YELLOW} size="lg" full>
+        color="#FFFFFF" size="lg" full>
         RUN THESE WITH MY TEAM →
       </ScrappyButton>
       <div style={{
         fontSize: 11, color: '#5A5550',
         textAlign: 'center', marginTop: 6, lineHeight: 1.5,
       }}>
-        Opens a live workshop — your team scans a QR and rates
+        Opens a live workshop. Your team scans a QR and rates
         these methods together, with results in real time.
       </div>
 

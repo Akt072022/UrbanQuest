@@ -525,6 +525,70 @@ function GateComplete({ gate }) {
   )
 }
 
+// ── Pool complete — shown when the user finishes rating a custom
+// list of methods (typically a project's AI shortlist). Routes
+// back to wherever they came from with a clear "see results" CTA
+// pointing at the dashboard's Project tab. ─────────────────────
+function PoolComplete({ label, returnTo, count }) {
+  const { goMap, goWelcome, goProjectFit, goDashboard, goCard } =
+    useStore(useShallow(s => ({
+      goMap:        s.goMap,
+      goWelcome:    s.goWelcome,
+      goProjectFit: s.goProjectFit,
+      goDashboard:  s.goDashboard,
+      goCard:       s.goCard,
+    })))
+  const back = returnTo === 'projectFit' ? goProjectFit
+             : returnTo === 'welcome'    ? goWelcome
+             : goMap
+
+  return (
+    <div className="anim-fadein" style={{ textAlign: 'center', padding: '40px 16px' }}>
+      <div style={{
+        width: 64, height: 64, borderRadius: '50%',
+        background: '#FFF4D8', border: `3px solid #F97316`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        margin: '0 auto 18px',
+      }}>
+        <svg viewBox="0 0 24 24" width="32" height="32" fill="none">
+          <path d="M5 13l4 4L19 7" stroke="#F97316" strokeWidth="3"
+            strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </div>
+      <div style={{
+        fontFamily: 'Barlow Condensed, Impact, sans-serif',
+        fontSize: 'clamp(28px,8vw,42px)', color: '#F97316', lineHeight: 1,
+        textTransform: 'uppercase', letterSpacing: '.02em',
+        padding: '0 16px',
+      }}>
+        {label || 'Project shortlist'}
+      </div>
+      <div style={{
+        fontFamily: 'Barlow Condensed, Impact, sans-serif',
+        fontSize: 18, color: INK, marginTop: 8, marginBottom: 22,
+        letterSpacing: '.05em',
+      }}>
+        {count} METHOD{count === 1 ? '' : 'S'} RATED
+      </div>
+
+      <div style={{
+        display: 'flex', flexDirection: 'column', gap: 10,
+        maxWidth: 320, margin: '0 auto',
+      }}>
+        <ScrappyButton onClick={() => goDashboard()} color={YELLOW}>
+          ▼ SEE PROJECT DASHBOARD →
+        </ScrappyButton>
+        <ScrappyButton onClick={back} color="#FFFFFF">
+          ← BACK TO SHORTLIST
+        </ScrappyButton>
+        <ScrappyButton onClick={() => goCard(0)} color="#FFFFFF">
+          REVIEW MY ANSWERS
+        </ScrappyButton>
+      </div>
+    </div>
+  )
+}
+
 // ── Image lightbox — fullscreen viewer with zoom toggle ──────
 //   • Click backdrop or × button → close
 //   • Click the image → toggle 1× ↔ 2.4× (zoomed view scrolls in
@@ -1483,10 +1547,14 @@ export function DeckFooter({ idx, total, onPrev, onNext }) {
 
 // ── Main Explore view ──────────────────────────────────────────
 export function ExploreView() {
-  const { eGate, eDim, eIdx, practiced, skipped,
+  const { eGate, eDim, eIdx, ePoolNames, ePoolLabel, ePoolReturn,
+          practiced, skipped,
           goMap, practiceTool, skipTool, nextCard, prevCard } =
     useStore(useShallow(s => ({
       eGate: s.eGate, eDim: s.eDim, eIdx: s.eIdx,
+      ePoolNames:   s.ePoolNames,
+      ePoolLabel:   s.ePoolLabel,
+      ePoolReturn:  s.ePoolReturn,
       practiced:    s.practiced,
       skipped:      s.skipped,
       goMap:        s.goMap,
@@ -1506,22 +1574,24 @@ export function ExploreView() {
   // the RatingRow above the card to highlight the matching button.
   const [previewLevel, setPreviewLevel] = useState(null)
 
+  // Tool pool resolution. If the user came in via a custom pool
+  // (e.g. 'rate THIS project's shortlist'), build the deck strictly
+  // from those names in order. Otherwise fall back to the gate /
+  // dim filters.
+  const isPool = Array.isArray(ePoolNames) && ePoolNames.length > 0
   const gate  = eGate
-  const tools = eDim ? toolsForGateDim(gate, eDim) : toolsForGate(gate)
-  const col   = GATE_COL[gate]
-  const dim   = eDim ? DIM_BY_ID[eDim] : null
+  const tools = isPool
+    ? ePoolNames.map(n => TOOLS.find(t => t.n === n)).filter(Boolean)
+    : (eDim ? toolsForGateDim(gate, eDim) : toolsForGate(gate))
+  const col   = isPool ? '#F97316' : GATE_COL[gate]
+  const dim   = (!isPool && eDim) ? DIM_BY_ID[eDim] : null
 
   // When the active card changes, snap back to synth (in case user
   // was reading dive-deeper details on the previous card).
-  useEffect(() => { setFace('synth') }, [eIdx, eGate, eDim])
+  useEffect(() => { setFace('synth') }, [eIdx, eGate, eDim, isPool])
 
   if (eIdx >= tools.length) {
-    // If the user was working on a single dim (arrived from a
-    // dashboard suggestion or the new "Start with X" map flow), show
-    // a per-dim summary instead of celebrating the whole gate. The
-    // earlier behaviour fell through to GateComplete which made the
-    // user think the rating button "did nothing" since the resulting
-    // celebration screen never matched their last action.
+    if (isPool) return <PoolComplete label={ePoolLabel} returnTo={ePoolReturn} count={tools.length} />
     if (eDim) return <DimComplete gate={gate} dim={eDim} />
     return <GateComplete gate={gate} />
   }

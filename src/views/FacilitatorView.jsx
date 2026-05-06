@@ -236,11 +236,12 @@ function AllDimsGlyph({ active }) {
 // ──────────────────────────────────────────────────────────────
 export function FacilitatorView() {
   const {
-    goMap, setSession, sessionId: savedRoomId,
+    goMap, goDashboard, setSession, sessionId: savedRoomId,
     currentTeamId, userId,
     storeProjectContext, storeAiSuggestions,
   } = useStore(useShallow(s => ({
     goMap:               s.goMap,
+    goDashboard:         s.goDashboard,
     setSession:          s.setSession,
     sessionId:           s.sessionId,
     currentTeamId:       s.currentTeamId,
@@ -1582,6 +1583,28 @@ export function FacilitatorView() {
                   doneCount={methodfitDone.length}
                 />
               </SectionCard>
+              {/* Hand-off into the project dashboard so the
+                  facilitator can see their personal capability map
+                  alongside whatever the workshop just produced.
+                  Only surfaces once at least one response has come
+                  in (otherwise it's an empty trip). */}
+              {methodfitResponses.length > 0 && (
+                <div style={{ marginTop: 14 }}>
+                  <ScrappyButton
+                    onClick={goDashboard}
+                    color={YELLOW} size="md" full>
+                    ▼ OPEN PROJECT DASHBOARD →
+                  </ScrappyButton>
+                  <div style={{
+                    fontSize: 11, color: '#5A5550',
+                    textAlign: 'center', marginTop: 6, lineHeight: 1.5,
+                  }}>
+                    See the project capability map updated with the
+                    methods you've personally rated. Workshop history
+                    is in the Team tab.
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
