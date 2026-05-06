@@ -1005,7 +1005,7 @@ export function CardStack({ tool, gate, face, onDive, onBack, alreadyLevel, alre
 // Small chevron button used in the deck header to step the cursor
 // back or forward without committing any rating. Disabled at the
 // edges of the deck.
-function NavArrow({ dir, onClick, disabled }) {
+export function NavArrow({ dir, onClick, disabled }) {
   return (
     <button onClick={disabled ? undefined : onClick}
       aria-label={dir === 'prev' ? 'Previous card' : 'Next card'}
@@ -1136,6 +1136,44 @@ export function ProgressDots({ tools, idx }) {
   )
 }
 
+// ── Deck footer — chevrons + progress dots + counter on one row,
+//   placed BELOW the card on all three card-sorting decks (Explore,
+//   workshop ToolDeck, workshop FitDeck). The counter sits at the
+//   end of the dashes so the eye flows naturally:
+//   [<]  [- - - - - - - - - 12/18]  [>]
+export function DeckFooter({ idx, total, onPrev, onNext }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 10,
+      marginTop: 12,
+    }}>
+      <NavArrow dir="prev" onClick={onPrev} disabled={idx === 0} />
+      <div style={{
+        flex: 1, minWidth: 0,
+        display: 'flex', alignItems: 'center', gap: 10,
+      }}>
+        <div style={{ flex: 1, display: 'flex', gap: 3 }}>
+          {Array.from({ length: total }, (_, i) => (
+            <div key={i} style={{
+              height: 6, borderRadius: 3,
+              flex: 1, minWidth: 3, maxWidth: 22,
+              transition: 'all .3s',
+              background: i < idx ? '#9C958A' : i === idx ? INK : '#E0DAD2',
+            }} />
+          ))}
+        </div>
+        <div style={{
+          fontFamily: 'Barlow Condensed, Impact, sans-serif',
+          fontWeight: 900, fontSize: 14,
+          color: INK, flexShrink: 0,
+          minWidth: 44, textAlign: 'right',
+        }}>{idx + 1}/{total}</div>
+      </div>
+      <NavArrow dir="next" onClick={onNext} disabled={idx >= total - 1} />
+    </div>
+  )
+}
+
 // ── Main Explore view ──────────────────────────────────────────
 export function ExploreView() {
   const { eGate, eDim, eIdx, practiced, skipped,
@@ -1201,68 +1239,44 @@ export function ExploreView() {
 
   return (
     <div className="anim-fadein">
-      {/* ── Header (2 lines: nav+title+counter, then dots) ─── */}
-      <div style={{ marginBottom: 18 }}>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 10,
-          marginBottom: 10,
-        }}>
-          <ScrappyButton
-            onClick={() => { window.speechSynthesis?.cancel(); goMap() }}
-            color="#FFFFFF" size="sm">
-            ← MAP
-          </ScrappyButton>
-
-          <div style={{ flex: 1, minWidth: 0 }}>
+      {/* ── Header — back button + phase / dim label only. The
+              counter, progress dots and prev/next chevrons all live
+              in the DeckFooter below the card now, so the eye flow
+              goes: header → rating buttons → card → progress + nav. */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        marginBottom: 12,
+      }}>
+        <ScrappyButton
+          onClick={() => { window.speechSynthesis?.cancel(); goMap() }}
+          color="#FFFFFF" size="sm">
+          ← MAP
+        </ScrappyButton>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{
+            fontFamily: 'Barlow Condensed, Impact, sans-serif',
+            fontWeight: 900,
+            fontSize: 18, color: col, lineHeight: 1,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden', textOverflow: 'ellipsis',
+            letterSpacing: '.02em',
+          }}>
+            {GATE_LABEL[gate]}
+          </div>
+          {dim && (
             <div style={{
               fontFamily: 'Barlow Condensed, Impact, sans-serif',
               fontWeight: 900,
-              fontSize: 18, color: col, lineHeight: 1,
+              fontSize: 11, color: dim.color, marginTop: 3,
+              letterSpacing: '.05em', textTransform: 'uppercase',
+              lineHeight: 1,
               whiteSpace: 'nowrap',
               overflow: 'hidden', textOverflow: 'ellipsis',
-              letterSpacing: '.02em',
             }}>
-              {GATE_LABEL[gate]}
+              {dim.label}
             </div>
-            {dim && (
-              <div style={{
-                fontFamily: 'Barlow Condensed, Impact, sans-serif',
-                fontWeight: 900,
-                fontSize: 11, color: dim.color, marginTop: 3,
-                letterSpacing: '.05em', textTransform: 'uppercase',
-                lineHeight: 1,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden', textOverflow: 'ellipsis',
-              }}>
-                {dim.label}
-              </div>
-            )}
-          </div>
-
-          {/* Free back/forth navigation — chevrons either side of
-              the counter. Tapping these does NOT change the tool's
-              status; they just move the cursor so the user can
-              re-read a card or jump ahead without committing. */}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
-          }}>
-            <NavArrow dir="prev"
-              onClick={() => { setLastAction('prev'); prevCard() }}
-              disabled={eIdx === 0} />
-            <div style={{
-              fontFamily: 'Barlow Condensed, Impact, sans-serif',
-              fontWeight: 900, fontSize: 16, color: INK,
-              minWidth: 44, textAlign: 'center',
-            }}>
-              {eIdx + 1}/{tools.length}
-            </div>
-            <NavArrow dir="next"
-              onClick={() => { setLastAction('next'); nextCard() }}
-              disabled={eIdx >= tools.length - 1} />
-          </div>
+          )}
         </div>
-
-        <ProgressDots tools={tools} idx={eIdx} />
       </div>
 
       {/* ── Rating buttons ABOVE the card. They double as drop-zone
@@ -1336,6 +1350,12 @@ export function ExploreView() {
         }
       `}</style>
 
+      {/* Footer — chevrons + dots + counter, all on one row below
+          the card. Counter sits at the end of the dashes. */}
+      <DeckFooter
+        idx={eIdx} total={tools.length}
+        onPrev={() => { setLastAction('prev'); prevCard() }}
+        onNext={() => { setLastAction('next'); nextCard() }} />
     </div>
   )
 }

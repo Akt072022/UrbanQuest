@@ -7,7 +7,7 @@ import {
   scoreForGateDim,
 } from '../data/tools'
 import {
-  CardStack, ProgressDots, RatingRow, GhostCard,
+  CardStack, ProgressDots, RatingRow, GhostCard, DeckFooter,
   playTTS, stopTTS,
 } from './ExploreView'
 import { ScrappyButton, ScrappyChip } from '../components/ScrappyButton'
@@ -347,12 +347,12 @@ function ToolDeck({ tools, gate, evals, skipped, onPick, onSkip, onDone }) {
 
   return (
     <div style={{ padding: '14px 16px 24px' }}>
-      {/* Header — matches the personal Explore deck so the
-          workshop's card-sorting flow reads as the same interface
-          (back button, phase / dimension eyebrow, counter, dots). */}
+      {/* Header — back button + phase / dimension eyebrow only.
+          Counter, dots and prev/next live in the DeckFooter below
+          the card. Matches the personal Explore deck. */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10,
-        marginBottom: 10,
+        marginBottom: 12,
       }}>
         <ScrappyButton onClick={onDone} color="#FFFFFF" size="sm">
           ← DONE
@@ -374,12 +374,7 @@ function ToolDeck({ tools, gate, evals, skipped, onPick, onSkip, onDone }) {
             }}>{DIM_BY_ID[tool.d[0]].label}</div>
           )}
         </div>
-        <div style={{
-          fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 16,
-          color: INK, flexShrink: 0, minWidth: 44, textAlign: 'center',
-        }}>{idx + 1}/{tools.length}</div>
       </div>
-      <ProgressDots tools={tools} idx={idx} />
 
       {/* Rating buttons ABOVE the card — also act as drop-zone
           previews while the user is mid right-swipe. */}
@@ -405,11 +400,13 @@ function ToolDeck({ tools, gate, evals, skipped, onPick, onSkip, onDone }) {
           style={{
             position: 'relative',
             zIndex: 1,
-            animation: lastAction === 'skip'
-              ? 'card-from-right .35s cubic-bezier(.4,1.4,.5,1)'
-              : lastAction === 'practice'
-              ? 'card-from-left .35s cubic-bezier(.4,1.4,.5,1)'
-              : 'none',
+            // Direction follows the user's intent — same mapping as Explore.
+            animation:
+              lastAction === 'skip' || lastAction === 'next'
+                ? 'card-from-right .35s cubic-bezier(.4,1.4,.5,1)'
+                : lastAction === 'practice' || lastAction === 'prev'
+                ? 'card-from-left .35s cubic-bezier(.4,1.4,.5,1)'
+                : 'none',
           }}>
           <SwipeWrap
             enabled={face !== 'cover'}
@@ -430,6 +427,14 @@ function ToolDeck({ tools, gate, evals, skipped, onPick, onSkip, onDone }) {
           </SwipeWrap>
         </div>
       </div>
+
+      {/* Footer — chevrons + dots + counter on one row below the
+          card. Counter sits at the end of the dashes. Prev / next
+          move the local cursor without committing a rating. */}
+      <DeckFooter
+        idx={idx} total={tools.length}
+        onPrev={() => { setLastAction('prev'); setIdx(i => Math.max(0, i - 1)) }}
+        onNext={() => { setLastAction('next'); setIdx(i => Math.min(tools.length - 1, i + 1)) }} />
 
       <style>{`
         @keyframes card-from-left {
@@ -868,8 +873,8 @@ function FitDeck({ tools, gate, project, fits, evals, onPick, onDone }) {
           eyebrow names the workshop mode + parent phase, the title
           is the project name. */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 10,
-        marginBottom: 10,
+        display: 'flex', alignItems: 'flex-start', gap: 10,
+        marginBottom: 12,
       }}>
         <ScrappyButton onClick={onDone} color="#FFFFFF" size="sm">
           ← DONE
@@ -884,43 +889,36 @@ function FitDeck({ tools, gate, project, fits, evals, onPick, onDone }) {
           <div style={{
             fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 18,
             color: INK, letterSpacing: '.02em',
-            lineHeight: 1, marginTop: 3,
+            lineHeight: 1.05, marginTop: 3,
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>{project?.name || 'Project'}</div>
-        </div>
-        <div style={{
-          fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 16,
-          color: INK, flexShrink: 0, minWidth: 44, textAlign: 'center',
-        }}>{idx + 1}/{tools.length}</div>
-      </div>
-      <ProgressDots tools={tools} idx={idx} />
-
-      {/* Project description — collapsed by default behind a single
-          text-only toggle. Most of the time the participant knows
-          what the project is and just wants to rate; the description
-          is one tap away when it's needed. */}
-      {project?.desc && (
-        <div style={{ marginTop: 8 }}>
-          <button onClick={() => setDescExpanded(e => !e)}
-            style={{
-              padding: '4px 0', background: 'transparent',
-              border: 'none', cursor: 'pointer',
-              fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 10,
-              color: GATE_COL[gate] || INK,
-              letterSpacing: '.06em', textTransform: 'uppercase',
-            }}>
-            {descExpanded ? '▼ Hide project description' : '▶ Read project description'}
-          </button>
-          {descExpanded && (
-            <div style={{
-              marginTop: 4,
-              padding: '8px 10px',
-              background: PAGE,
-              border: `1.5px dashed ${INK}33`, borderRadius: 10,
-              fontSize: 11, color: '#3F3A36', lineHeight: 1.4,
-            }}>{project.desc}</div>
+          {/* Project description toggle sits directly below the
+              title — collapsed by default; one tap to read. */}
+          {project?.desc && (
+            <button onClick={() => setDescExpanded(e => !e)}
+              style={{
+                marginTop: 4, padding: 0,
+                background: 'transparent', border: 'none', cursor: 'pointer',
+                fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 10,
+                color: GATE_COL[gate] || INK,
+                letterSpacing: '.06em', textTransform: 'uppercase',
+                display: 'block', textAlign: 'left',
+              }}>
+              {descExpanded ? '▼ Hide project description' : '▶ Read project description'}
+            </button>
           )}
         </div>
+      </div>
+
+      {/* Expanded description strip — full width below the header. */}
+      {project?.desc && descExpanded && (
+        <div style={{
+          marginBottom: 12,
+          padding: '8px 10px',
+          background: PAGE,
+          border: `1.5px dashed ${INK}33`, borderRadius: 10,
+          fontSize: 11, color: '#3F3A36', lineHeight: 1.4,
+        }}>{project.desc}</div>
       )}
 
       {/* Fit-rating row ABOVE the card — also acts as drop-zone
@@ -947,8 +945,12 @@ function FitDeck({ tools, gate, project, fits, evals, onPick, onDone }) {
         <div key={idx} style={{
           position: 'relative',
           zIndex: 1,
-          animation: lastAction === 'practice'
-            ? 'card-from-left .35s cubic-bezier(.4,1.4,.5,1)' : 'none',
+          animation:
+            lastAction === 'next'
+              ? 'card-from-right .35s cubic-bezier(.4,1.4,.5,1)'
+              : (lastAction === 'practice' || lastAction === 'prev')
+              ? 'card-from-left .35s cubic-bezier(.4,1.4,.5,1)'
+              : 'none',
         }}>
           <SwipeWrap
             enabled={face !== 'cover'}
@@ -965,6 +967,13 @@ function FitDeck({ tools, gate, project, fits, evals, onPick, onDone }) {
           </SwipeWrap>
         </div>
       </div>
+
+      {/* Footer — chevrons + dots + counter on one row below the
+          card. Counter sits at the end of the dashes. */}
+      <DeckFooter
+        idx={idx} total={tools.length}
+        onPrev={() => { setLastAction('prev'); setIdx(i => Math.max(0, i - 1)) }}
+        onNext={() => { setLastAction('next'); setIdx(i => Math.min(tools.length - 1, i + 1)) }} />
 
       {/* Capability modal — opens when fit is picked but capability
           isn't already known from a prior triage. Buttons mirror the
