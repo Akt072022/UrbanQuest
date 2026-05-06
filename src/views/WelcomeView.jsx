@@ -124,7 +124,7 @@ export function WelcomeView() {
     <div className="anim-fadein" style={{
       position: 'relative',
       minHeight: '100vh',
-      padding: '40px 22px 32px',
+      padding: '12px 22px 32px',
       overflow: 'hidden',
     }}>
       <div style={{
@@ -132,25 +132,33 @@ export function WelcomeView() {
         maxWidth: 460, margin: '0 auto',
       }}>
         {/* ── Hero illustration + wordmark + tagline ───────────────────── */}
-        <div style={{ textAlign: 'center', marginTop: 24, marginBottom: 18 }}>
-          {/* Hero cityscape illustration. mix-blend-mode: multiply
-              fuses the PNG's white background into the page colour
-              so it reads as fused with the canvas, not a plopped-in
-              tile. clipPath: inset round caps the bottom so the
-              transparent strip below the artwork doesn't render. */}
-          <img
-            src={`${import.meta.env.BASE_URL}illustrations/cityscape.png`}
-            alt=""
-            draggable={false}
-            onError={(e) => { e.currentTarget.style.display = 'none' }}
-            style={{
-              width: 'min(50vw, 200px)',
-              height: 'auto',
-              display: 'block',
-              margin: '0 auto -4px',
-              mixBlendMode: 'multiply',
-              userSelect: 'none', pointerEvents: 'none',
-            }} />
+        <div style={{ textAlign: 'center', marginTop: 4, marginBottom: 10 }}>
+          {/* Hero cityscape illustration. Wrapped in an aspect-ratio
+              box with overflow hidden so we can crop the wide top
+              and bottom whitespace of the source PNG without
+              touching the asset. mix-blend-mode: multiply fuses the
+              remaining white into the cream page colour so it reads
+              as part of the canvas, not a plopped-in tile. */}
+          <div style={{
+            width: 'min(48vw, 190px)',
+            aspectRatio: '5 / 3',
+            margin: '0 auto -4px',
+            overflow: 'hidden',
+          }}>
+            <img
+              src={`${import.meta.env.BASE_URL}illustrations/cityscape.png`}
+              alt=""
+              draggable={false}
+              onError={(e) => { e.currentTarget.style.display = 'none' }}
+              style={{
+                width: '100%', height: '100%',
+                objectFit: 'cover',
+                objectPosition: '50% 58%',
+                display: 'block',
+                mixBlendMode: 'multiply',
+                userSelect: 'none', pointerEvents: 'none',
+              }} />
+          </div>
           <div style={{
             fontFamily: 'Barlow Condensed, Impact, sans-serif',
             fontWeight: 900,
@@ -163,8 +171,8 @@ export function WelcomeView() {
           <div style={{
             fontFamily: '-apple-system, Helvetica Neue, sans-serif',
             fontSize: 14, color: '#3F3A36',
-            marginTop: 14, lineHeight: 1.45,
-            maxWidth: 360, margin: '14px auto 0',
+            marginTop: 8, lineHeight: 1.45,
+            maxWidth: 360, margin: '8px auto 0',
           }}>
             What's your urban project?
             <br/>We'll pick the right methods to use.
