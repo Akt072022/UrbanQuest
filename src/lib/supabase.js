@@ -17,6 +17,17 @@ export const supabase = hasSupabase
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
+        // No-op lock. supabase-js defaults to navigator.locks to
+        // serialise token refreshes across tabs, which is sound when
+        // a user has the app open in multiple windows. In a single-
+        // tab SPA the lock just produces noisy
+        //   "Lock ... was released because another request stole it"
+        // warnings whenever two near-simultaneous auth reads collide
+        // (createTeam pulling the session while the auth listener is
+        // still processing the magic-link callback, etc.). Replacing
+        // with a no-op lets calls run unsynchronised; the worst case
+        // is two parallel token refreshes, which is harmless.
+        lock: (_name, _acquireTimeout, fn) => fn(),
       },
     })
   : null
