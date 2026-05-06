@@ -3,6 +3,7 @@
 // the app can degrade gracefully when env vars aren't set (local-only
 // mode, no auth, evaluations stay in localStorage).
 import { createClient } from '@supabase/supabase-js'
+import { TOOLS } from '../data/tools'
 
 const URL  = import.meta.env.VITE_SUPABASE_URL
 const KEY  = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -308,12 +309,28 @@ function dehydrateSuggestions(arr) {
   })).filter(s => s.tool_name)
 }
 
+// Inverse of dehydrate: { tool_name, why } -> { tool: <Tool>, why }.
+// Pulls the full method object out of the local TOOLS catalogue so
+// the dashboard's ProjectView (which reads `s.tool.n`, `s.tool.g`,
+// etc.) doesn't crash on rows that round-tripped through Supabase.
+// Names that don't match any catalogue entry are silently dropped.
+function hydrateSuggestions(arr) {
+  return (arr || []).map(s => {
+    if (s.tool && s.tool.n) return s   // already hydrated
+    const tool = TOOLS.find(t => t.n === s.tool_name)
+    if (!tool) return null
+    return { tool, why: s.why || '' }
+  }).filter(Boolean)
+}
+
 function rowToProject(row) {
   return {
     id:          row.id,
     name:        row.name,
     desc:        row.description || '',
-    suggestions: Array.isArray(row.suggestions) ? row.suggestions : [],
+    suggestions: hydrateSuggestions(
+      Array.isArray(row.suggestions) ? row.suggestions : [],
+    ),
     createdAt:   row.created_at,
     updatedAt:   row.updated_at,
   }

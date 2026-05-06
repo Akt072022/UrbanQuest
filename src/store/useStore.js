@@ -136,6 +136,7 @@ export const useStore = create(
       goFacilitator: () => set({ view: 'facilitator' }),
       goProfile:     () => set({ view: 'profile' }),
       goProjectFit:  () => set({ view: 'projectFit' }),
+      goProjectMethodfit: () => set({ view: 'projectMethodfit' }),
       goWelcome:     () => set({ view: 'welcome' }),
       goLogin:       () => set({ view: 'login' }),
 
@@ -193,6 +194,27 @@ export const useStore = create(
           projectContext: cur ? { name: cur.name, desc: cur.desc } : state.projectContext,
           aiSuggestions:  cur?.suggestions || state.aiSuggestions,
         }
+      }),
+
+      // Per-tool methodfit rating for the current project. Lets the
+      // user rate priority + capability for THIS project (the same
+      // shape the workshop methodfit collects, but solo). Stored
+      // under project.methodfit so each project has its own matrix.
+      // payload is { fit: 'essential'|'helpful'|'optional'|'skip',
+      //              capability: 'regular'|'occasional'|'theory'|null }.
+      recordProjectMethodfit: (toolName, payload) => set(state => {
+        if (!state.currentProjectId || !toolName) return {}
+        const projects = (state.projects || []).map(p => {
+          if (p.id !== state.currentProjectId) return p
+          const methodfit = { ...(p.methodfit || {}) }
+          methodfit[toolName] = {
+            fit:        payload?.fit || null,
+            capability: payload?.capability || null,
+            updatedAt:  new Date().toISOString(),
+          }
+          return { ...p, methodfit, updatedAt: new Date().toISOString() }
+        })
+        return { projects }
       }),
 
       // Remove a project. If it was the active one, fall back to

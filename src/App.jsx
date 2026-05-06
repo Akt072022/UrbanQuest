@@ -9,6 +9,7 @@ import { FacilitatorView } from './views/FacilitatorView'
 import { ParticipantView } from './views/ParticipantView'
 import { ProfileView } from './views/ProfileView'
 import { ProjectFitView } from './views/ProjectFitView'
+import { ProjectMethodfitView } from './views/ProjectMethodfitView'
 import { LoginView } from './views/LoginView'
 import { BadgeToaster } from './components/BadgeToaster'
 
@@ -53,6 +54,7 @@ function AppInner() {
     : view === 'explore'                                          ? 560
     : view === 'profile'                                          ? 720
     : view === 'projectFit'                                       ? 560
+    : view === 'projectMethodfit'                                 ? 560
     : view === 'map'                                              ? 1280
     : 480
 
@@ -78,7 +80,8 @@ function AppInner() {
         }}>
           {view === 'welcome'     && <WelcomeView />}
           {view === 'login'       && <LoginView />}
-          {view === 'projectFit'  && <ProjectFitView />}
+          {view === 'projectFit'      && <ProjectFitView />}
+          {view === 'projectMethodfit' && <ProjectMethodfitView />}
           {view === 'map'         && <MapView />}
           {view === 'explore'     && <ExploreView />}
           {view === 'dashboard'   && <DashboardView />}

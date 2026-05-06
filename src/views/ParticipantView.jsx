@@ -774,7 +774,7 @@ function FitRatingRow({ show, currentLevel, onPick, previewLevel = null }) {
   )
 }
 
-function FitDeck({ tools, gate, project, fits, evals, onPick, onDone }) {
+export function FitDeck({ tools, gate, project, fits, evals, onPick, onDone }) {
   const startIdx = tools.findIndex(t => !fits[t.n])
   const [idx, setIdx]               = useState(Math.max(0, startIdx))
   const [deepTool, setDeepTool]     = useState(null)

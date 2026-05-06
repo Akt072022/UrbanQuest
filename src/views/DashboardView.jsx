@@ -1374,9 +1374,11 @@ export function DashboardView() {
           project={projectContext}
           suggestions={aiSuggestions}
           practiced={practiced}
+          methodfit={(projects.find(p => p.id === currentProjectId) || {}).methodfit || {}}
           goExploreDim={goExploreDim}
           goFacilitator={goFacilitator}
-          goProjectFit={goProjectFit} />
+          goProjectFit={goProjectFit}
+          goProjectMethodfit={() => useStore.getState().goProjectMethodfit()} />
       ) : tab === 'overall' ? (
         <OverallView practiced={practiced} scores={scores} gates={gates}
           recommendations={recommendations}
@@ -1414,7 +1416,8 @@ const MASTERY_TONE = {
 
 function ProjectView({
   project, suggestions, practiced,
-  goExploreDim, goFacilitator, goProjectFit,
+  methodfit = {},
+  goExploreDim, goFacilitator, goProjectFit, goProjectMethodfit,
 }) {
   // Per-tool mastery
   const rows = (suggestions || []).map(s => {
@@ -1471,18 +1474,55 @@ function ProjectView({
             marginTop: 8,
           }}>{project.desc}</div>
         )}
-        <button onClick={goProjectFit}
-          style={{
-            marginTop: 10, padding: '6px 12px',
-            background: 'transparent',
-            border: `1.5px dashed ${INK}55`, borderRadius: 999,
-            cursor: 'pointer',
-            fontFamily: 'Barlow Condensed, Impact, sans-serif',
-            fontWeight: 900, fontSize: 11,
-            color: INK, letterSpacing: '.06em',
-            textTransform: 'uppercase',
-          }}>↗ Open shortlist</button>
+        <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+          <button onClick={goProjectFit}
+            style={{
+              padding: '6px 12px',
+              background: 'transparent',
+              border: `1.5px dashed ${INK}55`, borderRadius: 999,
+              cursor: 'pointer',
+              fontFamily: 'Barlow Condensed, Impact, sans-serif',
+              fontWeight: 900, fontSize: 11,
+              color: INK, letterSpacing: '.06em',
+              textTransform: 'uppercase',
+            }}>↗ Open shortlist</button>
+          {goProjectMethodfit && (
+            <button onClick={goProjectMethodfit}
+              style={{
+                padding: '6px 12px',
+                background: '#FFC83D',
+                border: `2px solid ${INK}`, borderRadius: 999,
+                cursor: 'pointer',
+                fontFamily: 'Barlow Condensed, Impact, sans-serif',
+                fontWeight: 900, fontSize: 11,
+                color: INK, letterSpacing: '.06em',
+                textTransform: 'uppercase',
+                boxShadow: '2px 2px 0 ' + INK,
+              }}>
+              {Object.keys(methodfit).length > 0
+                ? '↻ Re-rate methodfit'
+                : '✦ Rate methodfit'}
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Methodfit matrix — only when the user has rated at least
+          one method on this project. Synthesises a single-participant
+          response set from project.methodfit so the same component
+          we use for live workshops also drives the solo view. */}
+      {Object.keys(methodfit).length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <MethodfitMatrix
+            responses={Object.entries(methodfit).map(([tool, v]) => ({
+              tool, fit: v.fit, capability: v.capability,
+              participantId: 'self',
+            }))}
+            toolList={(suggestions || []).map(s => s.tool?.n).filter(Boolean)}
+            participantCount={1}
+            doneCount={1} />
+        </div>
+      )}
 
       {/* Mastery breakdown — how much of the recommended toolkit the
           user already runs. */}

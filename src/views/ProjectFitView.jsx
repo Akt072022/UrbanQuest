@@ -26,7 +26,7 @@ export function ProjectFitView() {
     projectContext, aiSuggestions,
     currentProjectId, updateCurrentProject,
     userEmail,
-    goWelcome, goMap, goFacilitator, goDashboard, goExplorePool,
+    goWelcome, goMap, goFacilitator, goDashboard, goProjectMethodfit,
     setProjectContext, setAiSuggestions,
   } = useStore(useShallow(s => ({
     projectContext: s.projectContext,
@@ -38,7 +38,7 @@ export function ProjectFitView() {
     goMap:          s.goMap,
     goFacilitator:  s.goFacilitator,
     goDashboard:    s.goDashboard,
-    goExplorePool:  s.goExplorePool,
+    goProjectMethodfit: s.goProjectMethodfit,
     setProjectContext: s.setProjectContext,
     setAiSuggestions:  s.setAiSuggestions,
   })))
@@ -273,10 +273,7 @@ export function ProjectFitView() {
 
       {/* ── Primary CTAs ──────────────────────────────── */}
       <ScrappyButton
-        onClick={() => goExplorePool(
-          aiSuggestions.map(s => s.tool.n),
-          { label: projectContext.name, returnTo: 'projectFit' },
-        )}
+        onClick={goProjectMethodfit}
         color={YELLOW} size="lg" full>
         ▼ RATE THESE METHODS MYSELF →
       </ScrappyButton>
@@ -284,8 +281,9 @@ export function ProjectFitView() {
         fontSize: 11, color: '#5A5550',
         textAlign: 'center', marginTop: 6, marginBottom: 12, lineHeight: 1.5,
       }}>
-        Walks you through this shortlist as a swipe deck. Your
-        ratings flow into the project's capability map.
+        Same swipe deck as the workshop, but solo. Rate priority
+        for this project (essential / helpful / optional / skip)
+        and capability if it isn't already known.
       </div>
 
       <ScrappyButton
