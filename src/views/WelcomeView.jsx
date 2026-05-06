@@ -139,7 +139,7 @@ export function WelcomeView() {
               tile. clipPath: inset round caps the bottom so the
               transparent strip below the artwork doesn't render. */}
           <img
-            src="/illustrations/cityscape.png"
+            src={`${import.meta.env.BASE_URL}illustrations/cityscape.png`}
             alt=""
             draggable={false}
             onError={(e) => { e.currentTarget.style.display = 'none' }}
