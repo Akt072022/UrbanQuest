@@ -98,32 +98,45 @@ export async function listMyTeams() {
     .map(r => ({ ...r.teams, role: r.role, joined_at: r.joined_at }))
 }
 
-// Force-refresh the access token before write operations. RLS policies
-// run against `auth.uid()`, which is read from the JWT — if the token
-// expired between page load and the click, every INSERT silently fails
-// with a confusing "permission denied" / 0-row error. A pre-flight
-// refresh sidesteps that whole class of bugs at the cost of one extra
-// round-trip on the user's first write of a session.
-async function ensureFreshSession() {
-  if (!supabase) return null
-  try {
-    const { data, error } = await supabase.auth.refreshSession()
-    if (error) {
-      // refreshSession can fail benignly when there is no session at
-      // all (anonymous user) — that's not our problem to surface here.
-      console.warn('[auth] refreshSession warning:', error.message)
-    }
-    return data?.session || null
-  } catch (err) {
-    console.warn('[auth] refreshSession threw:', err?.message || err)
-    return null
-  }
+// Wrap a Supabase op so a single hung step (paused project waking up,
+// flaky network) can't blow the whole budget. Each step gets its own
+// short timeout — when one trips, we throw an error that *names the
+// step*, so the surfaced message tells the user which call stalled
+// instead of an opaque "timed out".
+function withStepTimeout(promise, ms, stepLabel) {
+  let timer
+  const timeoutP = new Promise((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`${stepLabel} stalled after ${Math.round(ms/1000)}s`)),
+      ms,
+    )
+  })
+  return Promise.race([promise, timeoutP]).finally(() => clearTimeout(timer))
 }
 
 export async function createTeam({ name, city, proj }) {
   if (!supabase) throw new Error('Auth is not configured.')
-  await ensureFreshSession()
-  const userRes = await supabase.auth.getUser()
+
+  // Step-by-step timing log. If something hangs the user can copy
+  // these out of the console and we know exactly which call stalled.
+  const t0 = performance.now()
+  const tag = (label) =>
+    console.log(`[teams.create] ${label} +${Math.round(performance.now() - t0)}ms`)
+  tag('start')
+
+  // Best-effort token refresh. We give it 4s and swallow failures —
+  // an expired token will surface a clearer error from the INSERT
+  // itself, and a missing-session refresh just throws "no session".
+  // Either way, we shouldn't block the create flow waiting on it.
+  try {
+    await withStepTimeout(supabase.auth.refreshSession(), 4000, 'refreshSession')
+    tag('refreshSession done')
+  } catch (err) {
+    console.warn('[teams.create] refreshSession skipped:', err?.message || err)
+  }
+
+  const userRes = await withStepTimeout(supabase.auth.getUser(), 6000, 'getUser')
+  tag('getUser done')
   const user = userRes.data.user
   if (!user) throw new Error('Sign in first.')
 
@@ -139,44 +152,47 @@ export async function createTeam({ name, city, proj }) {
   const teamId      = crypto.randomUUID()
   const invite_code = makeInviteCode()
 
-  const { error: e1 } = await supabase
-    .from('teams')
-    .insert({
+  // First write gets a longer budget — Supabase free-tier projects
+  // pause after a week of inactivity and the first request takes
+  // ~5-15s to spin them back up. Subsequent calls are fast.
+  const { error: e1 } = await withStepTimeout(
+    supabase.from('teams').insert({
       id: teamId,
       name: name?.trim() || 'My team',
       city: city?.trim() || null,
       proj: proj || null,
       invite_code,
       created_by: user.id,
-    })
+    }),
+    25000, 'insert teams',
+  )
+  tag('insert teams done')
   if (e1) {
     const detail = `[${e1.code || '?'}] ${e1.message}${e1.details ? ' — ' + e1.details : ''}`
-    console.error('[teams] insert team failed:', e1)
+    console.error('[teams.create] insert team failed:', e1)
     throw new Error('Could not create team: ' + detail)
   }
 
-  const { error: e2 } = await supabase
-    .from('team_members')
-    .insert({ team_id: teamId, user_id: user.id, role: 'facilitator' })
+  const { error: e2 } = await withStepTimeout(
+    supabase.from('team_members')
+      .insert({ team_id: teamId, user_id: user.id, role: 'facilitator' }),
+    10000, 'insert team_members',
+  )
+  tag('insert team_members done')
   if (e2) {
     const detail = `[${e2.code || '?'}] ${e2.message}${e2.details ? ' — ' + e2.details : ''}`
-    console.error('[teams] insert membership failed:', e2)
-    // Best-effort orphan cleanup. The teams table has no DELETE
-    // policy by default, so this may silently no-op — harmless.
+    console.error('[teams.create] insert membership failed:', e2)
     await supabase.from('teams').delete().eq('id', teamId)
     throw new Error('Could not add you to the team: ' + detail)
   }
 
-  const { data: team, error: e3 } = await supabase
-    .from('teams')
-    .select('*')
-    .eq('id', teamId)
-    .single()
+  const { data: team, error: e3 } = await withStepTimeout(
+    supabase.from('teams').select('*').eq('id', teamId).single(),
+    10000, 'select teams',
+  )
+  tag('select teams done')
   if (e3) {
-    console.error('[teams] post-insert select failed:', e3)
-    // Fall back to a synthesised row so the caller still has
-    // something to display — the team exists in the DB even if RLS
-    // is somehow blocking the read here.
+    console.error('[teams.create] post-insert select failed:', e3)
     return { id: teamId, name, city: city || null, proj: proj || null, invite_code, created_by: user.id }
   }
   return team
@@ -186,28 +202,37 @@ export async function joinTeamByCode(rawCode) {
   if (!supabase) throw new Error('Auth is not configured.')
   const code = (rawCode || '').trim().toUpperCase()
   if (!code) throw new Error('Enter an invite code.')
-  await ensureFreshSession()
-  const userRes = await supabase.auth.getUser()
+
+  try {
+    await withStepTimeout(supabase.auth.refreshSession(), 4000, 'refreshSession')
+  } catch (err) {
+    console.warn('[teams.join] refreshSession skipped:', err?.message || err)
+  }
+
+  const userRes = await withStepTimeout(supabase.auth.getUser(), 6000, 'getUser')
   const user = userRes.data.user
   if (!user) throw new Error('Sign in first.')
 
   // The RPC bypasses RLS inside its body and returns at most one row
   // matching the exact invite code, so we don't leak the team
   // directory.
-  const { data, error } = await supabase
-    .rpc('lookup_team_by_invite', { p_code: code })
+  const { data, error } = await withStepTimeout(
+    supabase.rpc('lookup_team_by_invite', { p_code: code }),
+    15000, 'lookup_team_by_invite',
+  )
   if (error) throw new Error(error.message)
   const team = data?.[0]
   if (!team) throw new Error('Invite code not found.')
 
   // Idempotent — primary key (team_id, user_id) makes a duplicate
   // join an explicit conflict, which we treat as success.
-  const { error: e2 } = await supabase
-    .from('team_members')
-    .upsert(
+  const { error: e2 } = await withStepTimeout(
+    supabase.from('team_members').upsert(
       { team_id: team.id, user_id: user.id, role: 'participant' },
       { onConflict: 'team_id,user_id', ignoreDuplicates: true },
-    )
+    ),
+    10000, 'insert team_members',
+  )
   if (e2 && !/duplicate|conflict/i.test(e2.message)) throw new Error(e2.message)
   return team
 }
@@ -233,6 +258,21 @@ export async function fetchTeamMembers(teamId) {
     .eq('team_id', teamId)
   if (error) {
     console.warn('[teams] fetchTeamMembers failed:', error.message)
+    return []
+  }
+  return data || []
+}
+
+// Roster with emails — backed by the SECURITY DEFINER RPC
+// `list_team_members` because auth.users isn't directly readable
+// from the client. The RPC enforces team-membership before
+// returning any rows, so the email surface is strictly to teammates.
+export async function fetchTeamRoster(teamId) {
+  if (!supabase) return []
+  const { data, error } = await supabase
+    .rpc('list_team_members', { p_team_id: teamId })
+  if (error) {
+    console.warn('[teams] list_team_members failed:', error.message)
     return []
   }
   return data || []

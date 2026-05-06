@@ -6,7 +6,7 @@ import { computeBadges } from '../data/badges'
 import { ScrappyButton } from '../components/ScrappyButton'
 import {
   hasSupabase, sendMagicLink, signOut,
-  createTeam, joinTeamByCode, leaveTeam, fetchTeamMembers,
+  createTeam, joinTeamByCode, leaveTeam, fetchTeamMembers, fetchTeamRoster,
 } from '../lib/supabase'
 import { refreshTeams } from '../lib/syncSupabase'
 
@@ -90,6 +90,10 @@ export function ProfileView() {
   // call down before it touches Supabase.
   const teamBusyRef = useRef(false)
   const [memberCounts, setMemberCounts] = useState({})  // { teamId: n }
+  // Roster with emails for the *active* team only — fetched lazily
+  // via the list_team_members RPC. Other teams just get a count.
+  const [activeRoster, setActiveRoster] = useState(null)
+  const [rosterLoading, setRosterLoading] = useState(false)
   // After a successful create, show a "share invite code" panel
   // instead of dropping the user back into the team list with no
   // feedback. They likely want to invite teammates next.
@@ -109,16 +113,38 @@ export function ProfileView() {
     return () => { cancelled = true }
   }, [teams, userEmail])
 
-  // Wrap a Supabase op in a 20 s timeout so we never sit on
-  // "CREATING…" / "JOINING…" forever when the network or RLS gets
-  // weird. Logs the original error to the console with full detail
-  // so the user can copy-paste it back to us if needed.
-  const withTimeout = async (promise, ms = 20000, label = 'op') => {
+  // Pull the full roster (with emails) for whichever team the user
+  // currently has active. Refreshes whenever the active team or the
+  // memberships list changes — so a teammate joining via invite code
+  // shows up next time the Profile screen is opened.
+  useEffect(() => {
+    let cancelled = false
+    if (!userEmail || !currentTeamId) { setActiveRoster(null); return }
+    setRosterLoading(true)
+    fetchTeamRoster(currentTeamId).then(rows => {
+      if (!cancelled) {
+        setActiveRoster(rows)
+        setRosterLoading(false)
+      }
+    })
+    return () => { cancelled = true }
+  }, [currentTeamId, userEmail, teams.length, memberCounts])
+
+  // Outer cap so we never sit on "CREATING…" / "JOINING…" forever.
+  // 60s is generous on purpose: Supabase free-tier projects pause
+  // after a week of inactivity and the first request takes ~5-15s
+  // to wake them up, so the create flow can legitimately exceed the
+  // old 20s budget on a cold start. The library function applies
+  // its own per-step timeouts inside (4-25s each) and logs timings
+  // to the console — those will surface a more specific error
+  // first when something genuinely hangs.
+  const withTimeout = async (promise, ms = 60000, label = 'op') => {
     let timer
     const timeoutP = new Promise((_, reject) => {
       timer = setTimeout(() => {
-        reject(new Error(`${label} timed out after ${ms / 1000}s — try again. ` +
-          `If it keeps timing out, check your Supabase project (RLS, network).`))
+        reject(new Error(`${label} timed out after ${ms / 1000}s. ` +
+          `Open the browser console — the per-step log will show ` +
+          `which call stalled (refresh / insert / select).`))
       }, ms)
     })
     try {
@@ -138,9 +164,9 @@ export function ProfileView() {
     try {
       const created = await withTimeout(
         createTeam({ name: teamName, city: teamCity, proj: teamProj }),
-        20000, 'Create team',
+        60000, 'Create team',
       )
-      await withTimeout(refreshTeams(), 10000, 'Refresh teams')
+      await withTimeout(refreshTeams(), 15000, 'Refresh teams')
       setCurrentTeamId(created.id)
       // Land on a success panel showing the invite code so the user
       // can immediately share it with teammates.
@@ -165,9 +191,9 @@ export function ProfileView() {
     setTeamBusy(true); setTeamErr('')
     try {
       const joined = await withTimeout(
-        joinTeamByCode(joinCode), 20000, 'Join team',
+        joinTeamByCode(joinCode), 60000, 'Join team',
       )
-      await withTimeout(refreshTeams(), 10000, 'Refresh teams')
+      await withTimeout(refreshTeams(), 15000, 'Refresh teams')
       setCurrentTeamId(joined.id)
       setTeamFormOpen(null)
       setJoinCode('')
@@ -549,6 +575,102 @@ export function ProfileView() {
                   </div>
                 )
               })}
+            </div>
+          )}
+
+          {/* Member roster — only for the *active* team. Surfaces the
+              email of each teammate so the user can confirm "yes, my
+              colleague joined" at a glance. The list is fetched via
+              the list_team_members RPC; if the call fails (RLS, RPC
+              missing on an old DB) we silently fall back to nothing
+              rather than blocking the rest of the panel. */}
+          {currentTeamId && activeRoster && activeRoster.length > 0 && (
+            <div style={{
+              padding: '12px 12px 10px',
+              background: '#FFFDF8',
+              border: `1.5px solid ${INK}33`,
+              borderRadius: 12,
+              marginBottom: 10,
+            }}>
+              <div style={{
+                fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
+                color: '#5A5550', letterSpacing: '.06em',
+                textTransform: 'uppercase', marginBottom: 8,
+              }}>
+                Members · {activeRoster.length}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {activeRoster.map(m => {
+                  const isSelf = m.email && userEmail && m.email.toLowerCase() === userEmail.toLowerCase()
+                  return (
+                    <div key={m.user_id} style={{
+                      display: 'flex', alignItems: 'center',
+                      justifyContent: 'space-between', gap: 8,
+                      padding: '6px 8px',
+                      background: '#FFFFFF',
+                      border: `1.5px solid ${INK}22`, borderRadius: 8,
+                    }}>
+                      <div style={{
+                        fontSize: 12, color: INK, fontWeight: 600,
+                        whiteSpace: 'nowrap', overflow: 'hidden',
+                        textOverflow: 'ellipsis', flex: 1, minWidth: 0,
+                      }}>
+                        {m.email || m.user_id.slice(0, 8) + '…'}
+                        {isSelf && (
+                          <span style={{
+                            marginLeft: 6,
+                            fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 9,
+                            color: '#5A5550', letterSpacing: '.06em',
+                            textTransform: 'uppercase',
+                          }}>(you)</span>
+                        )}
+                      </div>
+                      {m.role === 'facilitator' && (
+                        <span style={{
+                          fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 8,
+                          padding: '2px 6px', background: YELLOW,
+                          border: `1.5px solid ${INK}`, borderRadius: 4,
+                          color: INK, letterSpacing: '.06em',
+                          flexShrink: 0,
+                        }}>FACILITATOR</span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+              {/* Hint: how to bring someone in */}
+              {(() => {
+                const activeTeam = teams.find(t => t.id === currentTeamId)
+                if (!activeTeam?.invite_code) return null
+                return (
+                  <div style={{
+                    marginTop: 10, fontSize: 11, color: '#5A5550', lineHeight: 1.45,
+                  }}>
+                    Invite a teammate by sharing the code{' '}
+                    <button type="button"
+                      onClick={() => copyInviteCode(activeTeam.invite_code)}
+                      style={{
+                        background: 'transparent', border: 'none', padding: 0,
+                        fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 11,
+                        color: INK, letterSpacing: '.1em',
+                        textDecoration: 'underline', cursor: 'pointer',
+                      }}>
+                      {activeTeam.invite_code}
+                    </button>{' '}— they paste it in <i>Profile → Join by code</i>.
+                  </div>
+                )
+              })()}
+            </div>
+          )}
+          {currentTeamId && rosterLoading && !activeRoster && (
+            <div style={{
+              padding: '10px 12px',
+              fontSize: 11, color: '#9C958A',
+              fontFamily: FONT_HEAD, fontWeight: 900,
+              letterSpacing: '.06em', textTransform: 'uppercase',
+              textAlign: 'center', marginBottom: 10,
+            }}>
+              Loading members…
             </div>
           )}
 

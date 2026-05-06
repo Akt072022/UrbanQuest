@@ -221,6 +221,49 @@ $$;
 revoke all on function public.lookup_team_by_invite(text) from public;
 grant execute on function public.lookup_team_by_invite(text) to authenticated;
 
+-- ── Team roster (with emails) ─────────────────────────────────
+-- The Profile screen needs to display "who's on this team", but the
+-- only way to get a member's email address is via auth.users — which
+-- isn't readable from the client (and shouldn't be: that table is
+-- owned by Supabase Auth and contains hashed credentials).
+--
+-- We expose a narrow SECURITY DEFINER function that joins
+-- team_members → auth.users for a specific team, gated to callers
+-- who are themselves a member of that team. This bypasses the
+-- profiles-self-rw / auth.users-private restrictions in a controlled
+-- way, surfacing only (user_id, email, role, joined_at).
+create or replace function public.list_team_members(p_team_id uuid)
+returns table (
+  user_id   uuid,
+  email     text,
+  role      text,
+  joined_at timestamptz
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  -- Caller must already be a member of the team they're asking about.
+  if not exists (
+    select 1 from public.team_members tm
+     where tm.team_id = p_team_id and tm.user_id = auth.uid()
+  ) then
+    return;
+  end if;
+
+  return query
+    select tm.user_id, u.email::text, tm.role, tm.joined_at
+      from public.team_members tm
+      join auth.users u on u.id = tm.user_id
+     where tm.team_id = p_team_id
+     order by tm.joined_at asc;
+end;
+$$;
+
+revoke all on function public.list_team_members(uuid) from public;
+grant execute on function public.list_team_members(uuid) to authenticated;
+
 -- ── Workshop sessions (Phase 2) ────────────────────────────────
 -- Persists the live triage / live-Q / project-method-fit results
 -- so the team dashboard can show history + evolution over time.
