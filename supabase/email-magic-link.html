@@ -1,0 +1,113 @@
+<!--
+  Magic-link email template for ReCity / UrbanQuest.
+
+  Paste this into:
+    Supabase Dashboard → Authentication → Email Templates
+                       → "Magic Link" tab → Source / HTML view
+
+  Variables (Supabase auth interpolates these at send-time):
+    {{ .ConfirmationURL }}  the actual sign-in link
+    {{ .Email }}            the recipient's address (optional)
+    {{ .SiteURL }}           the project's site URL
+
+  Design notes:
+    • Table-based layout because Gmail / Outlook still strip
+      modern CSS. Inline styles only.
+    • Cityscape image is referenced via an absolute URL on the
+      GitHub Pages deploy. Once the deploy is live, the image is
+      cached by mail clients and renders for everyone.
+    • Wordmark is rendered as plain bold text with Impact /
+      Barlow Condensed in the font stack so subscribers with the
+      font installed get the real shape, others a near-match.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your ReCity sign-in link</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #F2EDE4; font-family: -apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1C2530;">
+
+  <!-- Outer wrapper for full-bleed background colour -->
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #F2EDE4; padding: 32px 16px;">
+    <tr>
+      <td align="center">
+
+        <!-- Card -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 480px; background-color: #FFFDF8; border: 2.5px solid #1C2530; border-radius: 18px; box-shadow: 4px 4px 0 #1C2530;">
+          <tr>
+            <td style="padding: 28px 24px 24px 24px; text-align: center;">
+
+              <!-- Hero illustration -->
+              <img
+                src="https://akt072022.github.io/UrbanQuest/illustrations/cityscape.png"
+                alt=""
+                width="180"
+                style="display: block; margin: 0 auto 8px auto; width: 180px; max-width: 60%; height: auto; mix-blend-mode: multiply;"
+              />
+
+              <!-- Wordmark -->
+              <div style="font-family: 'Barlow Condensed', Impact, 'Helvetica Neue', sans-serif; font-weight: 900; font-size: 48px; line-height: 0.95; color: #1C2530; letter-spacing: 0.5px; margin-bottom: 8px;">
+                ReCity
+              </div>
+
+              <!-- Tagline -->
+              <div style="font-size: 13px; line-height: 1.5; color: #5A5550; margin-bottom: 24px; padding: 0 12px;">
+                The catalogue of 133 urban-planning methods, picked for your project.
+              </div>
+
+              <!-- Headline -->
+              <div style="font-family: 'Barlow Condensed', Impact, 'Helvetica Neue', sans-serif; font-weight: 900; font-size: 22px; color: #1C2530; letter-spacing: 0.5px; margin-bottom: 14px;">
+                YOUR ONE-TAP SIGN-IN
+              </div>
+
+              <!-- Body copy -->
+              <div style="font-size: 14px; line-height: 1.55; color: #3F3A36; margin-bottom: 24px; padding: 0 8px;">
+                Tap the button below to sign in to ReCity. The link only works once and expires in an hour, so use it from the device you want to keep signed in on.
+              </div>
+
+              <!-- CTA button (table for Outlook compatibility) -->
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin: 0 auto 18px auto;">
+                <tr>
+                  <td align="center" bgcolor="#FFC83D" style="background-color: #FFC83D; border: 2.5px solid #1C2530; border-radius: 12px; box-shadow: 3px 3px 0 #1C2530;">
+                    <a
+                      href="{{ .ConfirmationURL }}"
+                      target="_blank"
+                      style="display: inline-block; padding: 14px 28px; font-family: 'Barlow Condensed', Impact, 'Helvetica Neue', sans-serif; font-weight: 900; font-size: 15px; letter-spacing: 1px; text-transform: uppercase; color: #1C2530; text-decoration: none;"
+                    >
+                      Sign in to ReCity &rarr;
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Plain link fallback -->
+              <div style="font-size: 11px; line-height: 1.5; color: #9C958A; margin-bottom: 4px;">
+                Button not working? Copy this link into your browser:
+              </div>
+              <div style="font-size: 11px; line-height: 1.4; color: #5A5550; word-break: break-all; padding: 0 8px;">
+                <a href="{{ .ConfirmationURL }}" target="_blank" style="color: #5A5550; text-decoration: underline;">{{ .ConfirmationURL }}</a>
+              </div>
+
+            </td>
+          </tr>
+        </table>
+
+        <!-- Footer (outside the card) -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 480px; margin-top: 18px;">
+          <tr>
+            <td style="padding: 0 12px; text-align: center;">
+              <div style="font-size: 11px; line-height: 1.5; color: #9C958A;">
+                You're getting this because someone (probably you) asked for a sign-in link at <strong style="color: #5A5550;">ReCity</strong>. Didn't request it? Ignore this email, no account is created until you tap the button.
+              </div>
+            </td>
+          </tr>
+        </table>
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>
