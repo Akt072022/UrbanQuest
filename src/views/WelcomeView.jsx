@@ -2,11 +2,11 @@
 // on?") that runs an AI shortlist immediately. Sign-in is offered
 // later (on ProjectFitView) as an opt-in to save the shortlist
 // across devices, never as a gate before generating it.
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore } from '../store/useStore'
 import { ScrappyButton, ScrappyChip } from '../components/ScrappyButton'
-import { suggestMethods, hasMistral } from '../lib/mistral'
+import { suggestMethods, interviewStep, hasMistral } from '../lib/mistral'
 import { hasSupabase } from '../lib/supabase'
 
 const INK = '#1C2530'
@@ -63,6 +63,11 @@ export function WelcomeView() {
   const [desc, setDesc] = useState(projectContext?.desc || '')
   const [busy, setBusy] = useState(false)
   const [err,  setErr]  = useState('')
+  // Default to the guided AI interview when Mistral is configured.
+  // The free-form textarea stays available behind a "Just let me
+  // type" link for users who already know exactly what they want
+  // to say.
+  const [mode, setMode] = useState(hasMistral ? 'chat' : 'form')
 
   // Re-sync the form fields when projectContext arrives or changes —
   // handles the case where rehydration / auth restore happens AFTER
@@ -154,69 +159,95 @@ export function WelcomeView() {
           </div>
         </div>
 
-        {/* ── The one input card — name + description + CTA ── */}
-        <form onSubmit={submit}
-          style={{
-            background: '#FFFFFF', borderRadius: 18, padding: 18,
-            border: `2.5px solid ${INK}`,
-            marginBottom: 16,
-            display: 'flex', flexDirection: 'column', gap: 12,
-          }}>
-          <div>
-            <label style={LABEL}>Project name <span style={OPT}>(optional)</span></label>
-            <input style={INP}
-              placeholder="e.g. Lyon Part-Dieu redesign"
-              value={name} onChange={e => setName(e.target.value)} />
-          </div>
-          <div>
-            <label style={LABEL}>What are you working on?</label>
-            <textarea
-              placeholder="A few sentences about the site, the ambition, the constraints, who it's for…"
-              value={desc} onChange={e => setDesc(e.target.value)}
-              rows={5}
-              style={{ ...INP, resize: 'vertical', lineHeight: 1.45 }} />
-            <div style={{
-              fontSize: 10, color: '#9C958A', marginTop: 4,
-              fontFamily: 'Barlow Condensed, Impact, sans-serif',
-              letterSpacing: '.04em', textTransform: 'uppercase',
-            }}>
-              {desc.trim().length < 20
-                ? `${20 - desc.trim().length} more characters before we can analyse`
-                : '✓ ready to analyse'}
-            </div>
-          </div>
-          {/* Signed-in users see a small status chip — sign-in stays
-              optional and lives on ProjectFitView (Save these →). */}
-          {hasSupabase && userEmail && (
-            <div style={{
-              padding: '8px 10px',
-              background: '#FFFDF8', border: `1.5px solid ${INK}33`,
-              borderRadius: 10,
-            }}>
-              <div style={{
-                fontFamily: 'Barlow Condensed, Impact, sans-serif',
-                fontWeight: 900, fontSize: 10,
-                color: '#5A5550', letterSpacing: '.06em',
-                textTransform: 'uppercase',
-              }}>✓ Signed in as {userEmail}</div>
-            </div>
-          )}
+        {mode === 'chat' && hasMistral ? (
+          <ProjectInterview
+            busyParent={busy}
+            onAnalyse={async ({ pName, pDesc }) => {
+              setProjectContext({ name: pName, desc: pDesc })
+              setAiSuggestions([])
+              await runAnalysis({ pName, pDesc })
+            }}
+            onSwitchToForm={() => setMode('form')} />
+        ) : (
+          <>
+            {/* ── Free-form fallback — name + description + CTA ── */}
+            <form onSubmit={submit}
+              style={{
+                background: '#FFFFFF', borderRadius: 18, padding: 18,
+                border: `2.5px solid ${INK}`,
+                marginBottom: 16,
+                display: 'flex', flexDirection: 'column', gap: 12,
+              }}>
+              <div>
+                <label style={LABEL}>Project name <span style={OPT}>(optional)</span></label>
+                <input style={INP}
+                  placeholder="e.g. Lyon Part-Dieu redesign"
+                  value={name} onChange={e => setName(e.target.value)} />
+              </div>
+              <div>
+                <label style={LABEL}>What are you working on?</label>
+                <textarea
+                  placeholder="A few sentences about the site, the ambition, the constraints, who it's for…"
+                  value={desc} onChange={e => setDesc(e.target.value)}
+                  rows={5}
+                  style={{ ...INP, resize: 'vertical', lineHeight: 1.45 }} />
+                <div style={{
+                  fontSize: 10, color: '#9C958A', marginTop: 4,
+                  fontFamily: 'Barlow Condensed, Impact, sans-serif',
+                  letterSpacing: '.04em', textTransform: 'uppercase',
+                }}>
+                  {desc.trim().length < 20
+                    ? `${20 - desc.trim().length} more characters before we can analyse`
+                    : '✓ ready to analyse'}
+                </div>
+              </div>
+              {hasSupabase && userEmail && (
+                <div style={{
+                  padding: '8px 10px',
+                  background: '#FFFDF8', border: `1.5px solid ${INK}33`,
+                  borderRadius: 10,
+                }}>
+                  <div style={{
+                    fontFamily: 'Barlow Condensed, Impact, sans-serif',
+                    fontWeight: 900, fontSize: 10,
+                    color: '#5A5550', letterSpacing: '.06em',
+                    textTransform: 'uppercase',
+                  }}>✓ Signed in as {userEmail}</div>
+                </div>
+              )}
 
-          {err && (
-            <div style={{
-              padding: '8px 10px',
-              background: '#FCE8E2', border: `1.5px solid #C0452A`,
-              borderRadius: 8, fontSize: 12, color: '#7A1F0E', lineHeight: 1.4,
-            }}>{err}</div>
-          )}
+              {err && (
+                <div style={{
+                  padding: '8px 10px',
+                  background: '#FCE8E2', border: `1.5px solid #C0452A`,
+                  borderRadius: 8, fontSize: 12, color: '#7A1F0E', lineHeight: 1.4,
+                }}>{err}</div>
+              )}
 
-          <ScrappyButton type="submit"
-            onClick={submit}
-            color={canSubmit ? YELLOW : '#E0DAD2'}
-            size="lg" full>
-            {busy ? '✨ ANALYSING…' : '✨ ANALYSE MY PROJECT →'}
-          </ScrappyButton>
-        </form>
+              <ScrappyButton type="submit"
+                onClick={submit}
+                color={canSubmit ? YELLOW : '#E0DAD2'}
+                size="lg" full>
+                {busy ? '✨ ANALYSING…' : '✨ ANALYSE MY PROJECT →'}
+              </ScrappyButton>
+              {hasMistral && (
+                <button type="button"
+                  onClick={() => setMode('chat')}
+                  style={{
+                    background: 'transparent', border: 'none',
+                    cursor: 'pointer', padding: '4px 0',
+                    fontFamily: 'Barlow Condensed, Impact, sans-serif',
+                    fontWeight: 900, fontSize: 11,
+                    color: '#5A5550', letterSpacing: '.06em',
+                    textTransform: 'uppercase',
+                    textAlign: 'center',
+                  }}>
+                  ✦ Or let the AI ask me about it
+                </button>
+              )}
+            </form>
+          </>
+        )}
 
         {/* If a previous shortlist exists, surface it explicitly */}
         {aiSuggestions.length > 0 && projectContext && (
@@ -281,6 +312,167 @@ export function WelcomeView() {
         </div>
       </div>
     </div>
+  )
+}
+
+// ── Project interview — short AI-led chat that drafts the brief ──
+//   Default mode on the welcome screen when Mistral is configured.
+//   Walks the user through ~4-6 targeted questions about the
+//   site / ambition / stakeholders / constraints / open questions,
+//   then surfaces an "Analyse my project" CTA once the AI has
+//   enough material to write the structured description that
+//   suggestMethods consumes.
+function ProjectInterview({ onAnalyse, onSwitchToForm, busyParent }) {
+  const [messages, setMessages] = useState([{
+    role: 'assistant',
+    content: "Hi! Let's shape your urban project together. To start: what's the site or area you're working on, and what's there today?",
+  }])
+  const [input, setInput] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  // Final brief from the AI: { name, desc }. When set, the input
+  // disappears and the "Analyse my project" CTA takes over.
+  const [done, setDone] = useState(null)
+  const scrollRef = useRef(null)
+
+  // Auto-scroll the chat to the latest message.
+  useEffect(() => {
+    const el = scrollRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [messages, done])
+
+  const send = async () => {
+    if (busy || !input.trim()) return
+    const userMsg = { role: 'user', content: input.trim() }
+    const next    = [...messages, userMsg]
+    setMessages(next)
+    setInput('')
+    setBusy(true); setErr('')
+    try {
+      const r = await interviewStep({ messages: next })
+      if (r.type === 'ask') {
+        setMessages(m => [...m, { role: 'assistant', content: r.question }])
+      } else {
+        setDone({ name: r.name, desc: r.desc })
+        setMessages(m => [...m, {
+          role: 'assistant',
+          content: `Got it. Here's how I'd describe your project:\n\n**${r.name}**\n\n${r.desc}\n\nIf this looks right, hit "Analyse my project" below.`,
+        }])
+      }
+    } catch (e) {
+      setErr(e?.message || 'Couldn\'t reach the AI. Try again.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const onKey = (e) => {
+    // Enter sends, Shift+Enter inserts a newline (chat convention).
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      send()
+    }
+  }
+
+  return (
+    <div style={{
+      background: '#FFFFFF', borderRadius: 18, padding: 16,
+      border: `2.5px solid ${INK}`,
+      marginBottom: 16,
+      display: 'flex', flexDirection: 'column', gap: 12,
+    }}>
+      {/* Conversation */}
+      <div ref={scrollRef} style={{
+        maxHeight: 360, minHeight: 220,
+        overflowY: 'auto',
+        display: 'flex', flexDirection: 'column', gap: 10,
+        paddingRight: 4,
+      }}>
+        {messages.map((m, i) => (
+          <Bubble key={i} role={m.role}>{m.content}</Bubble>
+        ))}
+        {busy && (
+          <Bubble role="assistant">
+            <span style={{ opacity: 0.6 }}>thinking…</span>
+          </Bubble>
+        )}
+      </div>
+
+      {err && (
+        <div style={{
+          padding: '8px 10px',
+          background: '#FCE8E2', border: `1.5px solid #C0452A`,
+          borderRadius: 8, fontSize: 12, color: '#7A1F0E', lineHeight: 1.4,
+        }}>{err}</div>
+      )}
+
+      {/* Input area — disappears once the brief is ready and is
+          replaced by the "Analyse my project" CTA. */}
+      {!done ? (
+        <>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+            <textarea
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={onKey}
+              rows={2}
+              placeholder="Type your answer…"
+              disabled={busy}
+              style={{
+                ...INP,
+                resize: 'none',
+                lineHeight: 1.4,
+                flex: 1,
+                fontSize: 14,
+              }} />
+            <ScrappyButton type="button"
+              onClick={send}
+              color={!busy && input.trim() ? YELLOW : '#E0DAD2'}
+              size="md">
+              {busy ? '…' : 'SEND'}
+            </ScrappyButton>
+          </div>
+          <button type="button"
+            onClick={onSwitchToForm}
+            style={{
+              background: 'transparent', border: 'none',
+              cursor: 'pointer', padding: '4px 0',
+              fontFamily: 'Barlow Condensed, Impact, sans-serif',
+              fontWeight: 900, fontSize: 11,
+              color: '#5A5550', letterSpacing: '.06em',
+              textTransform: 'uppercase',
+              alignSelf: 'center',
+            }}>
+            · Or just let me type
+          </button>
+        </>
+      ) : (
+        <ScrappyButton type="button"
+          onClick={() => onAnalyse({ pName: done.name, pDesc: done.desc })}
+          color={busyParent ? '#E0DAD2' : YELLOW}
+          size="lg" full>
+          {busyParent ? '✨ ANALYSING…' : '✨ ANALYSE MY PROJECT →'}
+        </ScrappyButton>
+      )}
+    </div>
+  )
+}
+
+function Bubble({ role, children }) {
+  const isUser = role === 'user'
+  return (
+    <div style={{
+      alignSelf: isUser ? 'flex-end' : 'flex-start',
+      maxWidth: '85%',
+      padding: '10px 12px',
+      borderRadius: 14,
+      background: isUser ? INK : '#F2EDE4',
+      color:      isUser ? '#FFFFFF' : INK,
+      fontSize: 13, lineHeight: 1.5,
+      whiteSpace: 'pre-wrap',
+      wordBreak: 'break-word',
+      border: isUser ? 'none' : `1.5px solid ${INK}22`,
+    }}>{children}</div>
   )
 }
 

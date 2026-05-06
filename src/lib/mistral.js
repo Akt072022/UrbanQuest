@@ -114,6 +114,78 @@ ${compactCatalogue()}`
   return out
 }
 
+// ── AI project interview ───────────────────────────────────────
+// Drives the "guided brief" chat on the welcome screen. The user
+// types a free-form answer, we send the running history, and the
+// model either asks the next concrete question or finalises with
+// a structured project description ready for suggestMethods.
+export async function interviewStep({ messages }) {
+  const key = import.meta.env.VITE_MISTRAL_API_KEY
+  if (!key) throw new Error('AI is not configured.')
+
+  const sys = [
+    'You are an expert urban-planning advisor helping a user articulate their urban transformation project so we can pick the right methods for it.',
+    '',
+    'Conduct a short, focused interview by asking ONE concrete question at a time. Across 4-6 useful exchanges, cover the dimensions of the project:',
+    '- the site / area (where, what is there today)',
+    '- the ambition (what they want to achieve)',
+    '- key stakeholders (who is involved, who matters)',
+    '- constraints (regulatory, budget, time, conflicts of use)',
+    '- open questions or uncertainties',
+    '',
+    'Each question must be ONE plain-language sentence, no jargon. Don\'t recap the previous answers in your question. Acknowledge briefly and pivot to the next topic.',
+    '',
+    'When you have enough to summarise (typically after 4-6 user replies), finalise with a structured description.',
+    '',
+    'Output STRICT JSON ONLY in one of these two shapes — no prose, no code fences:',
+    '',
+    '{ "type": "ask", "question": "<one short concrete question>" }',
+    '',
+    '{ "type": "done", "name": "<short project name, 4-8 words>", "desc": "<150-300 word brief integrating all the user\'s answers, naming the site, ambition, stakeholders, constraints, and key uncertainties>" }',
+  ].join('\n')
+
+  const res = await fetch(URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization:  `Bearer ${key}`,
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: sys },
+        ...messages,
+      ],
+      temperature: 0.5,
+    }),
+  })
+  if (!res.ok) {
+    const txt = await res.text().catch(() => '')
+    if (txt) console.warn('[ai] interview HTTP', res.status, txt)
+    throw new Error(`Interview service error (${res.status}).`)
+  }
+  const json = await res.json()
+  const content = json?.choices?.[0]?.message?.content
+  if (!content) throw new Error('Interview returned no content.')
+
+  let parsed
+  try { parsed = JSON.parse(content) }
+  catch { throw new Error('Interview returned an unexpected response.') }
+
+  if (parsed.type === 'ask' && typeof parsed.question === 'string') {
+    return { type: 'ask', question: parsed.question.trim() }
+  }
+  if (parsed.type === 'done' && typeof parsed.desc === 'string') {
+    return {
+      type: 'done',
+      name: String(parsed.name || 'Your project').trim(),
+      desc: parsed.desc.trim(),
+    }
+  }
+  throw new Error('Interview returned an unrecognised shape.')
+}
+
 // ── AI capability analysis ─────────────────────────────────────
 // Reads the team's evaluation state and returns a small structured
 // recommendation: a narrative + 3-5 actionable items the dashboard
