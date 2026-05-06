@@ -24,7 +24,16 @@
 import { useRef, useState, useEffect } from 'react'
 
 const SWIPE_THRESH = 90
-const LOCK_PX      = 10
+// 6px direction-lock — was 10px, which felt sluggish on mobile when
+// the first few pixels happened to be slightly diagonal. Smaller
+// threshold = the card starts following the finger sooner, so the
+// gesture feels alive instead of dead-on-touch.
+const LOCK_PX      = 6
+// Vertical clamp — we still translate by drag.y to give the card
+// a hint of give, but anything past this just rides on the rotate.
+// Without it, vertical jitter (very common on mobile) made the card
+// flop up/down in a way that felt twitchy.
+const Y_CLAMP      = 18
 
 // Pick the right-zone whose threshold the user has crossed.
 function activeRightZone(zones, x) {
@@ -55,6 +64,13 @@ export function SwipeWrap({
   onZoneChange = null,
 }) {
   const [drag, setDrag] = useState({ x: 0, y: 0, exiting: false })
+  // Mirror of drag tracked synchronously in a ref. setState is async
+  // so end() reading from the React state can race with the last
+  // pointermove (release ~immediately after the final move): the
+  // component reads the previous render's drag.x and the gesture
+  // commits at the wrong threshold (or doesn't commit at all). The
+  // ref is updated in move() so end() always sees the live position.
+  const dragRef      = useRef({ x: 0, y: 0 })
   const startRef     = useRef(null)
   const modeRef      = useRef(null)   // 'pending' | 'swipe' | 'scroll'
   const exitTimerRef = useRef(null)
@@ -65,6 +81,11 @@ export function SwipeWrap({
   // content needs. Stash the live pointer info so move() can
   // capture once direction-lock fires.
   const pointerRef   = useRef(null)   // { id, target } | null
+  // Ref to the wrapper div so we can attach native non-passive
+  // touch listeners. Required because React's passive-by-default
+  // synthetic touchmove can't preventDefault, and touch-action:none
+  // alone doesn't always stop iOS from claiming the gesture.
+  const wrapRef      = useRef(null)
 
   useEffect(() => {
     mountedRef.current = true
@@ -74,10 +95,34 @@ export function SwipeWrap({
     }
   }, [])
 
+  // Attach native touchmove with {passive: false} so we can
+  // preventDefault while a swipe is in flight. Without this, iOS
+  // Safari sometimes claims an angled swipe for its own back-gesture
+  // / scroll-bounce and fires pointercancel on us mid-drag, which the
+  // user reads as 'the swipe broke'. With it, the OS keeps its hands
+  // off and our pointer events run to completion.
+  useEffect(() => {
+    const el = wrapRef.current
+    if (!el) return
+    const onTouchMove = (e) => {
+      if (modeRef.current === 'swipe') {
+        // Only block default once we've committed to swipe — before
+        // that, the user might still be tapping (which iOS implements
+        // as a touchstart/touchend with tiny movement). Calling
+        // preventDefault on every touchmove would break clicks on the
+        // accordion sections inside the card.
+        e.preventDefault?.()
+      }
+    }
+    el.addEventListener('touchmove', onTouchMove, { passive: false })
+    return () => el.removeEventListener('touchmove', onTouchMove)
+  }, [enabled])
+
   const begin = (cx, cy) => {
     if (!enabled) return
     startRef.current = { x: cx, y: cy }
     modeRef.current  = 'pending'
+    dragRef.current  = { x: 0, y: 0 }
     setDrag({ x: 0, y: 0, exiting: false })
   }
   const move = (cx, cy) => {
@@ -102,11 +147,12 @@ export function SwipeWrap({
       }
     }
     if (modeRef.current !== 'swipe') return
+    dragRef.current = { x: dx, y: dy }
     setDrag({ x: dx, y: dy, exiting: false })
   }
   const end = () => {
     if (!startRef.current) { modeRef.current = null; return }
-    const x = drag.x, y = drag.y
+    const x = dragRef.current.x, y = dragRef.current.y
     let value = null
     let off   = { x: 0, y: 0 }
 
@@ -134,17 +180,22 @@ export function SwipeWrap({
     startRef.current = null
     modeRef.current  = null
     if (value) {
+      dragRef.current = { x: off.x, y: off.y }
       setDrag({ x: off.x, y: off.y, exiting: true })
       exitTimerRef.current = setTimeout(() => {
         exitTimerRef.current = null
         onSwipe?.(value)
-        if (mountedRef.current) setDrag({ x: 0, y: 0, exiting: false })
+        if (mountedRef.current) {
+          dragRef.current = { x: 0, y: 0 }
+          setDrag({ x: 0, y: 0, exiting: false })
+        }
       }, 220)
     } else {
       if (exitTimerRef.current) {
         clearTimeout(exitTimerRef.current)
         exitTimerRef.current = null
       }
+      dragRef.current = { x: 0, y: 0 }
       setDrag({ x: 0, y: 0, exiting: false })
     }
   }
@@ -171,6 +222,10 @@ export function SwipeWrap({
   const onLostPointerCapture  = () => { pointerRef.current = null; end() }
 
   const rot = Math.max(-12, Math.min(12, drag.x * 0.05))
+  // Clamp the vertical translate so a vertical wobble during a
+  // horizontal swipe doesn't make the card flop up/down. We still
+  // honour a touch of give (±18px) so the gesture feels physical.
+  const yOff = Math.max(-Y_CLAMP, Math.min(Y_CLAMP, drag.y))
   const dragging = startRef.current !== null
   // Live drop-target during a horizontal drag. Right side picks from
   // rightZones; left side activates leftZone if configured. Drives
@@ -204,6 +259,7 @@ export function SwipeWrap({
 
   return (
     <div
+      ref={wrapRef}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -211,17 +267,23 @@ export function SwipeWrap({
       onLostPointerCapture={onLostPointerCapture}
       style={{
         position: 'relative',
-        transform: `translate(${drag.x}px, ${drag.y}px) rotate(${rot}deg)`,
+        transform: `translate(${drag.x}px, ${yOff}px) rotate(${rot}deg)`,
         transition: dragging ? 'none' : 'transform .22s ease-out',
         cursor: enabled ? 'grab' : 'default',
-        // touch-action: none — own every gesture on the card. The
-        // previous "pan-y" let mobile browsers claim near-vertical
-        // swipes before our pointer events could fire, leaving the
-        // user wondering why their angled swipe did nothing. With the
-        // tap-to-expand body the card has no native scroll anyway,
-        // so handing all gestures to SwipeWrap is the right default.
+        // touch-action: none claims every gesture on the card so the
+        // browser doesn't try to pan/zoom mid-swipe.
         touchAction: 'none',
         userSelect: 'none',
+        // iOS-specific defenses against:
+        //   • the blue tap-flash that lights up on every touch and
+        //     distracts from the gesture (tapHighlightColor)
+        //   • the long-press callout menu that opens on a slow press
+        //     and aborts our gesture (touchCallout)
+        //   • text selection accidentally engaging on a slow drag
+        //     across the card body (userSelect / WebkitUserSelect)
+        WebkitTapHighlightColor: 'transparent',
+        WebkitTouchCallout: 'none',
+        WebkitUserSelect: 'none',
       }}>
       {children}
 
