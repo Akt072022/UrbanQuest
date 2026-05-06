@@ -1888,9 +1888,12 @@ export function ExploreView() {
           onPick={handleRating} />
       </div>
 
-      {/* ── Card stack — swipe shortcuts: left → "New to me", right →
-              drag-to-rate (3 zones). The decorative ghost cards
-              behind the active one give the deck weight. */}
+      {/* Card stack. The slide-in entrance animation that used to
+          run here on every advance has been removed — it landed the
+          card off-centre for ~150 ms in the middle of the keyframe
+          which read consistently as 'card stuck on the side'. A
+          plain key={eIdx} remount + a quick fade is all that's
+          needed to signal 'new card'. */}
       <div style={{
         position: 'relative',
         display: 'flex', justifyContent: 'center',
@@ -1900,15 +1903,7 @@ export function ExploreView() {
           style={{
             position: 'relative',
             zIndex: 1,
-            // Animation direction follows the user's intent:
-            //   • next / skip      → new card slides IN from the right
-            //   • prev / practice  → new card slides IN from the left
-            animation:
-              lastAction === 'skip' || lastAction === 'next'
-                ? 'card-from-right .35s cubic-bezier(.4,0,.2,1)'
-                : lastAction === 'practice' || lastAction === 'prev'
-                ? 'card-from-left .35s cubic-bezier(.4,0,.2,1)'
-                : 'none',
+            animation: 'card-fade-in .18s ease-out',
           }}>
           <SwipeWrap
             enabled={!deepTool}
@@ -1929,13 +1924,9 @@ export function ExploreView() {
         </div>
       </div>
       <style>{`
-        @keyframes card-from-left {
-          from { transform: translateX(-110%) rotate(-4deg); opacity: 0; }
-          to   { transform: translateX(0)     rotate(0);     opacity: 1; }
-        }
-        @keyframes card-from-right {
-          from { transform: translateX(110%)  rotate(4deg);  opacity: 0; }
-          to   { transform: translateX(0)     rotate(0);     opacity: 1; }
+        @keyframes card-fade-in {
+          from { opacity: 0; }
+          to   { opacity: 1; }
         }
       `}</style>
 
