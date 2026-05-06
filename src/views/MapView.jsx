@@ -858,13 +858,8 @@ export function MapView() {
           flexWrap: isH ? 'wrap' : 'nowrap',
           gap: isH ? 32 : 4,
         }}>
-          {projectContext ? (
-            <SecondaryLink onClick={goProjectFit}
-              label="Back to my project shortlist" />
-          ) : (
-            <SecondaryLink onClick={goWelcome}
-              label="✨ Analyse a new project" />
-          )}
+          <SecondaryLink onClick={goWelcome}
+            label={projectContext ? 'My projects →' : '✨ Analyse a new project'} />
           <SecondaryLink onClick={goDashboard}
             label="See my capability map" />
           <SecondaryLink onClick={goFacilitator}

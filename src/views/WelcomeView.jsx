@@ -190,6 +190,107 @@ export function WelcomeView() {
           </div>
         </div>
 
+        {/* Saved projects — leads the page when at least one
+            analysis exists, so returning users land on a project
+            manager (open / delete / browse) instead of being
+            funnelled straight into another AI chat. The chat /
+            form below is the entry point for creating *another*
+            project, surfaced clearly under the list. */}
+        {projects && projects.length > 0 && (
+          <div style={{ marginBottom: 18 }}>
+            <div style={{
+              display: 'flex', alignItems: 'baseline',
+              justifyContent: 'space-between',
+              marginBottom: 8, paddingLeft: 4, paddingRight: 4,
+            }}>
+              <div style={{
+                fontFamily: 'Barlow Condensed, Impact, sans-serif',
+                fontWeight: 900, fontSize: 12, color: INK,
+                letterSpacing: '.08em', textTransform: 'uppercase',
+              }}>
+                Your projects
+              </div>
+              <div style={{
+                fontFamily: 'Barlow Condensed, Impact, sans-serif',
+                fontWeight: 900, fontSize: 11, color: '#9C958A',
+              }}>
+                {projects.length}
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {[...projects]
+                .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''))
+                .map(p => {
+                  const active = p.id === currentProjectId
+                  return (
+                    <div key={p.id} style={{
+                      display: 'flex', alignItems: 'stretch',
+                      background: active ? '#FFFDF8' : '#FFFFFF',
+                      border: `1.5px ${active ? 'solid' : 'dashed'} ${INK}${active ? '' : '55'}`,
+                      borderRadius: 10,
+                      overflow: 'hidden',
+                    }}>
+                      <button type="button"
+                        onClick={() => { selectProject(p.id); goProjectFit() }}
+                        style={{
+                          flex: 1, minWidth: 0, padding: '10px 12px',
+                          background: 'transparent', border: 'none',
+                          cursor: 'pointer', textAlign: 'left',
+                          font: 'inherit', color: 'inherit',
+                        }}>
+                        <div style={{
+                          fontFamily: 'Barlow Condensed, Impact, sans-serif',
+                          fontWeight: 900, fontSize: 14, color: INK,
+                          letterSpacing: '.02em',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden', textOverflow: 'ellipsis',
+                        }}>{p.name}</div>
+                        <div style={{
+                          fontSize: 11, color: '#5A5550', marginTop: 2,
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden', textOverflow: 'ellipsis',
+                        }}>
+                          {(p.suggestions?.length || 0)} methods
+                          {p.desc ? ` · ${p.desc.slice(0, 60)}${p.desc.length > 60 ? '…' : ''}` : ''}
+                        </div>
+                      </button>
+                      <button type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (confirm(`Delete "${p.name}"? This can't be undone.`)) {
+                            deleteProject(p.id)
+                          }
+                        }}
+                        title="Delete this project"
+                        style={{
+                          flexShrink: 0,
+                          padding: '0 10px',
+                          background: 'transparent', border: 'none',
+                          borderLeft: `1.5px ${active ? 'solid' : 'dashed'} ${INK}${active ? '' : '55'}`,
+                          cursor: 'pointer',
+                          fontSize: 14, color: '#9C958A', fontWeight: 900,
+                        }}>×</button>
+                    </div>
+                  )
+                })}
+            </div>
+            {/* Clear visual break + 'create another' label so the
+                chat / form below reads as a fresh action, not as
+                an awkward continuation of the projects list. */}
+            <div style={{
+              marginTop: 16,
+              paddingTop: 14,
+              borderTop: `1.5px dashed ${INK}33`,
+              fontFamily: 'Barlow Condensed, Impact, sans-serif',
+              fontWeight: 900, fontSize: 12, color: INK,
+              letterSpacing: '.08em', textTransform: 'uppercase',
+              textAlign: 'center',
+            }}>
+              ✨ Or analyse another project
+            </div>
+          </div>
+        )}
+
         {mode === 'chat' && hasMistral ? (
           <ProjectInterview
             busyParent={busy}
@@ -278,81 +379,6 @@ export function WelcomeView() {
               )}
             </form>
           </>
-        )}
-
-        {/* Saved projects — all the analyses the user has run.
-            Tap one to load its shortlist into ProjectFitView; the
-            "×" deletes (with a confirm). The list is sorted most-
-            recently-updated first so the project the user just
-            created surfaces at the top. */}
-        {projects && projects.length > 0 && (
-          <div style={{ marginBottom: 16 }}>
-            <div style={{
-              fontFamily: 'Barlow Condensed, Impact, sans-serif',
-              fontWeight: 900, fontSize: 10, color: '#5A5550',
-              letterSpacing: '.08em', textTransform: 'uppercase',
-              marginBottom: 8, paddingLeft: 4,
-            }}>
-              Your projects · {projects.length}
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {[...projects]
-                .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''))
-                .map(p => {
-                  const active = p.id === currentProjectId
-                  return (
-                    <div key={p.id} style={{
-                      display: 'flex', alignItems: 'stretch',
-                      background: active ? '#FFFDF8' : 'transparent',
-                      border: `1.5px ${active ? 'solid' : 'dashed'} ${INK}${active ? '' : '55'}`,
-                      borderRadius: 10,
-                      overflow: 'hidden',
-                    }}>
-                      <button type="button"
-                        onClick={() => { selectProject(p.id); goProjectFit() }}
-                        style={{
-                          flex: 1, minWidth: 0, padding: '10px 12px',
-                          background: 'transparent', border: 'none',
-                          cursor: 'pointer', textAlign: 'left',
-                          font: 'inherit', color: 'inherit',
-                        }}>
-                        <div style={{
-                          fontFamily: 'Barlow Condensed, Impact, sans-serif',
-                          fontWeight: 900, fontSize: 14, color: INK,
-                          letterSpacing: '.02em',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden', textOverflow: 'ellipsis',
-                        }}>{p.name}</div>
-                        <div style={{
-                          fontSize: 11, color: '#5A5550', marginTop: 2,
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden', textOverflow: 'ellipsis',
-                        }}>
-                          {(p.suggestions?.length || 0)} methods
-                          {p.desc ? ` · ${p.desc.slice(0, 60)}${p.desc.length > 60 ? '…' : ''}` : ''}
-                        </div>
-                      </button>
-                      <button type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          if (confirm(`Delete "${p.name}"? This can't be undone.`)) {
-                            deleteProject(p.id)
-                          }
-                        }}
-                        title="Delete this project"
-                        style={{
-                          flexShrink: 0,
-                          padding: '0 10px',
-                          background: 'transparent', border: 'none',
-                          borderLeft: `1.5px ${active ? 'solid' : 'dashed'} ${INK}${active ? '' : '55'}`,
-                          cursor: 'pointer',
-                          fontSize: 14, color: '#9C958A', fontWeight: 900,
-                        }}>×</button>
-                    </div>
-                  )
-                })}
-            </div>
-          </div>
         )}
 
         {/* ── Secondary doors ─────────────────────── */}
