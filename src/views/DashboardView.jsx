@@ -484,7 +484,24 @@ function GateDetail({ gate, practiced, goExplore, goExploreDim }) {
 // The "Studied" quadrant is the most useful diagnostic: it surfaces
 // methods the user could lean on with a bit of practice. Cells are
 // dim-coloured so the user can spot which lenses skew theoretical.
+// Detect narrow viewports (~< 560 px). Used by the CapabilityMap
+// to swap a 2×2 quadrant layout for a single-column stack on phones,
+// where the side-by-side cells overflowed the viewport and the
+// right-hand quadrants got clipped.
+function useIsNarrow(threshold = 560) {
+  const [narrow, setNarrow] = useState(() =>
+    typeof window !== 'undefined' && window.innerWidth < threshold)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const onResize = () => setNarrow(window.innerWidth < threshold)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [threshold])
+  return narrow
+}
+
 function CapabilityMap({ practiced }) {
+  const isNarrow = useIsNarrow()
   const buckets = { mastered: [], inuse: [], studied: [] }
   for (const t of TOOLS) {
     const lvl = practiced[t.n]
@@ -496,6 +513,31 @@ function CapabilityMap({ practiced }) {
   const totalRated = buckets.mastered.length + buckets.inuse.length + buckets.studied.length
 
   if (totalRated === 0) return null
+
+  // Cells in render order. On wide screens these flow into a 2×2
+  // quadrant grid with axis labels; on phones they stack into a
+  // single column.
+  const cells = (
+    <>
+      <CapabilityCell title="MASTERED" subtitle="Run routinely"
+        tone="ok" tools={buckets.mastered} />
+      <CapabilityCell title="STUDIED" subtitle="Know it, don't run it"
+        tone="gold" tools={buckets.studied} highlight />
+      <CapabilityCell title="IN USE" subtitle="Sometimes" tone="bench"
+        tools={buckets.inuse} />
+      <div style={{
+        minHeight: 80,
+        background: '#FAF7F2',
+        border: `1.5px dashed #DCD3C4`, borderRadius: 10,
+        padding: '10px 10px 8px',
+        fontSize: 10, color: '#9C958A', fontStyle: 'italic',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        textAlign: 'center', lineHeight: 1.4,
+      }}>
+        Untouched methods — keep evaluating to populate.
+      </div>
+    </>
+  )
 
   return (
     <div style={{
@@ -515,60 +557,39 @@ function CapabilityMap({ practiced }) {
         </div>
       </div>
 
-      {/* Grid with axis hints */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '14px 1fr 1fr',
-        gridTemplateRows:    '1fr 1fr 14px',
-        gap: 6,
-      }}>
-        {/* Y-axis label */}
-        <div style={{
-          gridRow: '1 / span 2',
-          writingMode: 'vertical-rl',
-          transform: 'rotate(180deg)',
-          fontSize: 8, fontWeight: 800, color: '#9C958A',
-          textTransform: 'uppercase', letterSpacing: '.08em',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>practice →</div>
-
-        {/* Top-left = MASTERED (high knowledge, high practice) */}
-        <CapabilityCell title="MASTERED" subtitle="Run routinely"
-          tone="ok" tools={buckets.mastered} />
-        {/* Top-right = STUDIED — visually a bit "off" but conceptually:
-            high knowledge / low practice (top-left in classic 2×2).
-            We render mastered & studied along the top row and in-use
-            on the bottom-left so the eye reads it as: top = "I know
-            it well", bottom = "still learning". */}
-        <CapabilityCell title="STUDIED" subtitle="Know it, don't run it"
-          tone="gold" tools={buckets.studied} highlight />
-
-        {/* Bottom-left = IN USE */}
-        <CapabilityCell title="IN USE" subtitle="Sometimes" tone="bench"
-          tools={buckets.inuse} />
-        {/* Bottom-right = unrated/empty placeholder */}
-        <div style={{
-          minHeight: 80,
-          background: '#FAF7F2',
-          border: `1.5px dashed #DCD3C4`, borderRadius: 10,
-          padding: '10px 10px 8px',
-          fontSize: 10, color: '#9C958A', fontStyle: 'italic',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          textAlign: 'center', lineHeight: 1.4,
-        }}>
-          Untouched methods — keep evaluating to populate.
+      {isNarrow ? (
+        // Phone layout: stack the four cells vertically. The axis
+        // labels and 2×2 framing aren't useful here — there's no
+        // 'quadrant' to read, just a list of buckets.
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {cells}
         </div>
-
-        {/* Filler corner */}
-        <div />
-        {/* X-axis label */}
+      ) : (
+        // Wide layout: keep the 2×2 quadrant + axis labels.
         <div style={{
-          gridColumn: '2 / span 2',
-          fontSize: 8, fontWeight: 800, color: '#9C958A',
-          textTransform: 'uppercase', letterSpacing: '.08em',
-          textAlign: 'center',
-        }}>knowledge →</div>
-      </div>
+          display: 'grid',
+          gridTemplateColumns: '14px 1fr 1fr',
+          gridTemplateRows:    '1fr 1fr 14px',
+          gap: 6,
+        }}>
+          <div style={{
+            gridRow: '1 / span 2',
+            writingMode: 'vertical-rl',
+            transform: 'rotate(180deg)',
+            fontSize: 8, fontWeight: 800, color: '#9C958A',
+            textTransform: 'uppercase', letterSpacing: '.08em',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>practice →</div>
+          {cells}
+          <div />
+          <div style={{
+            gridColumn: '2 / span 2',
+            fontSize: 8, fontWeight: 800, color: '#9C958A',
+            textTransform: 'uppercase', letterSpacing: '.08em',
+            textAlign: 'center',
+          }}>knowledge →</div>
+        </div>
+      )}
 
       <div style={{
         marginTop: 10, fontSize: 11, color: '#5A5550', lineHeight: 1.4,
