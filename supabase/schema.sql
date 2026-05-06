@@ -63,11 +63,30 @@ create table if not exists public.profiles (
   updated_at timestamptz not null default now()
 );
 
+-- AI-analysed projects. Each row is one method-fit analysis: the
+-- user's project name + brief plus the shortlist of methods the AI
+-- suggested. `suggestions` is a JSONB array of
+-- { tool_name: text, why: text } — we look the full method back up
+-- in TOOLS client-side at render time. The `desc` keyword is a
+-- reserved word in some SQL dialects so we use `description` in the
+-- DB and translate to `desc` in the JS shape.
+create table if not exists public.projects (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references auth.users(id) on delete cascade,
+  name        text not null,
+  description text not null default '',
+  suggestions jsonb not null default '[]'::jsonb,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+
 -- ── Indexes ─────────────────────────────────────────────────────
 create index if not exists evaluations_team_idx
   on public.evaluations (team_id) where team_id is not null;
 create index if not exists skipped_team_idx
   on public.skipped_tools (team_id) where team_id is not null;
+create index if not exists projects_user_idx
+  on public.projects (user_id, created_at desc);
 
 -- ── Row-Level Security ─────────────────────────────────────────
 alter table public.teams         enable row level security;
@@ -75,6 +94,14 @@ alter table public.team_members  enable row level security;
 alter table public.evaluations   enable row level security;
 alter table public.skipped_tools enable row level security;
 alter table public.profiles      enable row level security;
+alter table public.projects      enable row level security;
+
+-- projects: each user reads + writes only their own.
+drop policy if exists projects_self_rw on public.projects;
+create policy projects_self_rw on public.projects
+  for all
+  using      (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
 
 -- evaluations: each user manages their own row; teammates can read
 -- evaluations tagged with a shared team_id (workshop view).

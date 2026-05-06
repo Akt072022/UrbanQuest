@@ -4,7 +4,7 @@ import { TOOLS, SKILL_LEVELS } from '../data/tools'
 
 const STORAGE_KEY = 'uq-v2'        // keep the storage slot stable; bump
                                    // schema version below for migrations
-const SCHEMA_VERSION = 3
+const SCHEMA_VERSION = 4
 const LEVEL_W = Object.fromEntries(
   Object.entries(SKILL_LEVELS).map(([k, v]) => [k, v.weight])
 )
@@ -24,7 +24,7 @@ export const useStore = create(
   persist(
     (set, get) => ({
       // ── Core state ─────────────────────────
-      view: 'welcome',     // 'welcome'|'projectFit'|'map'|'explore'|'dashboard'|'facilitator'|'profile'
+      view: 'welcome',     // 'welcome'|'login'|'projectFit'|'map'|'explore'|'dashboard'|'facilitator'|'profile'
       team: null,          // { name, city, proj }
       practiced: {},       // { [toolName]: 'regular' | 'occasional' | 'theory' }
       skipped:   [],       // [toolName] — explicitly passed-over for now
@@ -49,12 +49,20 @@ export const useStore = create(
       sessionId:   null,
       sessionRole: null,
 
-      // ── Project method-fit (Phase 1 hero) ──────────────────
-      // The user's current project description and the AI shortlist
-      // generated from it. Persisted so a reload after typing a
-      // project doesn't lose the suggestions. `aiSuggestions` is
-      // an array of { tool: { n, g, d, ... }, why: string } picked
-      // from the catalogue by suggestMethods().
+      // ── Projects (multi-project support) ────────────────────
+      // Each AI analysis creates a Project entry. `currentProjectId`
+      // points at the one currently shown in the welcome / project-
+      // fit / dashboard surfaces. Project shape:
+      //   { id, name, desc, suggestions: [{tool, why}], createdAt, updatedAt }
+      // `suggestions` keeps the hydrated `tool` reference for
+      // ergonomic rendering; the sync layer dehydrates to
+      // `{tool_name, why}` when persisting to Supabase.
+      projects: [],
+      currentProjectId: null,
+      // Mirror of the current project's data — kept so existing
+      // consumers that read projectContext / aiSuggestions don't
+      // need to all change at once. Both are derived from
+      // projects.find(p => p.id === currentProjectId).
       projectContext: null,    // { name, desc } | null
       aiSuggestions:  [],
 
@@ -86,6 +94,7 @@ export const useStore = create(
       goProfile:     () => set({ view: 'profile' }),
       goProjectFit:  () => set({ view: 'projectFit' }),
       goWelcome:     () => set({ view: 'welcome' }),
+      goLogin:       () => set({ view: 'login' }),
 
       // Persist whatever the user typed about their project + the
       // AI shortlist that came back. Both shared with the workshop

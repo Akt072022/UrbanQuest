@@ -98,8 +98,31 @@ export async function listMyTeams() {
     .map(r => ({ ...r.teams, role: r.role, joined_at: r.joined_at }))
 }
 
+// Force-refresh the access token before write operations. RLS policies
+// run against `auth.uid()`, which is read from the JWT — if the token
+// expired between page load and the click, every INSERT silently fails
+// with a confusing "permission denied" / 0-row error. A pre-flight
+// refresh sidesteps that whole class of bugs at the cost of one extra
+// round-trip on the user's first write of a session.
+async function ensureFreshSession() {
+  if (!supabase) return null
+  try {
+    const { data, error } = await supabase.auth.refreshSession()
+    if (error) {
+      // refreshSession can fail benignly when there is no session at
+      // all (anonymous user) — that's not our problem to surface here.
+      console.warn('[auth] refreshSession warning:', error.message)
+    }
+    return data?.session || null
+  } catch (err) {
+    console.warn('[auth] refreshSession threw:', err?.message || err)
+    return null
+  }
+}
+
 export async function createTeam({ name, city, proj }) {
   if (!supabase) throw new Error('Auth is not configured.')
+  await ensureFreshSession()
   const userRes = await supabase.auth.getUser()
   const user = userRes.data.user
   if (!user) throw new Error('Sign in first.')
@@ -163,6 +186,7 @@ export async function joinTeamByCode(rawCode) {
   if (!supabase) throw new Error('Auth is not configured.')
   const code = (rawCode || '').trim().toUpperCase()
   if (!code) throw new Error('Enter an invite code.')
+  await ensureFreshSession()
   const userRes = await supabase.auth.getUser()
   const user = userRes.data.user
   if (!user) throw new Error('Sign in first.')

@@ -356,11 +356,15 @@ export function ProfileView() {
                 onClick={async () => {
                   await signOut()
                   // Force-clear store auth + team state in case the
-                  // Supabase auth listener missed the event.
+                  // Supabase auth listener missed the event, then
+                  // route the user to the dedicated login surface so
+                  // they can switch accounts (rather than leaving them
+                  // staring at a profile that says "signed out").
                   useStore.setState({
                     userId: null, userEmail: null,
                     teams: [], currentTeamId: null,
                   })
+                  useStore.getState().goLogin()
                 }}
                 color="#FFFFFF" size="sm">
                 SIGN OUT

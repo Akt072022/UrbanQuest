@@ -22,7 +22,7 @@ export function WelcomeView() {
   const {
     userEmail,
     setProjectContext, setAiSuggestions,
-    goProjectFit, goMap, goDashboard,
+    goProjectFit, goMap, goDashboard, goLogin,
     ensureDefaultTeam,
     aiSuggestions, projectContext,
   } = useStore(useShallow(s => ({
@@ -32,6 +32,7 @@ export function WelcomeView() {
     goProjectFit:      s.goProjectFit,
     goMap:             s.goMap,
     goDashboard:       s.goDashboard,
+    goLogin:           s.goLogin,
     ensureDefaultTeam: s.ensureDefaultTeam,
     aiSuggestions:     s.aiSuggestions,
     projectContext:    s.projectContext,
@@ -299,6 +300,26 @@ export function WelcomeView() {
               }}>
               · Open my dashboard
             </button>
+          )}
+          {/* Sign-in entry — visible only when nobody is signed in.
+              Lets a returning user open the magic-link surface
+              directly instead of having to skip into the app and
+              hunt for the auth prompt in Profile. */}
+          {hasSupabase && !userEmail && (
+            <div style={{ marginTop: 6 }}>
+              <button type="button" onClick={goLogin}
+                style={{
+                  background: 'transparent', border: 'none', cursor: 'pointer',
+                  fontFamily: 'Barlow Condensed, Impact, sans-serif',
+                  fontWeight: 900, fontSize: 12,
+                  color: '#5A5550', letterSpacing: '.05em',
+                  textTransform: 'uppercase',
+                  padding: '6px 12px',
+                  textDecoration: 'underline',
+                }}>
+                · I already have an account — sign in
+              </button>
+            </div>
           )}
         </div>
 

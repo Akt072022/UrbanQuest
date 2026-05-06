@@ -9,6 +9,7 @@ import { FacilitatorView } from './views/FacilitatorView'
 import { ParticipantView } from './views/ParticipantView'
 import { ProfileView } from './views/ProfileView'
 import { ProjectFitView } from './views/ProjectFitView'
+import { LoginView } from './views/LoginView'
 
 class ErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { error: null } }
@@ -59,11 +60,11 @@ function AppInner() {
       background: '#F2EDE4', minHeight: '100vh',
       display: 'flex', flexDirection: 'column',
     }}>
-      {/* Navbar hidden on welcome (no nav before sign-in) and on
-          explore (the card view already has its own ← MAP button +
+      {/* Navbar hidden on welcome / login (no nav before sign-in) and
+          on explore (the card view already has its own ← MAP button +
           counter; the global bar would just steal vertical space
           from the card without adding navigation value). */}
-      {view !== 'welcome' && view !== 'explore' && <Navbar />}
+      {view !== 'welcome' && view !== 'login' && view !== 'explore' && <Navbar />}
       <div style={{
         flex: 1, overflowY: 'auto',
         display: 'flex', flexDirection: 'column',
@@ -71,10 +72,11 @@ function AppInner() {
       }}>
         <div style={{
           width: '100%', maxWidth: maxW,
-          padding: view === 'welcome' ? 0 : '20px 18px',
+          padding: (view === 'welcome' || view === 'login') ? 0 : '20px 18px',
           boxSizing: 'border-box',
         }}>
           {view === 'welcome'     && <WelcomeView />}
+          {view === 'login'       && <LoginView />}
           {view === 'projectFit'  && <ProjectFitView />}
           {view === 'map'         && <MapView />}
           {view === 'explore'     && <ExploreView />}
