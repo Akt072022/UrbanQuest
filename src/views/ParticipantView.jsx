@@ -7,7 +7,7 @@ import {
   scoreForGateDim,
 } from '../data/tools'
 import {
-  CardStack, CardDeepModal, ProgressDots, RatingRow, GhostCard, DeckFooter,
+  CardStack, CardDeepModal, ProgressDots, RatingRow, DeckFooter,
   playTTS, stopTTS,
 } from './ExploreView'
 import { ScrappyButton, ScrappyChip } from '../components/ScrappyButton'
@@ -403,8 +403,6 @@ function ToolDeck({ tools, gate, evals, skipped, onPick, onSkip, onDone }) {
         display: 'flex', justifyContent: 'center',
         marginBottom: 12,
       }}>
-        {tools.length - idx > 2 && <GhostCard depth={2} />}
-        {tools.length - idx > 1 && <GhostCard depth={1} />}
         <div key={idx}
           style={{
             position: 'relative',
@@ -965,8 +963,6 @@ export function FitDeck({ tools, gate, project, fits, evals, onPick, onDone }) {
         display: 'flex', justifyContent: 'center',
         marginBottom: 12,
       }}>
-        {tools.length - idx > 2 && <GhostCard depth={2} />}
-        {tools.length - idx > 1 && <GhostCard depth={1} />}
         <div key={idx} style={{
           position: 'relative',
           zIndex: 1,

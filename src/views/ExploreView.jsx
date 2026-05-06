@@ -1777,8 +1777,6 @@ export function ExploreView() {
         display: 'flex', justifyContent: 'center',
         marginBottom: 12,
       }}>
-        {tools.length - eIdx > 2 && <GhostCard depth={2} />}
-        {tools.length - eIdx > 1 && <GhostCard depth={1} />}
         <div key={eIdx}
           style={{
             position: 'relative',
