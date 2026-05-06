@@ -1162,24 +1162,29 @@ export function DashboardView() {
   const {
     practiced, dashboardGate, xp,
     projectContext, aiSuggestions,
+    projects, currentProjectId, selectProject, deleteProject,
     goMap, goFacilitator, goExplore, goExploreDim,
     goWelcome, goProjectFit,
     currentTeamId, teams, userId,
   } = useStore(useShallow(s => ({
-    practiced:      s.practiced,
-    dashboardGate:  s.dashboardGate,
-    xp:             s.xp,
-    projectContext: s.projectContext,
-    aiSuggestions:  s.aiSuggestions,
-    goMap:          s.goMap,
-    goFacilitator:  s.goFacilitator,
-    goExplore:      s.goExplore,
-    goExploreDim:   s.goExploreDim,
-    goWelcome:      s.goWelcome,
-    goProjectFit:   s.goProjectFit,
-    currentTeamId:  s.currentTeamId,
-    teams:          s.teams,
-    userId:         s.userId,
+    practiced:        s.practiced,
+    dashboardGate:    s.dashboardGate,
+    xp:               s.xp,
+    projectContext:   s.projectContext,
+    aiSuggestions:    s.aiSuggestions,
+    projects:         s.projects,
+    currentProjectId: s.currentProjectId,
+    selectProject:    s.selectProject,
+    deleteProject:    s.deleteProject,
+    goMap:            s.goMap,
+    goFacilitator:    s.goFacilitator,
+    goExplore:        s.goExplore,
+    goExploreDim:     s.goExploreDim,
+    goWelcome:        s.goWelcome,
+    goProjectFit:     s.goProjectFit,
+    currentTeamId:    s.currentTeamId,
+    teams:            s.teams,
+    userId:           s.userId,
   })))
 
   const hasShortlist = !!(projectContext && aiSuggestions?.length > 0)
@@ -1259,6 +1264,104 @@ export function DashboardView() {
           ✨ {hasShortlist ? 'Open my shortlist' : 'Analyse a project'} →
         </button>
       </div>
+
+      {/* Saved-projects strip — only renders when the user has at
+          least one saved analysis. Each pill switches the active
+          project (loading its shortlist into the Project tab); the
+          inline × deletes after a confirm. The trailing "+ NEW"
+          pill drops into the Welcome chat to start another. */}
+      {projects && projects.length > 0 && (
+        <div style={{
+          display: 'flex', alignItems: 'center',
+          gap: 6, marginBottom: 12,
+          flexWrap: 'wrap',
+        }}>
+          <div style={{
+            fontFamily: 'Barlow Condensed, Impact, sans-serif',
+            fontWeight: 900, fontSize: 10, color: '#5A5550',
+            letterSpacing: '.08em', textTransform: 'uppercase',
+            marginRight: 4, flexShrink: 0,
+          }}>
+            Projects
+          </div>
+          {[...projects]
+            .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''))
+            .map(p => {
+              const active = p.id === currentProjectId
+              return (
+                <div key={p.id} style={{
+                  display: 'inline-flex', alignItems: 'stretch',
+                  background: active ? '#FFFDF8' : '#FFFFFF',
+                  border: `1.5px ${active ? 'solid' : 'dashed'} ${active ? INK : INK + '55'}`,
+                  borderRadius: 999,
+                  overflow: 'hidden',
+                  fontSize: 12,
+                }}>
+                  <button type="button"
+                    onClick={() => {
+                      selectProject(p.id)
+                      // Land them on the Project tab so the switch
+                      // is visible (otherwise it's a silent state
+                      // change with no feedback).
+                      setTab('project')
+                    }}
+                    title={p.desc ? p.desc.slice(0, 140) : p.name}
+                    style={{
+                      padding: '5px 10px',
+                      background: 'transparent', border: 'none',
+                      cursor: 'pointer',
+                      fontFamily: 'Barlow Condensed, Impact, sans-serif',
+                      fontWeight: 900, fontSize: 11,
+                      color: INK, letterSpacing: '.04em',
+                      textTransform: 'uppercase',
+                      maxWidth: 220,
+                      overflow: 'hidden', textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}>
+                    {active && (
+                      <svg viewBox="0 0 24 24" width="11" height="11"
+                        style={{ verticalAlign: '-1px', marginRight: 4 }}>
+                        <path d="M5 13l4 4L19 7" fill="none" stroke={INK}
+                          strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                    {p.name}
+                  </button>
+                  <button type="button"
+                    onClick={() => {
+                      if (confirm(`Delete "${p.name}"? This can't be undone.`)) {
+                        deleteProject(p.id)
+                      }
+                    }}
+                    title="Delete this project"
+                    style={{
+                      padding: '0 9px',
+                      background: 'transparent', border: 'none',
+                      borderLeft: `1px ${active ? 'solid' : 'dashed'} ${INK}33`,
+                      cursor: 'pointer',
+                      fontSize: 13, color: '#9C958A', fontWeight: 900,
+                      lineHeight: 1,
+                    }}>×</button>
+                </div>
+              )
+            })}
+          <button type="button"
+            onClick={goWelcome}
+            style={{
+              padding: '5px 12px',
+              background: '#FFFFFF',
+              border: `1.5px dashed ${INK}55`,
+              borderRadius: 999,
+              cursor: 'pointer',
+              fontFamily: 'Barlow Condensed, Impact, sans-serif',
+              fontWeight: 900, fontSize: 11,
+              color: '#5A5550', letterSpacing: '.04em',
+              textTransform: 'uppercase',
+            }}>
+            + New project
+          </button>
+        </div>
+      )}
 
       {/* Tab strip */}
       <TabStrip tabs={tabs} activeId={tab} onPick={setTab} />
