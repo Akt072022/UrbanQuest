@@ -338,9 +338,14 @@ function PathNode({ stop, onClick, opn = 1 }) {
             style={{
               width: '95%', height: '95%',
               objectFit: 'contain',
-              // multiply blend mode drops the white PNG background
-              // into whatever tile colour sits behind, so the icon
-              // fuses with the page instead of showing a white square.
+              // Multiply hides perfectly-white pixels into the tile,
+              // but the PNGs ship with a rounded-rect frame whose
+              // corners are slightly off-white (anti-aliasing /
+              // compression). Clip the image to a circle so those
+              // corners are cropped out entirely. The illustrations
+              // are already centred inside a round safe area, so the
+              // clip never cuts into the artwork.
+              clipPath: 'circle(50%)',
               mixBlendMode: 'multiply',
               filter: locked ? 'grayscale(1) opacity(.55)' : 'none',
               userSelect: 'none', pointerEvents: 'none',

@@ -797,9 +797,10 @@ function BadgeTile({ b }) {
               width: '88%', height: '88%', objectFit: 'contain',
               // Locked: flatten to a single grey silhouette so the
               // illustration's colours don't spoil the achievement.
-              // Unlocked: full-colour, no filter. Multiply blends the
-              // PNG's white background into the badge tile so the
-              // illustration fuses with it.
+              // Unlocked: full-colour, no filter. Crop to a circle
+              // and multiply so the PNG's rounded-rect corners don't
+              // leak through into the badge tile.
+              clipPath: 'circle(50%)',
               mixBlendMode: 'multiply',
               filter: on ? 'none' : 'brightness(0) opacity(.4)',
               userSelect: 'none', pointerEvents: 'none',
