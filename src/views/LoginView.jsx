@@ -87,7 +87,7 @@ export function LoginView() {
           <div style={{
             width: 'min(40vw, 150px)',
             aspectRatio: '6 / 5',
-            margin: '0 auto -4px',
+            margin: '0 auto -18px',
             overflow: 'hidden',
             background: '#F2EDE4',
           }}>
@@ -99,7 +99,7 @@ export function LoginView() {
               style={{
                 width: '100%', height: '100%',
                 objectFit: 'cover',
-                objectPosition: '50% 55%',
+                objectPosition: '50% 32%',
                 display: 'block',
                 mixBlendMode: 'multiply',
                 userSelect: 'none', pointerEvents: 'none',

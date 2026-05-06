@@ -142,15 +142,13 @@ export function WelcomeView() {
           <div style={{
             width: 'min(48vw, 190px)',
             aspectRatio: '6 / 5',
-            margin: '0 auto -4px',
+            margin: '0 auto -22px',
             overflow: 'hidden',
-            // Explicit page-cream background. The parent welcome
-            // wrapper sets `position:relative; z-index:1` which
-            // creates a stacking context — without an explicit
-            // backdrop here the img's mix-blend-mode: multiply has
-            // nothing to mix against and the white in the PNG
-            // renders solid. Repeating the page colour gives
-            // multiply a cream backdrop to fuse into.
+            // Explicit page-cream background so mix-blend-mode:
+            // multiply has a backdrop to fuse into (parent wrapper
+            // creates a stacking context that would otherwise leave
+            // the blend with no backdrop, rendering the PNG's white
+            // as solid).
             background: '#F2EDE4',
           }}>
             <img
@@ -161,7 +159,12 @@ export function WelcomeView() {
               style={{
                 width: '100%', height: '100%',
                 objectFit: 'cover',
-                objectPosition: '50% 55%',
+                // Lower percentage = visible window shifted toward
+                // the top of the source = more of the source's
+                // bottom (the bushy plant base) gets cropped, which
+                // pulls the wordmark visually tight against the
+                // buildings.
+                objectPosition: '50% 32%',
                 display: 'block',
                 mixBlendMode: 'multiply',
                 userSelect: 'none', pointerEvents: 'none',
