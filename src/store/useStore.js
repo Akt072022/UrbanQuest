@@ -71,7 +71,11 @@ export const useStore = create(
         view: 'map',
       })),
 
-      goMap:         () => set({ view: 'map', eGate: null, eDim: null, eFlipped: false }),
+      // goMap intentionally KEEPS eGate / eDim set so the map can
+      // surface "continue with <last dim>" pointing back to wherever
+      // the user just came from. They get overwritten on the next
+      // goExplore / goExploreDim call.
+      goMap:         () => set({ view: 'map', eFlipped: false }),
       goDashboard:   (gate = null) => set({ view: 'dashboard', dashboardGate: gate }),
       goFacilitator: () => set({ view: 'facilitator' }),
       goProfile:     () => set({ view: 'profile' }),

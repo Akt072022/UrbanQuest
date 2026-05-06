@@ -59,7 +59,11 @@ function AppInner() {
       background: '#F2EDE4', minHeight: '100vh',
       display: 'flex', flexDirection: 'column',
     }}>
-      {view !== 'welcome' && <Navbar />}
+      {/* Navbar hidden on welcome (no nav before sign-in) and on
+          explore (the card view already has its own ← MAP button +
+          counter; the global bar would just steal vertical space
+          from the card without adding navigation value). */}
+      {view !== 'welcome' && view !== 'explore' && <Navbar />}
       <div style={{
         flex: 1, overflowY: 'auto',
         display: 'flex', flexDirection: 'column',

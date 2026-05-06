@@ -2,11 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore } from '../store/useStore'
 import {
-  GATE_LABEL, DIMENSIONS,
+  GATE_LABEL, DIMENSIONS, DIM_BY_ID,
   toolsForGate, toolsForGateDim,
   practicedForGate, practicedForGateDim,
   scoreForGateDim,
-  isUnlocked, TOOLS,
+  TOOLS,
 } from '../data/tools'
 import { ScrappyButton } from '../components/ScrappyButton'
 
@@ -113,12 +113,11 @@ function buildStops(gates, practiced, orientation = 'v') {
   const stops = []
   const angles = orientation === 'h' ? DIM_ANGLES_H : DIM_ANGLES_V
   for (const gate of gates) {
-    const gateUnlocked = isUnlocked(gate.g, practiced)
-    const gateStarted  = practicedForGate(gate.g, practiced) > 0
-    // A gate that is technically locked by progression but the user
-    // has already started gets the same visual treatment as unlocked
-    // — encourages the "I'd rather work on Anchoring first" path.
-    const gateLockedVisual = !gateUnlocked && !gateStarted
+    const gateStarted = practicedForGate(gate.g, practiced) > 0
+    // No more progression locks — every gate and every dim is open
+    // from the start. The user picks where to begin; the previous
+    // "you have to clear gate 1 first" gating just slowed people who
+    // already knew which phase mattered to their project.
 
     DIMENSIONS.forEach((dim, i) => {
       const a = angles[i]
@@ -132,9 +131,7 @@ function buildStops(gates, practiced, orientation = 'v') {
         total, done,
         empty:    total === 0,
         complete: total > 0 && done === total,
-        // Dim stops follow the gate's visual lock state. They remain
-        // tappable regardless — `locked` now drives styling only.
-        locked:   gateLockedVisual,
+        locked:   false,
         started:  done > 0,
       })
     })
@@ -156,7 +153,7 @@ function buildStops(gates, practiced, orientation = 'v') {
       total: gT, done: gD,
       dims,
       complete: gD === gT,
-      locked:   gateLockedVisual,
+      locked:   false,
       started:  gateStarted,
     })
   }
@@ -545,13 +542,20 @@ function PathMilestone({ stop, onClick }) {
 // ──────────────────────────────────────────────────────────────
 export function MapView() {
   const {
-    practiced, xp,
+    practiced, skipped, xp,
     projectContext,
+    eGate, eDim,
     goExplore, goExploreDim, goFacilitator, goDashboard, goProjectFit, goWelcome,
   } = useStore(useShallow(s => ({
     practiced:      s.practiced,
+    skipped:        s.skipped,
     xp:             s.xp,
     projectContext: s.projectContext,
+    // Last dim the user opened — kept around by goMap so the
+    // "Continue with" CTA can resume there instead of jumping to
+    // the first incomplete dim of the gate.
+    eGate:          s.eGate,
+    eDim:           s.eDim,
     goExplore:      s.goExplore,
     goExploreDim:   s.goExploreDim,
     goFacilitator:  s.goFacilitator,
@@ -657,6 +661,24 @@ export function MapView() {
     }
   }
 
+  // CTA target — prefer the last dim the user actually opened (eGate
+  // / eDim, kept around by goMap) when it still has un-rated tools,
+  // so "Continue with X" really points back to where they stopped.
+  // Falls back to the first incomplete stop on the path.
+  const skipSet = skipped instanceof Set ? skipped : new Set(skipped || [])
+  const lastDimHasUnrated = eGate && eDim
+    ? toolsForGateDim(eGate, eDim).some(t => !practiced[t.n] && !skipSet.has(t.n))
+    : false
+  const lastDimMeta = lastDimHasUnrated ? DIM_BY_ID[eDim] : null
+  const resumeTarget = lastDimMeta
+    ? { gate: eGate, dim: lastDimMeta }
+    : (stops[activeIdx]?.kind === 'node'
+      && !stops[activeIdx].complete
+      && !stops[activeIdx].empty
+        ? { gate: stops[activeIdx].gate, dim: stops[activeIdx].dim }
+        : null)
+  const resumeIsLast = !!lastDimMeta
+
   const activeStop = stops[activeIdx]
 
   return (
@@ -744,11 +766,10 @@ export function MapView() {
           justifyContent: 'center',
         }}>
           <div style={{ width: isH ? '100%' : 240 }}>
-            {activeStop && activeStop.kind === 'node'
-              && !activeStop.complete && !activeStop.locked && !activeStop.empty ? (
-              <ScrappyButton onClick={() => goExploreDim(activeStop.gate, activeStop.dim.id)}
+            {resumeTarget ? (
+              <ScrappyButton onClick={() => goExploreDim(resumeTarget.gate, resumeTarget.dim.id)}
                 color={YELLOW} size="md" full>
-                ▼ {tp === 0 ? 'START WITH' : 'CONTINUE'} {activeStop.dim.label.toUpperCase()}
+                ▼ {tp === 0 ? 'START WITH' : (resumeIsLast ? 'CONTINUE WITH' : 'CONTINUE')} {resumeTarget.dim.label.toUpperCase()}
               </ScrappyButton>
             ) : (
               <ScrappyButton onClick={() => goExplore(1)}
