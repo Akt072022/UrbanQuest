@@ -797,27 +797,33 @@ export function FacilitatorView() {
                           padding: '8px 10px',
                           background: PAGE,
                           border: `1.5px solid ${INK}33`, borderRadius: 10,
+                          minWidth: 0,
                         }}>
-                          <div style={{
-                            display: 'flex', alignItems: 'baseline',
-                            justifyContent: 'space-between', gap: 8,
-                          }}>
-                            <span style={{
-                              fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 13,
-                              color: INK, letterSpacing: '.02em',
-                              flex: 1, minWidth: 0,
-                              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                            }}>{tool.n}</span>
-                            <span style={{
-                              flexShrink: 0, fontSize: 9, color: '#9C958A',
+                          {/* Gate eyebrow on its own row — wraps cleanly
+                              on mobile when a tool spans two gates. */}
+                          {(tool.g || []).length > 0 && (
+                            <div style={{
+                              fontSize: 9, color: '#9C958A',
                               fontWeight: 700, letterSpacing: '.04em',
                               textTransform: 'uppercase',
-                            }}>{(tool.g || []).map(g => GATE_LABEL[g]).join('/')}</span>
-                          </div>
+                              lineHeight: 1.2,
+                              wordBreak: 'break-word',
+                              marginBottom: 2,
+                            }}>
+                              {tool.g.map(g => GATE_LABEL[g]).join(' · ')}
+                            </div>
+                          )}
+                          <div style={{
+                            fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 13,
+                            color: INK, letterSpacing: '.02em',
+                            lineHeight: 1.2,
+                            wordBreak: 'break-word',
+                          }}>{tool.n}</div>
                           {why && (
                             <div style={{
                               fontSize: 11, color: '#3F3A36',
                               lineHeight: 1.4, marginTop: 4,
+                              wordBreak: 'break-word',
                             }}>{why}</div>
                           )}
                         </div>
