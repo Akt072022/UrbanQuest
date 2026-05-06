@@ -41,15 +41,12 @@ export async function sendMagicLink(email, redirectTo) {
 
 export async function signOut() {
   if (!supabase) return
-  try {
-    const { error } = await supabase.auth.signOut()
-    if (error) console.warn('[supabase] signOut error:', error.message)
-  } catch (err) {
-    console.warn('[supabase] signOut threw:', err?.message || err)
-  }
-  // Belt-and-braces: even if onAuthStateChange doesn't fire (it
-  // sometimes doesn't on stale sessions or stub clients), wipe the
-  // persisted Supabase keys so a reload genuinely starts unsigned.
+  // Wipe persisted tokens FIRST. supabase.auth.signOut() goes through
+  // the same internal lock as getUser/refreshSession, which is what
+  // gets stuck when the cached session was issued under a different
+  // API key (e.g. project switched anon → publishable key). Clearing
+  // localStorage up-front guarantees a reload starts unsigned even
+  // if the lib call below hangs and we never await it.
   try {
     Object.keys(localStorage).forEach(k => {
       if (k.startsWith('sb-') || k.startsWith('supabase.')) {
@@ -57,12 +54,29 @@ export async function signOut() {
       }
     })
   } catch { /* localStorage might be locked-down */ }
+  // Fire-and-forget the SDK call — we don't await it, because if the
+  // auth lock is wedged it never resolves. The localStorage wipe
+  // already achieved the same effect from the user's perspective.
+  try {
+    supabase.auth.signOut()?.catch?.(() => {})
+  } catch { /* swallow */ }
 }
 
 export async function getSession() {
   if (!supabase) return null
   const { data } = await supabase.auth.getSession()
   return data.session
+}
+
+// Shortcut for "who's signed in right now?". Returns null if nobody.
+// Uses getSession() (cached, sync-ish — never blocks) instead of
+// getUser() (which makes a network call to /auth/v1/user and gets
+// stuck behind the auth-js lock when the cached session JWT no
+// longer matches the project's API key configuration).
+async function currentUserId() {
+  if (!supabase) return null
+  const { data } = await supabase.auth.getSession()
+  return data?.session?.user?.id || null
 }
 
 // ── Team helpers ──────────────────────────────────────────────
@@ -79,8 +93,8 @@ function makeInviteCode(len = 6) {
 
 export async function listMyTeams() {
   if (!supabase) return []
-  // RLS: teams_member_read scopes the join naturally to teams the
-  // caller belongs to, so a wide select is safe here.
+  const uid = await currentUserId()
+  if (!uid) return []
   const { data, error } = await supabase
     .from('team_members')
     .select(`
@@ -88,7 +102,7 @@ export async function listMyTeams() {
       joined_at,
       teams ( id, name, city, proj, invite_code, created_at, created_by )
     `)
-    .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+    .eq('user_id', uid)
   if (error) {
     console.warn('[teams] listMyTeams failed:', error.message)
     return []
@@ -124,21 +138,17 @@ export async function createTeam({ name, city, proj }) {
     console.log(`[teams.create] ${label} +${Math.round(performance.now() - t0)}ms`)
   tag('start')
 
-  // Best-effort token refresh. We give it 4s and swallow failures —
-  // an expired token will surface a clearer error from the INSERT
-  // itself, and a missing-session refresh just throws "no session".
-  // Either way, we shouldn't block the create flow waiting on it.
-  try {
-    await withStepTimeout(supabase.auth.refreshSession(), 4000, 'refreshSession')
-    tag('refreshSession done')
-  } catch (err) {
-    console.warn('[teams.create] refreshSession skipped:', err?.message || err)
-  }
-
-  const userRes = await withStepTimeout(supabase.auth.getUser(), 6000, 'getUser')
-  tag('getUser done')
-  const user = userRes.data.user
-  if (!user) throw new Error('Sign in first.')
+  // Resolve the user id from the cached session — never call getUser()
+  // or refreshSession(), both of which serialise on the supabase-js
+  // internal auth lock. That lock wedges if the persisted session
+  // JWT was issued under a different API-key configuration than the
+  // project currently uses (typical after a project's anon-key →
+  // publishable-key migration), and once wedged every auth method
+  // hangs forever. getSession() reads from memory/storage, can't
+  // hang, and gives us the only field we actually need (user.id).
+  const uid = await currentUserId()
+  tag('session loaded')
+  if (!uid) throw new Error('Sign in first — no active session.')
 
   // Three-step dance because of the RLS gotcha:
   //   teams_create        → any authenticated user may INSERT
@@ -162,7 +172,7 @@ export async function createTeam({ name, city, proj }) {
       city: city?.trim() || null,
       proj: proj || null,
       invite_code,
-      created_by: user.id,
+      created_by: uid,
     }),
     25000, 'insert teams',
   )
@@ -175,7 +185,7 @@ export async function createTeam({ name, city, proj }) {
 
   const { error: e2 } = await withStepTimeout(
     supabase.from('team_members')
-      .insert({ team_id: teamId, user_id: user.id, role: 'facilitator' }),
+      .insert({ team_id: teamId, user_id: uid, role: 'facilitator' }),
     10000, 'insert team_members',
   )
   tag('insert team_members done')
@@ -193,7 +203,7 @@ export async function createTeam({ name, city, proj }) {
   tag('select teams done')
   if (e3) {
     console.error('[teams.create] post-insert select failed:', e3)
-    return { id: teamId, name, city: city || null, proj: proj || null, invite_code, created_by: user.id }
+    return { id: teamId, name, city: city || null, proj: proj || null, invite_code, created_by: uid }
   }
   return team
 }
@@ -203,15 +213,8 @@ export async function joinTeamByCode(rawCode) {
   const code = (rawCode || '').trim().toUpperCase()
   if (!code) throw new Error('Enter an invite code.')
 
-  try {
-    await withStepTimeout(supabase.auth.refreshSession(), 4000, 'refreshSession')
-  } catch (err) {
-    console.warn('[teams.join] refreshSession skipped:', err?.message || err)
-  }
-
-  const userRes = await withStepTimeout(supabase.auth.getUser(), 6000, 'getUser')
-  const user = userRes.data.user
-  if (!user) throw new Error('Sign in first.')
+  const uid = await currentUserId()
+  if (!uid) throw new Error('Sign in first — no active session.')
 
   // The RPC bypasses RLS inside its body and returns at most one row
   // matching the exact invite code, so we don't leak the team
@@ -228,7 +231,7 @@ export async function joinTeamByCode(rawCode) {
   // join an explicit conflict, which we treat as success.
   const { error: e2 } = await withStepTimeout(
     supabase.from('team_members').upsert(
-      { team_id: team.id, user_id: user.id, role: 'participant' },
+      { team_id: team.id, user_id: uid, role: 'participant' },
       { onConflict: 'team_id,user_id', ignoreDuplicates: true },
     ),
     10000, 'insert team_members',
@@ -239,14 +242,13 @@ export async function joinTeamByCode(rawCode) {
 
 export async function leaveTeam(teamId) {
   if (!supabase) return
-  const userRes = await supabase.auth.getUser()
-  const user = userRes.data.user
-  if (!user) return
+  const uid = await currentUserId()
+  if (!uid) return
   const { error } = await supabase
     .from('team_members')
     .delete()
     .eq('team_id', teamId)
-    .eq('user_id', user.id)
+    .eq('user_id', uid)
   if (error) throw new Error(error.message)
 }
 
