@@ -1160,7 +1160,7 @@ function AiActionRow({ action, onClick }) {
 // ──────────────────────────────────────────────────────────────
 export function DashboardView() {
   const {
-    practiced, dashboardGate, xp,
+    practiced, dashboardGate, dashboardTab, xp,
     projectContext, aiSuggestions,
     projects, currentProjectId, selectProject, deleteProject,
     goMap, goFacilitator, goExplore, goExploreDim,
@@ -1169,6 +1169,7 @@ export function DashboardView() {
   } = useStore(useShallow(s => ({
     practiced:        s.practiced,
     dashboardGate:    s.dashboardGate,
+    dashboardTab:     s.dashboardTab,
     xp:               s.xp,
     projectContext:   s.projectContext,
     aiSuggestions:    s.aiSuggestions,
@@ -1191,9 +1192,10 @@ export function DashboardView() {
 
   const currentTeam = teams.find(t => t.id === currentTeamId) || null
 
-  // Always land on Overall first — gives context before drilling down.
-  // The per-gate tabs are one tap away.
-  const [tab, setTab] = useState('overall')
+  // Tab defaults: honour `dashboardTab` if the navigator passed one
+  // (e.g. WelcomeView's project pill explicitly asks for 'project').
+  // Otherwise land on Overall — context before drilling down.
+  const [tab, setTab] = useState(dashboardTab || 'overall')
 
   const scores      = dimScores(practiced)
   const gates       = gateStats(practiced)

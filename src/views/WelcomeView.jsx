@@ -231,7 +231,7 @@ export function WelcomeView() {
                       overflow: 'hidden',
                     }}>
                       <button type="button"
-                        onClick={() => { selectProject(p.id); goProjectFit() }}
+                        onClick={() => { selectProject(p.id); goDashboard(null, 'project') }}
                         style={{
                           flex: 1, minWidth: 0, padding: '10px 12px',
                           background: 'transparent', border: 'none',

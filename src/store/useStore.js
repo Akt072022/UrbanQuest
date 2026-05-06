@@ -79,6 +79,10 @@ export const useStore = create(
 
       // ── Dashboard target gate (set when clicking a gate radar) ────
       dashboardGate: null,
+      // Optional tab the Dashboard should land on when navigated to
+      // (e.g. WelcomeView's project pill wants 'project'). null lets
+      // Dashboard pick its own default.
+      dashboardTab: null,
 
       // ── Session (facilitator/participants) ─
       sessionId:   null,
@@ -124,7 +128,11 @@ export const useStore = create(
       // the user just came from. They get overwritten on the next
       // goExplore / goExploreDim call.
       goMap:         () => set({ view: 'map', eFlipped: false }),
-      goDashboard:   (gate = null) => set({ view: 'dashboard', dashboardGate: gate }),
+      goDashboard:   (gate = null, tab = null) => set({
+        view: 'dashboard',
+        dashboardGate: gate,
+        dashboardTab: tab,
+      }),
       goFacilitator: () => set({ view: 'facilitator' }),
       goProfile:     () => set({ view: 'profile' }),
       goProjectFit:  () => set({ view: 'projectFit' }),
@@ -389,7 +397,7 @@ export const useStore = create(
         pendingBadgeToasts: [],
         eGate: null, eDim: null, eIdx: 0, eFlipped: false,
         ePoolNames: null, ePoolLabel: null, ePoolReturn: null,
-        dashboardGate: null,
+        dashboardGate: null, dashboardTab: null,
         sessionId: null, sessionRole: null,
         // Note: teams/currentTeamId are not reset — they belong to the
         // signed-in account, not the local game state.
