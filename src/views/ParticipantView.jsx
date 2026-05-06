@@ -75,9 +75,13 @@ function HexBadge({ gate, dimsData, size = 100 }) {
   )
 }
 
-// ── Header bar — RECITY wordmark + room + connection state ────
-function Header({ roomId, status }) {
-  // status: 'connecting' | 'live' | 'error'
+// ── Connection-state pill — floats in the top-right corner ─────
+// Was a full bar with the RECITY wordmark + session id, but for a
+// participant who joined via QR / link there's nothing actionable
+// in either string and the bar ate vertical space the cards needed.
+// Reduced to just the live / connecting / offline chip, fixed to
+// the corner so it stays visible without consuming layout height.
+function Header({ status }) {
   const colour = status === 'live' ? '#10B981'
     : status === 'error' ? '#C0452A' : '#F97316'
   const bg = status === 'live' ? '#E6F4EC'
@@ -86,27 +90,16 @@ function Header({ roomId, status }) {
     : status === 'error' ? '⚠ OFFLINE' : '◌ CONNECTING…'
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: 10,
-      padding: '14px 16px',
-      background: PAGE,
-      borderBottom: `2px solid ${INK}`,
-    }}>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{
-          fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 18,
-          color: INK, letterSpacing: '.04em', lineHeight: 1,
-        }}>RECITY</div>
-        <div style={{ fontSize: 9, color: '#5A5550', fontWeight: 700, marginTop: 3 }}>
-          Session {roomId} · #{PARTICIPANT_ID}
-        </div>
-      </div>
-      <div style={{
-        padding: '3px 10px', borderRadius: 999,
-        background: bg, border: `2px solid ${colour}`,
-        fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 9,
-        color: colour, letterSpacing: '.06em',
-      }}>{label}</div>
-    </div>
+      position: 'fixed',
+      top: 'calc(env(safe-area-inset-top, 0px) + 8px)',
+      right: 'calc(env(safe-area-inset-right, 0px) + 8px)',
+      padding: '4px 10px', borderRadius: 999,
+      background: bg, border: `2px solid ${colour}`,
+      fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 9,
+      color: colour, letterSpacing: '.06em',
+      zIndex: 50,
+      pointerEvents: 'none',
+    }}>{label}</div>
   )
 }
 
@@ -902,39 +895,33 @@ function FitDeck({ tools, gate, project, fits, evals, onPick, onDone }) {
       </div>
       <ProgressDots tools={tools} idx={idx} />
 
-      {/* Project description — collapsible strip below the header
-          when there is one; mirrors the description chip in
-          ProjectFitView so the participant has full context. */}
-      {project?.desc && (() => {
-        const CAP = 200
-        const long = project.desc.length > CAP
-        const shown = !long || descExpanded
-          ? project.desc
-          : project.desc.slice(0, CAP).trimEnd() + '…'
-        return (
-          <div style={{
-            marginTop: 8,
-            padding: '8px 10px',
-            background: PAGE,
-            border: `1.5px dashed ${INK}33`, borderRadius: 10,
-            fontSize: 11, color: '#3F3A36', lineHeight: 1.4,
-          }}>
-            {shown}
-            {long && (
-              <button onClick={() => setDescExpanded(e => !e)}
-                style={{
-                  marginLeft: 6, padding: 0, background: 'transparent',
-                  border: 'none', cursor: 'pointer',
-                  fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 10,
-                  color: GATE_COL[gate] || INK,
-                  letterSpacing: '.06em', textTransform: 'uppercase',
-                }}>
-                {descExpanded ? 'less' : 'more'}
-              </button>
-            )}
-          </div>
-        )
-      })()}
+      {/* Project description — collapsed by default behind a single
+          text-only toggle. Most of the time the participant knows
+          what the project is and just wants to rate; the description
+          is one tap away when it's needed. */}
+      {project?.desc && (
+        <div style={{ marginTop: 8 }}>
+          <button onClick={() => setDescExpanded(e => !e)}
+            style={{
+              padding: '4px 0', background: 'transparent',
+              border: 'none', cursor: 'pointer',
+              fontFamily: FONT_HEAD, fontWeight: 900, fontSize: 10,
+              color: GATE_COL[gate] || INK,
+              letterSpacing: '.06em', textTransform: 'uppercase',
+            }}>
+            {descExpanded ? '▼ Hide project description' : '▶ Read project description'}
+          </button>
+          {descExpanded && (
+            <div style={{
+              marginTop: 4,
+              padding: '8px 10px',
+              background: PAGE,
+              border: `1.5px dashed ${INK}33`, borderRadius: 10,
+              fontSize: 11, color: '#3F3A36', lineHeight: 1.4,
+            }}>{project.desc}</div>
+          )}
+        </div>
+      )}
 
       {/* Fit-rating row ABOVE the card — also acts as drop-zone
           previews while the user is mid-swipe. Same pattern as
@@ -1289,7 +1276,7 @@ export function ParticipantView({ roomId }) {
       display: 'flex', flexDirection: 'column',
       color: INK, fontFamily: '-apple-system, Helvetica Neue, sans-serif',
     }}>
-      <Header roomId={roomId} status={chanStatus} />
+      <Header status={chanStatus} />
       {/* Centred content column — narrow on phones, comfortable on
           desktop without going full-width which would feel oversized. */}
       <div style={{

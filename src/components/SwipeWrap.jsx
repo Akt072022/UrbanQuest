@@ -59,6 +59,12 @@ export function SwipeWrap({
   const modeRef      = useRef(null)   // 'pending' | 'swipe' | 'scroll'
   const exitTimerRef = useRef(null)
   const mountedRef   = useRef(true)
+  // Pointer-capture is deferred until we know the gesture is a
+  // horizontal swipe — capturing on pointerdown would steal the
+  // vertical-scroll events that the card's inner scrollable
+  // content needs. Stash the live pointer info so move() can
+  // capture once direction-lock fires.
+  const pointerRef   = useRef(null)   // { id, target } | null
 
   useEffect(() => {
     mountedRef.current = true
@@ -81,11 +87,21 @@ export function SwipeWrap({
     if (modeRef.current === 'pending') {
       if (Math.max(Math.abs(dx), Math.abs(dy)) < LOCK_PX) return
       if (Math.abs(dy) > Math.abs(dx)) {
+        // Vertical drag → drop the gesture entirely so native
+        // scroll inside the card can take over. We never captured
+        // the pointer, so nothing to release.
         modeRef.current  = 'scroll'
         startRef.current = null
+        pointerRef.current = null
         return
       }
       modeRef.current = 'swipe'
+      // Now that we own the gesture, capture so up / cancel still
+      // reach us if the cursor leaves the wrapper bounds.
+      const p = pointerRef.current
+      if (p && p.target) {
+        try { p.target.setPointerCapture(p.id) } catch { /* noop */ }
+      }
     }
     if (modeRef.current !== 'swipe') return
     setDrag({ x: dx, y: dy, exiting: false })
@@ -138,16 +154,23 @@ export function SwipeWrap({
   const onPointerDown = (e) => {
     if (!enabled) return
     if (e.button !== undefined && e.button !== 0) return
-    try { e.currentTarget.setPointerCapture(e.pointerId) } catch { /* noop */ }
+    // DON'T capture here — pre-capture would steal vertical-scroll
+    // events. We capture later, inside move(), only once the
+    // direction-lock confirms a horizontal swipe.
+    pointerRef.current = { id: e.pointerId, target: e.currentTarget }
     begin(e.clientX, e.clientY)
   }
   const onPointerMove   = (e) => { if (startRef.current) move(e.clientX, e.clientY) }
   const onPointerUp     = (e) => {
-    try { e.currentTarget.releasePointerCapture(e.pointerId) } catch { /* noop */ }
+    const p = pointerRef.current
+    if (p && p.target) {
+      try { p.target.releasePointerCapture(e.pointerId) } catch { /* noop */ }
+    }
+    pointerRef.current = null
     end()
   }
-  const onPointerCancel       = () => end()
-  const onLostPointerCapture  = () => end()
+  const onPointerCancel       = () => { pointerRef.current = null; end() }
+  const onLostPointerCapture  = () => { pointerRef.current = null; end() }
 
   const rot = Math.max(-12, Math.min(12, drag.x * 0.05))
   const dragging = startRef.current !== null
