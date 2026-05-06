@@ -9,7 +9,7 @@ import {
   scoreForGateDim,
 } from '../data/tools'
 import { canvasUrl, canvasThumbUrl, CANVAS_FILES } from '../data/canvas'
-import { computeBadges } from '../data/badges'
+import { BADGES, computeBadges } from '../data/badges'
 import { GateSymbol, stageFromRatio } from '../components/GateSymbol'
 import { ScrappyButton, ScrappyChip } from '../components/ScrappyButton'
 import { SwipeWrap } from '../components/SwipeWrap'
@@ -280,6 +280,10 @@ function DimComplete({ gate, dim }) {
           needle". Hidden when a fresh badge already takes the spot. */}
       {newBadges.length === 0 && nextTier && (() => {
         const remaining = nextTier.threshold - nextTier.current
+        // Resolve the actual badge object so we can render the
+        // (locked) icon. dim badge ids are dim_<dim>_<tier-lower>.
+        const badgeId = `dim_${dim}_${nextTier.tier.toLowerCase()}`
+        const badge = BADGES.find(b => b.id === badgeId)
         return (
           <div style={{
             maxWidth: 360, margin: '0 auto 22px',
@@ -295,14 +299,43 @@ function DimComplete({ gate, dim }) {
               fontFamily: 'Barlow Condensed, Impact, sans-serif',
               fontWeight: 900, fontSize: 10, color: '#5A5550',
               letterSpacing: '.1em', textTransform: 'uppercase',
-              textAlign: 'center', marginBottom: 4,
+              textAlign: 'center', marginBottom: 8,
             }}>
               ✦ Next badge to unlock
             </div>
-            {/* Badge name — the actual reward. */}
+            {/* Locked badge icon — same silhouette treatment as the
+                Profile screen's BadgeTile (filter: brightness(0)
+                opacity(.4)) so the user reads 'badge, not earned'
+                at a glance. Painted in greys with a dashed border
+                instead of the dim's accent colour. */}
+            {badge && (
+              <div style={{
+                width: 56, height: 56, borderRadius: '50%',
+                margin: '0 auto 10px',
+                background: '#D6CFC1',
+                border: `2px dashed #9C958A`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 26, color: '#9C958A',
+                overflow: 'hidden',
+              }}>
+                {badge.iconSrc ? (
+                  <img src={badge.iconSrc} alt=""
+                    draggable={false}
+                    style={{
+                      width: '88%', height: '88%', objectFit: 'contain',
+                      clipPath: 'circle(50%)',
+                      mixBlendMode: 'multiply',
+                      filter: 'brightness(0) opacity(.4)',
+                      userSelect: 'none', pointerEvents: 'none',
+                    }} />
+                ) : badge.icon}
+              </div>
+            )}
+            {/* Badge name — the actual reward. Greyed out to match
+                the locked icon above. */}
             <div style={{
               fontFamily: 'Barlow Condensed, Impact, sans-serif',
-              fontWeight: 900, fontSize: 18, color: col,
+              fontWeight: 900, fontSize: 18, color: '#7B746A',
               textAlign: 'center', lineHeight: 1.1, marginBottom: 10,
               textTransform: 'uppercase', letterSpacing: '.04em',
             }}>
