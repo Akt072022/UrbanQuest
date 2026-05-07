@@ -51,6 +51,25 @@
   }
 }
 
+/* Card-deck slide-in / fade-in keyframes. Defined globally here
+   instead of inside the React render so the rule isn't re-injected
+   every time the deck re-renders — Safari interprets a fresh
+   <style> block as 'restart/cancel ongoing animations', which is
+   what was making the entrance animation freeze mid-flight on
+   iOS / macOS WebKit. */
+@keyframes card-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes card-from-left {
+  from { transform: translateX(-90%) rotate(-3deg); opacity: 0; }
+  to   { transform: translateX(0)    rotate(0);     opacity: 1; }
+}
+@keyframes card-from-right {
+  from { transform: translateX(90%)  rotate(3deg);  opacity: 0; }
+  to   { transform: translateX(0)    rotate(0);     opacity: 1; }
+}
+
 @keyframes pop {
   0%   { transform: scale(0.5); }
   60%  { transform: scale(1.2); }

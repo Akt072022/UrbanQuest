@@ -1986,6 +1986,16 @@ export function ExploreView() {
                 : lastAction === 'practice' || lastAction === 'prev'
                 ? 'card-from-left .22s cubic-bezier(.4,0,.2,1)'
                 : 'card-fade-in .18s ease-out',
+            // GPU compositing hint. Safari doesn't always promote an
+            // animated transform to its own layer on its own, which
+            // causes repaints to interleave with the keyframe and
+            // visibly freeze the slide-in mid-flight. will-change
+            // asks for the layer up-front. We deliberately don't
+            // stack translateZ(0) on top — that creates a 3D
+            // stacking context that compounds with the SwipeWrap's
+            // inline transform and can break pointer hit-testing
+            // on iOS.
+            willChange: 'transform, opacity',
           }}>
           <SwipeWrap
             enabled={!deepTool}
@@ -2005,20 +2015,10 @@ export function ExploreView() {
           </SwipeWrap>
         </div>
       </div>
-      <style>{`
-        @keyframes card-fade-in {
-          from { opacity: 0; }
-          to   { opacity: 1; }
-        }
-        @keyframes card-from-left {
-          from { transform: translateX(-90%) rotate(-3deg); opacity: 0; }
-          to   { transform: translateX(0)    rotate(0);     opacity: 1; }
-        }
-        @keyframes card-from-right {
-          from { transform: translateX(90%)  rotate(3deg);  opacity: 0; }
-          to   { transform: translateX(0)    rotate(0);     opacity: 1; }
-        }
-      `}</style>
+{/* Keyframes live in index.css now — defining them inside the
+    render reinjected the <style> block every render, which Safari
+    treats as 'cancel/restart any ongoing animation' and was the
+    root cause of the freeze-mid-slide reports. */}
 
       {/* Footer — chevrons + dots + counter on one row, counter at
           the end of the dashes. */}
